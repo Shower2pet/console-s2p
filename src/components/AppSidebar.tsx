@@ -31,11 +31,14 @@ export const AppSidebar = () => {
     )}>
       {/* Logo */}
       <div className="flex items-center gap-3 p-4 border-b border-sidebar-border">
-        <S2PLogo variant="icon" size={36} />
+        <S2PLogo variant="icon" size={collapsed ? 32 : 36} light />
         {!collapsed && (
-          <span className="font-heading text-lg font-bold text-sidebar-primary animate-slide-in-left">
-            S2P Console
-          </span>
+          <div className="animate-slide-in-left">
+            <span className="font-heading text-lg font-bold text-sidebar-primary">
+              S2P Console
+            </span>
+            <p className="text-[10px] text-sidebar-foreground/50 -mt-1">Shower2Pet Management</p>
+          </div>
         )}
       </div>
 
