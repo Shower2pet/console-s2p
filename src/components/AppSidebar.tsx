@@ -4,7 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import logoOld from "@/assets/logo-old.jpg";
+import logoHorizontal from "@/assets/logo-horizontal.png";
+import logoVertical from "@/assets/logo-vertical.png";
 
 const adminItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -39,19 +40,19 @@ export const AppSidebar = () => {
       collapsed ? "w-16" : "w-64"
     )}>
       {/* Logo */}
-      <div className="flex items-center gap-3 p-4 border-b border-sidebar-border">
-        <img
-          src={logoOld}
-          alt="S2P"
-          className={cn("rounded-lg object-cover flex-shrink-0", collapsed ? "w-8 h-8" : "w-9 h-9")}
-        />
-        {!collapsed && (
-          <div className="animate-slide-in-left">
-            <span className="font-heading text-lg font-bold text-sidebar-primary">
-              S2P Console
-            </span>
-            <p className="text-[10px] text-sidebar-foreground/50 -mt-1">Shower2Pet Management</p>
-          </div>
+      <div className="flex items-center justify-center p-4 border-b border-sidebar-border">
+        {collapsed ? (
+          <img
+            src={logoVertical}
+            alt="S2P"
+            className="w-8 h-8 object-contain flex-shrink-0"
+          />
+        ) : (
+          <img
+            src={logoHorizontal}
+            alt="Shower2Pet"
+            className="h-10 object-contain"
+          />
         )}
       </div>
 

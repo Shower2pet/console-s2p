@@ -1,5 +1,5 @@
-import logoOld from "@/assets/logo-old.jpg";
-import logo3d from "@/assets/logo-3d-mockup.jpg";
+import logoHorizontal from "@/assets/logo-horizontal.png";
+import logoVertical from "@/assets/logo-vertical.png";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,23 +40,18 @@ const Login = () => {
           <div className="absolute bottom-[10%] right-[25%] w-40 h-40 rounded-full border border-white" />
         </div>
         <div className="relative z-10 text-center px-12">
-          <img src={logoOld} alt="Shower2Pet Logo" className="w-32 h-32 mx-auto rounded-2xl shadow-2xl object-cover" />
-          <h2 className="mt-6 text-3xl font-heading font-bold text-white">Shower2Pet</h2>
-          <p className="mt-3 text-lg font-body max-w-md mx-auto text-white/85">
+          <img src={logoVertical} alt="Shower2Pet Logo" className="w-40 h-40 mx-auto object-contain" />
+          <p className="mt-6 text-lg font-body max-w-md mx-auto text-white/85">
             La piattaforma intelligente per gestire le tue stazioni di lavaggio per animali.
           </p>
-          <div className="mt-10 rounded-2xl overflow-hidden shadow-2xl max-w-sm mx-auto border-4 border-white/20">
-            <img src={logo3d} alt="Shower2Pet brand" className="w-full h-auto" />
-          </div>
         </div>
       </div>
 
       {/* Right panel - login form */}
       <div className="flex flex-1 items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md">
-          <div className="lg:hidden mb-8 flex flex-col items-center gap-3">
-            <img src={logoOld} alt="Shower2Pet" className="w-16 h-16 rounded-xl object-cover" />
-            <span className="font-heading text-xl font-bold text-primary">Shower2Pet</span>
+          <div className="lg:hidden mb-8 flex justify-center">
+            <img src={logoHorizontal} alt="Shower2Pet" className="h-12 object-contain" />
           </div>
 
           <Card className="border-0 shadow-lg">
