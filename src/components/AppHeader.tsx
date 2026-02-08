@@ -1,6 +1,8 @@
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { CURRENT_ROLE } from "@/lib/mock-data";
+import { S2PLogo } from "@/components/S2PLogo";
+import { Link } from "react-router-dom";
 
 export const AppHeader = () => (
   <header className="flex h-16 items-center justify-between border-b bg-card px-6">
