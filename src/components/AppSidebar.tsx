@@ -1,28 +1,37 @@
-import { Home, Monitor, Users, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Tag } from "lucide-react";
+import { Home, Monitor, Users, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Tag, Wrench, Euro } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { S2PLogo } from "@/components/S2PLogo";
-import { CURRENT_ROLE } from "@/lib/mock-data";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
+import logoOld from "@/assets/logo-old.jpg";
 
 const adminItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Stazioni", url: "/stations", icon: Monitor },
   { title: "Clienti", url: "/clients", icon: Users },
   { title: "Report Ricavi", url: "/revenue", icon: BarChart3 },
+  { title: "Manutenzione", url: "/maintenance", icon: Wrench },
 ];
 
 const clientItems = [
-  { title: "Home", url: "/", icon: Home },
+  { title: "Dashboard", url: "/", icon: Home },
   { title: "Le Mie Stazioni", url: "/stations", icon: Monitor },
-  { title: "Codici Sconto", url: "/discounts", icon: Tag },
-  { title: "Report Ricavi", url: "/revenue", icon: BarChart3 },
+  { title: "Marketing", url: "/marketing", icon: Tag },
+  { title: "Finanze", url: "/financials", icon: Euro },
   { title: "Impostazioni", url: "/settings", icon: Settings },
 ];
 
 export const AppSidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const items = CURRENT_ROLE === 'ADMIN' ? adminItems : clientItems;
+  const { user, logout, isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const items = isAdmin ? adminItems : clientItems;
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <aside className={cn(
@@ -31,7 +40,11 @@ export const AppSidebar = () => {
     )}>
       {/* Logo */}
       <div className="flex items-center gap-3 p-4 border-b border-sidebar-border">
-        <S2PLogo variant="icon" size={collapsed ? 32 : 36} light />
+        <img
+          src={logoOld}
+          alt="S2P"
+          className={cn("rounded-lg object-cover flex-shrink-0", collapsed ? "w-8 h-8" : "w-9 h-9")}
+        />
         {!collapsed && (
           <div className="animate-slide-in-left">
             <span className="font-heading text-lg font-bold text-sidebar-primary">
@@ -46,7 +59,7 @@ export const AppSidebar = () => {
       {!collapsed && (
         <div className="px-4 pt-3 pb-1">
           <span className="inline-block rounded-full bg-sidebar-accent px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-accent-foreground">
-            {CURRENT_ROLE === 'ADMIN' ? '👑 Admin' : '🏪 Partner'}
+            {isAdmin ? '👑 Admin' : '🏪 Partner'}
           </span>
         </div>
       )}
@@ -70,12 +83,21 @@ export const AppSidebar = () => {
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-sidebar-border p-3">
-        <button className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors",
-          collapsed && "justify-center px-2"
-        )}>
+      {/* User info & Logout */}
+      <div className="border-t border-sidebar-border p-3 space-y-2">
+        {!collapsed && user && (
+          <div className="px-3 py-2">
+            <p className="text-xs font-medium text-sidebar-foreground/90 truncate">{user.name}</p>
+            <p className="text-[10px] text-sidebar-foreground/50 truncate">{user.email}</p>
+          </div>
+        )}
+        <button
+          onClick={handleLogout}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors",
+            collapsed && "justify-center px-2"
+          )}
+        >
           <LogOut className="h-5 w-5" />
           {!collapsed && <span>Esci</span>}
         </button>

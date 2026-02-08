@@ -5,14 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
-import { stations, CURRENT_ROLE } from "@/lib/mock-data";
+import { stations } from "@/lib/mock-data";
+import { useAuth } from "@/contexts/AuthContext";
 
 const StationsList = () => {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const { isAdmin, user } = useAuth();
 
-  const myStations = CURRENT_ROLE === 'ADMIN' ? stations : stations.filter(s => s.clientId === '1');
+  const myStations = isAdmin ? stations : stations.filter(s => s.clientId === user?.clientId);
 
   const filtered = useMemo(() => myStations.filter(s => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.clientName.toLowerCase().includes(search.toLowerCase());
@@ -27,7 +29,7 @@ const StationsList = () => {
         <div>
           <h1 className="text-2xl font-heading font-bold text-foreground">
             <Monitor className="inline mr-2 h-6 w-6 text-primary" />
-            {CURRENT_ROLE === 'ADMIN' ? 'Tutte le Stazioni' : 'Le Mie Stazioni'}
+            {isAdmin ? 'Tutte le Stazioni' : 'Le Mie Stazioni'}
           </h1>
           <p className="text-muted-foreground">{filtered.length} stazioni trovate</p>
         </div>
@@ -48,8 +50,8 @@ const StationsList = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tutti i tipi</SelectItem>
-                <SelectItem value="basic">Basic</SelectItem>
-                <SelectItem value="premium">Premium</SelectItem>
+                <SelectItem value="barboncino">Barboncino</SelectItem>
+                <SelectItem value="bracco">Bracco</SelectItem>
                 <SelectItem value="deluxe">Deluxe</SelectItem>
               </SelectContent>
             </Select>
@@ -80,7 +82,7 @@ const StationsList = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
-                {CURRENT_ROLE === 'ADMIN' && (
+                {isAdmin && (
                   <p className="text-xs text-muted-foreground">Cliente: {s.clientName}</p>
                 )}
                 <p className="text-xs text-muted-foreground">{s.location}</p>
