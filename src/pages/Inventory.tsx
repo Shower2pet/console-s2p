@@ -44,6 +44,7 @@ const useStockStations = () =>
         .from("stations")
         .select("*")
         .is("structure_id", null)
+        .is("owner_id", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
