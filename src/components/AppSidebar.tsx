@@ -1,4 +1,4 @@
-import { Home, Monitor, Users, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2 } from "lucide-react";
+import { Home, Monitor, Users, BarChart3, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
@@ -9,30 +9,28 @@ import logoVertical from "@/assets/logo-vertical.png";
 
 const adminItems = [
   { title: "Dashboard", url: "/", icon: Home },
-  { title: "Strutture", url: "/structures", icon: Building2 },
-  { title: "Stazioni", url: "/stations", icon: Monitor },
-  { title: "Clienti", url: "/clients", icon: Users },
+  { title: "Gestione Partner", url: "/clients", icon: Users },
+  { title: "Tutte le Strutture", url: "/structures", icon: Building2 },
+  { title: "Tutte le Stazioni", url: "/stations", icon: Monitor },
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
-  { title: "Report Ricavi", url: "/revenue", icon: BarChart3 },
-  { title: "Fiscalità", url: "/financials", icon: Euro },
-  { title: "Impostazioni", url: "/settings", icon: Settings },
+  { title: "Impostazioni Sistema", url: "/admin-settings", icon: Settings },
 ];
 
 const partnerItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Le Mie Strutture", url: "/structures", icon: Building2 },
-  { title: "Stazioni", url: "/stations", icon: Monitor },
+  { title: "Le Mie Stazioni", url: "/stations", icon: Monitor },
+  { title: "Catalogo Prodotti", url: "/packages", icon: Package },
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
-  { title: "Fiscalità", url: "/financials", icon: Euro },
-  { title: "Impostazioni", url: "/settings", icon: Settings },
+  { title: "Transazioni & Report", url: "/financials", icon: Euro },
+  { title: "Profilo Fiscale", url: "/settings", icon: FileText },
 ];
 
 const managerItems = [
   { title: "Dashboard", url: "/", icon: Home },
-  { title: "Struttura", url: "/structures", icon: Building2 },
-  { title: "Stazioni", url: "/stations", icon: Monitor },
+  { title: "La Mia Struttura", url: "/structures", icon: Building2 },
+  { title: "Gestione Stazioni", url: "/stations", icon: Monitor },
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
-  { title: "Impostazioni", url: "/settings", icon: Settings },
 ];
 
 const roleEmoji: Record<string, string> = {
@@ -62,11 +60,13 @@ export const AppSidebar = () => {
     )}>
       {/* Logo */}
       <div className="flex items-center justify-center p-4 border-b border-sidebar-border">
-        {collapsed ? (
-          <img src={logoVertical} alt="S2P" className="w-8 h-8 object-contain flex-shrink-0" />
-        ) : (
-          <img src={logoHorizontal} alt="Shower2Pet" className="h-10 object-contain" />
-        )}
+        <div className={cn("rounded-lg bg-white/95 flex items-center justify-center", collapsed ? "p-1.5" : "px-3 py-1.5")}>
+          {collapsed ? (
+            <img src={logoVertical} alt="S2P" className="w-7 h-7 object-contain flex-shrink-0" />
+          ) : (
+            <img src={logoHorizontal} alt="Shower2Pet" className="h-8 object-contain" />
+          )}
+        </div>
       </div>
 
       {/* Role badge */}

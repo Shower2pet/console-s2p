@@ -9,14 +9,14 @@ import { supabase } from "@/integrations/supabase/client";
 const ClientsList = () => {
   const [search, setSearch] = useState("");
 
-  // Admin: fetch all partners & managers with their structures
+  // Admin: fetch only partners (not managers)
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["clients-profiles"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .in("role", ["partner", "manager"])
+        .eq("role", "partner")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -88,13 +88,13 @@ const ClientsList = () => {
                   const displayName = [p.first_name, p.last_name].filter(Boolean).join(" ") || "—";
                   const initials = displayName.charAt(0).toUpperCase();
                   return (
-                    <tr key={p.id} className="hover:bg-accent/50 transition-colors">
+                    <tr key={p.id} className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => window.location.href = `/clients/${p.id}`}>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
                             {initials}
                           </div>
-                          <span className="font-medium text-foreground">{displayName}</span>
+                          <Link to={`/clients/${p.id}`} className="font-medium text-foreground hover:text-primary transition-colors">{displayName}</Link>
                         </div>
                       </td>
                       <td className="p-4 text-muted-foreground">{p.email ?? "—"}</td>
@@ -103,9 +103,12 @@ const ClientsList = () => {
                           {p.role ?? "user"}
                         </span>
                       </td>
-                      <td className="p-4 text-foreground font-medium flex items-center gap-1">
-                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                        {structureCountMap[p.id] ?? 0}
+                      <td className="p-4 text-foreground font-medium">
+                        <div className="flex items-center gap-1">
+                          <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                          {structureCountMap[p.id] ?? 0}
+                          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground ml-2" />
+                        </div>
                       </td>
                     </tr>
                   );

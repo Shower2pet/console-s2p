@@ -12,9 +12,11 @@ import StructuresList from "@/pages/StructuresList";
 import StructureDetail from "@/pages/StructureDetail";
 import StationsList from "@/pages/StationsList";
 import ClientsList from "@/pages/ClientsList";
+import ClientDetail from "@/pages/ClientDetail";
 import Maintenance from "@/pages/Maintenance";
 import Financials from "@/pages/Financials";
 import Settings from "@/pages/Settings";
+import AdminSettings from "@/pages/AdminSettings";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -40,9 +42,12 @@ const AppRoutes = () => {
           <Route path="/structures/:id" element={<StructureDetail />} />
           <Route path="/stations" element={<StationsList />} />
           {isAdmin && <Route path="/clients" element={<ClientsList />} />}
+          {isAdmin && <Route path="/clients/:id" element={<ClientDetail />} />}
           <Route path="/maintenance" element={<Maintenance />} />
           {!isManager && <Route path="/financials" element={<Financials />} />}
+          {!isManager && <Route path="/packages" element={<StructuresList />} />}
           <Route path="/settings" element={<Settings />} />
+          {isAdmin && <Route path="/admin-settings" element={<AdminSettings />} />}
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />
