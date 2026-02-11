@@ -113,7 +113,6 @@ Deno.serve(async (req) => {
         geo_lng: null,
         washing_options: [],
         image_url: null,
-        category: null,
         access_token: null,
         status: "OFFLINE",
         visibility: "HIDDEN",
