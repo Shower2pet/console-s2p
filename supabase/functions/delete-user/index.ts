@@ -104,9 +104,9 @@ Deno.serve(async (req) => {
       await adminClient.from("structure_managers").delete().in("structure_id", structureIds);
     }
 
-    // Delete all stations (owned + in structures)
+    // Reset stations back to inventory (clear owner_id and structure_id)
     if (stationIds.length > 0) {
-      await adminClient.from("stations").delete().in("id", stationIds);
+      await adminClient.from("stations").update({ owner_id: null, structure_id: null }).in("id", stationIds);
     }
 
     // Delete structures
