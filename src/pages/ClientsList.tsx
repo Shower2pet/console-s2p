@@ -1,16 +1,56 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Users, Search, ArrowRight } from "lucide-react";
+import { Users, Search, ArrowRight, Loader2, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { StatusBadge } from "@/components/StatusBadge";
-import { clients } from "@/lib/mock-data";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const ClientsList = () => {
-  const [search, setSearch] = useState('');
-  const filtered = clients.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const [search, setSearch] = useState("");
+
+  // Admin: fetch all partners & managers with their structures
+  const { data: profiles, isLoading } = useQuery({
+    queryKey: ["clients-profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .in("role", ["partner", "manager"])
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Get structure counts per owner
+  const { data: structures } = useQuery({
+    queryKey: ["clients-structures"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("structures").select("id, owner_id, name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const structureCountMap = (structures ?? []).reduce<Record<string, number>>((acc, s) => {
+    if (s.owner_id) acc[s.owner_id] = (acc[s.owner_id] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const filtered = (profiles ?? []).filter((p) => {
+    const name = [p.first_name, p.last_name].filter(Boolean).join(" ").toLowerCase();
+    const q = search.toLowerCase();
+    return name.includes(q) || (p.email ?? "").toLowerCase().includes(q);
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -26,7 +66,7 @@ const ClientsList = () => {
         <CardContent className="p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Cerca clienti..." className="pl-10" value={search} onChange={e => setSearch(e.target.value)} />
+            <Input placeholder="Cerca clienti..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </CardContent>
       </Card>
@@ -37,38 +77,46 @@ const ClientsList = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="p-4 font-medium">Cliente</th>
+                  <th className="p-4 font-medium">Nome</th>
                   <th className="p-4 font-medium">Email</th>
-                  <th className="p-4 font-medium">Telefono</th>
-                  <th className="p-4 font-medium">Stazioni</th>
-                  <th className="p-4 font-medium">Ricavo Totale</th>
-                  <th className="p-4 font-medium">Stato</th>
-                  <th className="p-4 font-medium"></th>
+                  <th className="p-4 font-medium">Ruolo</th>
+                  <th className="p-4 font-medium">Strutture</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filtered.map(c => (
-                  <tr key={c.id} className="hover:bg-accent/50 transition-colors">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                          {c.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                {filtered.map((p) => {
+                  const displayName = [p.first_name, p.last_name].filter(Boolean).join(" ") || "—";
+                  const initials = displayName.charAt(0).toUpperCase();
+                  return (
+                    <tr key={p.id} className="hover:bg-accent/50 transition-colors">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                            {initials}
+                          </div>
+                          <span className="font-medium text-foreground">{displayName}</span>
                         </div>
-                        <span className="font-medium text-foreground">{c.name}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-muted-foreground">{c.email}</td>
-                    <td className="p-4 text-muted-foreground">{c.phone}</td>
-                    <td className="p-4 text-foreground font-medium">{c.stations}</td>
-                    <td className="p-4 font-semibold text-foreground">€{c.totalRevenue.toLocaleString()}</td>
-                    <td className="p-4"><StatusBadge status={c.status} /></td>
-                    <td className="p-4">
-                      <Link to={`/clients/${c.id}`} className="inline-flex items-center gap-1 text-primary hover:underline text-xs font-medium">
-                        Dettaglio <ArrowRight className="h-3 w-3" />
-                      </Link>
+                      </td>
+                      <td className="p-4 text-muted-foreground">{p.email ?? "—"}</td>
+                      <td className="p-4">
+                        <span className="capitalize rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                          {p.role ?? "user"}
+                        </span>
+                      </td>
+                      <td className="p-4 text-foreground font-medium flex items-center gap-1">
+                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        {structureCountMap[p.id] ?? 0}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                      Nessun cliente trovato.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
