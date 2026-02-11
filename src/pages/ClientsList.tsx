@@ -4,17 +4,13 @@ import { Users, Search, ArrowRight, Loader2, Building2, UserPlus } from "lucide-
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import InviteUserDialog from "@/components/InviteUserDialog";
 
 const ClientsList = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [inviteOpen, setInviteOpen] = useState(false);
 
-  // Admin: fetch only partners (not managers)
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["clients-profiles"],
     queryFn: async () => {
@@ -28,7 +24,6 @@ const ClientsList = () => {
     },
   });
 
-  // Get structure counts per owner
   const { data: structures } = useQuery({
     queryKey: ["clients-structures"],
     queryFn: async () => {
@@ -67,19 +62,10 @@ const ClientsList = () => {
           </h1>
           <p className="text-muted-foreground">{filtered.length} clienti registrati</p>
         </div>
-        <Button onClick={() => setInviteOpen(true)}>
+        <Button onClick={() => navigate("/clients/new")}>
           <UserPlus className="h-4 w-4 mr-2" /> Nuovo Partner
         </Button>
       </div>
-
-      <InviteUserDialog
-        open={inviteOpen}
-        onOpenChange={setInviteOpen}
-        role="partner"
-        title="Invita Nuovo Partner"
-        description="Inserisci i dati del nuovo partner. Riceverà un invito via email."
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["clients-profiles"] })}
-      />
 
       <Card>
         <CardContent className="p-4">
