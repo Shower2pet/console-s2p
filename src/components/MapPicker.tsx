@@ -3,7 +3,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 // Mapbox public token - replace with your own
-const MAPBOX_TOKEN = "pk.eyJ1Ijoic2hvd2VyMnBldCIsImEiOiJjbHh4eHh4eHgwMDAwMDJxczFhYmNkZWZnIn0.placeholder";
+const MAPBOX_TOKEN = "pk.eyJ1Ijoic2hvd2VyMnBldCIsImEiOiJjbWlydGpkZ3UwaGU2NGtzZ3JzdHM0OHd1In0.W88uve0Md19Ks3x-A8bC6A";
 
 interface MapPickerProps {
   lat: number | null;
