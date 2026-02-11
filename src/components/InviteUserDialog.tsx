@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Copy, Check } from "lucide-react";
+import { Loader2, Copy, Check, Monitor } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,6 +19,12 @@ const inviteSchema = z.object({
 });
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
+
+interface FreeStation {
+  id: string;
+  type: string;
+  category: string | null;
+}
 
 interface InviteUserDialogProps {
   open: boolean;
@@ -32,16 +40,45 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdUser, setCreatedUser] = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [freeStations, setFreeStations] = useState<FreeStation[]>([]);
+  const [selectedStationIds, setSelectedStationIds] = useState<string[]>([]);
+  const [loadingStations, setLoadingStations] = useState(false);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),
     defaultValues: { firstName: "", lastName: "", email: "" },
   });
 
+  // Load free stations when dialog opens for partner role
+  useEffect(() => {
+    if (open && role === "partner") {
+      setLoadingStations(true);
+      supabase
+        .from("stations")
+        .select("id, type, category, structure_id, owner_id")
+        .is("structure_id", null)
+        .is("owner_id", null)
+        .then(({ data }) => {
+          setFreeStations((data ?? []) as FreeStation[]);
+          setLoadingStations(false);
+        });
+    }
+    if (!open) {
+      setSelectedStationIds([]);
+      setFreeStations([]);
+    }
+  }, [open, role]);
+
+  const toggleStation = (id: string) => {
+    setSelectedStationIds((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
+
   const onSubmit = async (values: InviteFormValues) => {
     setIsSubmitting(true);
     try {
-      const body: Record<string, string> = {
+      const body: Record<string, any> = {
         email: values.email,
         firstName: values.firstName,
         lastName: values.lastName,
@@ -49,6 +86,9 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
       };
       if (role === "manager" && structureId) {
         body.structureId = structureId;
+      }
+      if (role === "partner" && selectedStationIds.length > 0) {
+        body.stationIds = selectedStationIds;
       }
 
       const { data, error } = await supabase.functions.invoke("invite-user", { body });
@@ -59,12 +99,11 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
       }
       if (data?.error) throw new Error(data.error);
 
-      // Show temporary password to admin
       setCreatedUser({ email: values.email, password: data.tempPassword });
       reset();
       onSuccess?.();
     } catch (err: any) {
-      toast({ title: "Errore", description: err.message ?? "Impossibile inviare l'invito", variant: "destructive" });
+      toast({ title: "Errore", description: err.message ?? "Impossibile creare l'utente", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -137,6 +176,48 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
                 <Input id="email" type="email" placeholder="mario@esempio.it" {...register("email")} />
                 {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
               </div>
+
+              {/* Station selection for partners */}
+              {role === "partner" && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Monitor className="h-4 w-4" /> Stazioni da Assegnare
+                  </Label>
+                  {loadingStations ? (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
+                  ) : freeStations.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-2">Nessuna stazione libera disponibile.</p>
+                  ) : (
+                    <ScrollArea className="max-h-40 rounded-md border p-2">
+                      <div className="space-y-2">
+                        {freeStations.map((s) => (
+                          <label
+                            key={s.id}
+                            className="flex items-center gap-3 rounded-md p-2 hover:bg-accent/50 cursor-pointer transition-colors"
+                          >
+                            <Checkbox
+                              checked={selectedStationIds.includes(s.id)}
+                              onCheckedChange={() => toggleStation(s.id)}
+                            />
+                            <div className="text-sm">
+                              <span className="font-medium text-foreground">{s.id}</span>
+                              <span className="text-muted-foreground ml-2 text-xs capitalize">
+                                {s.type}{s.category ? ` • ${s.category}` : ""}
+                              </span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
+                  {selectedStationIds.length > 0 && (
+                    <p className="text-xs text-primary">{selectedStationIds.length} stazione/i selezionata/e</p>
+                  )}
+                </div>
+              )}
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={isSubmitting}>
                   Annulla

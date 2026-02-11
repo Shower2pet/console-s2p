@@ -12,6 +12,7 @@ export interface Profile {
   phone: string | null;
   role: AppRole | null;
   stripe_customer_id: string | null;
+  must_change_password: boolean | null;
 }
 
 /** IDs of structures the current user can manage (partner = owned, manager = assigned) */
