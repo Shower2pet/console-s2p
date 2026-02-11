@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Users, Search, ArrowRight, Loader2, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const ClientsList = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
 
   // Admin: fetch only partners (not managers)
@@ -88,7 +89,7 @@ const ClientsList = () => {
                   const displayName = [p.first_name, p.last_name].filter(Boolean).join(" ") || "—";
                   const initials = displayName.charAt(0).toUpperCase();
                   return (
-                    <tr key={p.id} className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => window.location.href = `/clients/${p.id}`}>
+                    <tr key={p.id} className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate(`/clients/${p.id}`)}>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
