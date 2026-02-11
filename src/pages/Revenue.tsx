@@ -117,9 +117,17 @@ const Revenue = () => {
                   <TableRow key={s.stationId} className="cursor-pointer hover:bg-accent/50">
                     <TableCell className="font-medium text-muted-foreground">{i + 1}</TableCell>
                     <TableCell>
-                      <Link to="/stations" className="text-foreground hover:text-primary font-medium transition-colors">
-                        {s.stationId}
-                      </Link>
+                      {(() => {
+                        const st = (stations ?? []).find(x => x.id === s.stationId);
+                        const structId = st?.structure_id;
+                        return structId ? (
+                          <Link to={`/structures/${structId}`} className="text-foreground hover:text-primary font-medium transition-colors flex items-center gap-1">
+                            {s.stationId} <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        ) : (
+                          <span className="text-foreground font-medium">{s.stationId}</span>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-right font-semibold text-foreground">€{s.revenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}</TableCell>
                   </TableRow>

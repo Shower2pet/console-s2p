@@ -21,7 +21,7 @@ const partnerItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Le Mie Strutture", url: "/structures", icon: Building2 },
   { title: "Le Mie Stazioni", url: "/stations", icon: Monitor },
-  { title: "Catalogo Prodotti", url: "/packages", icon: Package },
+  { title: "Pacchetti Crediti", url: "/packages", icon: Package },
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
   { title: "Transazioni & Report", url: "/financials", icon: Euro },
   { title: "Profilo Fiscale", url: "/settings", icon: FileText },

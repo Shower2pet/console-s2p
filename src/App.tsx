@@ -9,6 +9,7 @@ import { PrivateRoute } from "@/components/PrivateRoute";
 import AdminHome from "@/pages/AdminHome";
 import ClientHome from "@/pages/ClientHome";
 import StructuresList from "@/pages/StructuresList";
+import Packages from "@/pages/Packages";
 import StructureDetail from "@/pages/StructureDetail";
 import StationsList from "@/pages/StationsList";
 import ClientsList from "@/pages/ClientsList";
@@ -47,7 +48,7 @@ const AppRoutes = () => {
           <Route path="/maintenance" element={<Maintenance />} />
           <Route path="/financials" element={<Financials />} />
           <Route path="/revenue" element={<Revenue />} />
-          <Route path="/packages" element={<StructuresList />} />
+          <Route path="/packages" element={<Packages />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin-settings" element={<AdminSettings />} />
         </Route>
