@@ -71,14 +71,64 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Clean up related data before deleting auth user
-    // 1. Remove structure_managers assignments
-    await adminClient.from("structure_managers").delete().eq("user_id", userId);
+    // Clean up ALL related data before deleting auth user (order matters for FK constraints)
+    
+    // 1. Get structures owned by this user
+    const { data: ownedStructures } = await adminClient
+      .from("structures")
+      .select("id")
+      .eq("owner_id", userId);
+    const structureIds = (ownedStructures ?? []).map((s) => s.id);
 
-    // 2. Delete profile (cascade will handle the rest via FK)
+    if (structureIds.length > 0) {
+      // 2. Delete stations belonging to owned structures
+      // First delete maintenance_logs for those stations
+      const { data: ownedStations } = await adminClient
+        .from("stations")
+        .select("id")
+        .in("structure_id", structureIds);
+      const stationIds = (ownedStations ?? []).map((s) => s.id);
+
+      if (stationIds.length > 0) {
+        await adminClient.from("maintenance_logs").delete().in("station_id", stationIds);
+        await adminClient.from("wash_sessions").delete().in("station_id", stationIds);
+        await adminClient.from("transactions").delete().in("station_id", stationIds);
+      }
+
+      // 3. Delete transactions linked to owned structures
+      await adminClient.from("transactions").delete().in("structure_id", structureIds);
+
+      // 4. Delete credit_packages for owned structures
+      await adminClient.from("credit_packages").delete().in("structure_id", structureIds);
+
+      // 5. Delete structure_wallets for owned structures
+      await adminClient.from("structure_wallets").delete().in("structure_id", structureIds);
+
+      // 6. Delete structure_managers for owned structures
+      await adminClient.from("structure_managers").delete().in("structure_id", structureIds);
+
+      // 7. Delete stations
+      if (stationIds.length > 0) {
+        await adminClient.from("stations").delete().in("id", stationIds);
+      }
+
+      // 8. Delete structures
+      await adminClient.from("structures").delete().in("id", structureIds);
+    }
+
+    // 9. Delete remaining references to this user_id
+    await adminClient.from("structure_managers").delete().eq("user_id", userId);
+    await adminClient.from("credit_packages").delete().eq("owner_id", userId);
+    await adminClient.from("structure_wallets").delete().eq("user_id", userId);
+    await adminClient.from("transactions").delete().eq("user_id", userId);
+    await adminClient.from("maintenance_logs").delete().eq("performed_by", userId);
+    await adminClient.from("wash_sessions").delete().eq("user_id", userId);
+    await adminClient.from("partners_fiscal_data").delete().eq("profile_id", userId);
+
+    // 10. Delete profile
     await adminClient.from("profiles").delete().eq("id", userId);
 
-    // 3. Delete auth user
+    // 11. Delete auth user
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
     if (deleteError) {
       console.error("Delete user error:", deleteError);
