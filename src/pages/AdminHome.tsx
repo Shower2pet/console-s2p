@@ -39,10 +39,10 @@ const AdminHome = () => {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Incasso Totale" value={`€${totalRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={Euro} variant="primary" />
-        <StatCard title="Stazioni Attive" value={activeStations} icon={Monitor} variant="success" />
-        <StatCard title="Partner Totali" value={totalPartners} icon={Users} variant="default" />
-        <StatCard title="Incasso Oggi" value={`€${todayRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={TrendingUp} variant="warning" />
+        <StatCard title="Incasso Totale" value={`€${totalRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={Euro} variant="primary" href="/revenue" />
+        <StatCard title="Stazioni Attive" value={activeStations} icon={Monitor} variant="success" href="/stations" />
+        <StatCard title="Partner Totali" value={totalPartners} icon={Users} variant="default" href="/clients" />
+        <StatCard title="Incasso Oggi" value={`€${todayRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={TrendingUp} variant="warning" href="/revenue" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

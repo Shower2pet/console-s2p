@@ -1,6 +1,7 @@
 import { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 interface StatCardProps {
   title: string;
@@ -9,6 +10,7 @@ interface StatCardProps {
   icon: LucideIcon;
   trend?: { value: number; positive: boolean };
   variant?: 'default' | 'primary' | 'success' | 'warning';
+  href?: string;
 }
 
 const variantStyles = {
@@ -25,24 +27,29 @@ const iconStyles = {
   warning: 'bg-warning/20 text-warning-foreground',
 };
 
-export const StatCard = ({ title, value, subtitle, icon: Icon, trend, variant = 'default' }: StatCardProps) => (
-  <Card className={cn("animate-fade-in border", variantStyles[variant])}>
-    <CardContent className="p-5">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-2xl font-heading font-bold text-foreground">{value}</p>
-          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-          {trend && (
-            <p className={cn("text-xs font-medium", trend.positive ? "text-success-foreground" : "text-destructive")}>
-              {trend.positive ? '↑' : '↓'} {Math.abs(trend.value)}% vs mese prec.
-            </p>
-          )}
+export const StatCard = ({ title, value, subtitle, icon: Icon, trend, variant = 'default', href }: StatCardProps) => {
+  const content = (
+    <Card className={cn("animate-fade-in border", variantStyles[variant], href && "hover:shadow-md hover:border-primary/30 transition-all cursor-pointer")}>
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="text-2xl font-heading font-bold text-foreground">{value}</p>
+            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+            {trend && (
+              <p className={cn("text-xs font-medium", trend.positive ? "text-success-foreground" : "text-destructive")}>
+                {trend.positive ? '↑' : '↓'} {Math.abs(trend.value)}% vs mese prec.
+              </p>
+            )}
+          </div>
+          <div className={cn("rounded-xl p-3", iconStyles[variant])}>
+            <Icon className="h-5 w-5" />
+          </div>
         </div>
-        <div className={cn("rounded-xl p-3", iconStyles[variant])}>
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
+
+  if (href) return <Link to={href}>{content}</Link>;
+  return content;
+};
