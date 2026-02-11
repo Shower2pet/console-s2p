@@ -26,6 +26,7 @@ export interface AuthContextValue {
   structureIds: string[];
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   isAdmin: boolean;
   isPartner: boolean;
   isManager: boolean;
@@ -122,6 +123,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const role = profile?.role ?? null;
 
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.id);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -133,6 +138,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         structureIds,
         login,
         logout,
+        refreshProfile,
         isAdmin: role === "admin",
         isPartner: role === "partner",
         isManager: role === "manager",

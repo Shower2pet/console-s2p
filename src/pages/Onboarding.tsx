@@ -22,7 +22,7 @@ interface NewStructure {
 }
 
 const Onboarding = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<"password" | "structures">("password");
   const [newPassword, setNewPassword] = useState("");
@@ -67,6 +67,7 @@ const Onboarding = () => {
     }
     // Clear must_change_password flag
     await supabase.from("profiles").update({ must_change_password: false }).eq("id", user!.id);
+    await refreshProfile();
     toast.success("Password aggiornata!");
 
     // If partner, go to structures step; otherwise finish
