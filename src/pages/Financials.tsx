@@ -3,12 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RevenueChart } from "@/components/RevenueChart";
 import { StatCard } from "@/components/StatCard";
-import { revenueData, stations } from "@/lib/mock-data";
-import { useAuth } from "@/contexts/AuthContext";
+import { revenueData } from "@/lib/mock-data";
 
 const Financials = () => {
-  const { user } = useAuth();
-  const myStations = stations.filter(s => s.clientId === user?.clientId);
   const totalRevenue = revenueData.reduce((sum, d) => sum + d.revenue, 0);
   const totalWashes = revenueData.reduce((sum, d) => sum + d.washes, 0);
   const avgPerWash = (totalRevenue / totalWashes).toFixed(2);
@@ -37,7 +34,7 @@ const Financials = () => {
             Finanze
           </h1>
           <p className="text-muted-foreground">
-            Report finanziario — {myStations.length} stazioni
+            Report finanziario
           </p>
         </div>
         <Button onClick={exportCSV} className="gap-2">

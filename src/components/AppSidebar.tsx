@@ -1,4 +1,4 @@
-import { Home, Monitor, Users, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Tag, Wrench, Euro } from "lucide-react";
+import { Home, Monitor, Users, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
@@ -9,28 +9,49 @@ import logoVertical from "@/assets/logo-vertical.png";
 
 const adminItems = [
   { title: "Dashboard", url: "/", icon: Home },
+  { title: "Strutture", url: "/structures", icon: Building2 },
   { title: "Stazioni", url: "/stations", icon: Monitor },
   { title: "Clienti", url: "/clients", icon: Users },
-  { title: "Report Ricavi", url: "/revenue", icon: BarChart3 },
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
-];
-
-const clientItems = [
-  { title: "Dashboard", url: "/", icon: Home },
-  { title: "Le Mie Stazioni", url: "/stations", icon: Monitor },
-  { title: "Marketing", url: "/marketing", icon: Tag },
-  { title: "Finanze", url: "/financials", icon: Euro },
+  { title: "Report Ricavi", url: "/revenue", icon: BarChart3 },
+  { title: "Fiscalità", url: "/financials", icon: Euro },
   { title: "Impostazioni", url: "/settings", icon: Settings },
 ];
 
+const partnerItems = [
+  { title: "Dashboard", url: "/", icon: Home },
+  { title: "Le Mie Strutture", url: "/structures", icon: Building2 },
+  { title: "Stazioni", url: "/stations", icon: Monitor },
+  { title: "Manutenzione", url: "/maintenance", icon: Wrench },
+  { title: "Fiscalità", url: "/financials", icon: Euro },
+  { title: "Impostazioni", url: "/settings", icon: Settings },
+];
+
+const managerItems = [
+  { title: "Dashboard", url: "/", icon: Home },
+  { title: "Struttura", url: "/structures", icon: Building2 },
+  { title: "Stazioni", url: "/stations", icon: Monitor },
+  { title: "Manutenzione", url: "/maintenance", icon: Wrench },
+  { title: "Impostazioni", url: "/settings", icon: Settings },
+];
+
+const roleEmoji: Record<string, string> = {
+  admin: "👑 Admin",
+  partner: "🏪 Partner",
+  manager: "🔧 Manager",
+  user: "👤 Utente",
+};
+
 export const AppSidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const { user, logout, isAdmin } = useAuth();
+  const { profile, role, logout } = useAuth();
   const navigate = useNavigate();
-  const items = isAdmin ? adminItems : clientItems;
 
-  const handleLogout = () => {
-    logout();
+  const items = role === "admin" ? adminItems : role === "partner" ? partnerItems : managerItems;
+  const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || profile?.email || "Utente";
+
+  const handleLogout = async () => {
+    await logout();
     navigate("/login");
   };
 
@@ -42,17 +63,9 @@ export const AppSidebar = () => {
       {/* Logo */}
       <div className="flex items-center justify-center p-4 border-b border-sidebar-border">
         {collapsed ? (
-          <img
-            src={logoVertical}
-            alt="S2P"
-            className="w-8 h-8 object-contain flex-shrink-0"
-          />
+          <img src={logoVertical} alt="S2P" className="w-8 h-8 object-contain flex-shrink-0" />
         ) : (
-          <img
-            src={logoHorizontal}
-            alt="Shower2Pet"
-            className="h-10 object-contain"
-          />
+          <img src={logoHorizontal} alt="Shower2Pet" className="h-10 object-contain" />
         )}
       </div>
 
@@ -60,7 +73,7 @@ export const AppSidebar = () => {
       {!collapsed && (
         <div className="px-4 pt-3 pb-1">
           <span className="inline-block rounded-full bg-sidebar-accent px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-accent-foreground">
-            {isAdmin ? '👑 Admin' : '🏪 Partner'}
+            {roleEmoji[role ?? "user"]}
           </span>
         </div>
       )}
@@ -86,10 +99,10 @@ export const AppSidebar = () => {
 
       {/* User info & Logout */}
       <div className="border-t border-sidebar-border p-3 space-y-2">
-        {!collapsed && user && (
+        {!collapsed && (
           <div className="px-3 py-2">
-            <p className="text-xs font-medium text-sidebar-foreground/90 truncate">{user.name}</p>
-            <p className="text-[10px] text-sidebar-foreground/50 truncate">{user.email}</p>
+            <p className="text-xs font-medium text-sidebar-foreground/90 truncate">{displayName}</p>
+            <p className="text-[10px] text-sidebar-foreground/50 truncate">{profile?.email}</p>
           </div>
         )}
         <button

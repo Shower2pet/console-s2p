@@ -8,13 +8,10 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { PrivateRoute } from "@/components/PrivateRoute";
 import AdminHome from "@/pages/AdminHome";
 import ClientHome from "@/pages/ClientHome";
-import StationsList from "@/pages/StationsList";
-import StationDashboard from "@/pages/StationDashboard";
 import ClientsList from "@/pages/ClientsList";
 import ClientDetail from "@/pages/ClientDetail";
 import RevenueReport from "@/pages/RevenueReport";
 import Maintenance from "@/pages/Maintenance";
-import Marketing from "@/pages/Marketing";
 import Financials from "@/pages/Financials";
 import Settings from "@/pages/Settings";
 import Login from "@/pages/Login";
@@ -28,7 +25,9 @@ const HomePage = () => {
 };
 
 const AppRoutes = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
+
+  if (loading) return null;
 
   return (
     <Routes>
@@ -36,23 +35,24 @@ const AppRoutes = () => {
       <Route element={<PrivateRoute />}>
         <Route element={<DashboardLayout />}>
           <Route path="/" element={<HomePage />} />
-          <Route path="/stations" element={<StationsList />} />
-          <Route path="/stations/:id" element={<StationDashboard />} />
+          {/* Structures & Stations - available to all roles */}
+          <Route path="/structures" element={<div className="p-6 text-muted-foreground">Strutture — In arrivo nella Fase 2</div>} />
+          <Route path="/structures/:id" element={<div className="p-6 text-muted-foreground">Dettaglio Struttura — In arrivo nella Fase 2</div>} />
+          <Route path="/stations" element={<div className="p-6 text-muted-foreground">Stazioni — In arrivo nella Fase 2</div>} />
+          <Route path="/stations/:id" element={<div className="p-6 text-muted-foreground">Dettaglio Stazione — In arrivo nella Fase 2</div>} />
+          {/* Maintenance - all roles */}
+          <Route path="/maintenance" element={<Maintenance />} />
+          {/* Admin-only */}
           {isAdmin && (
             <>
               <Route path="/clients" element={<ClientsList />} />
               <Route path="/clients/:id" element={<ClientDetail />} />
               <Route path="/revenue" element={<RevenueReport />} />
-              <Route path="/maintenance" element={<Maintenance />} />
             </>
           )}
-          {!isAdmin && (
-            <>
-              <Route path="/marketing" element={<Marketing />} />
-              <Route path="/financials" element={<Financials />} />
-              <Route path="/settings" element={<Settings />} />
-            </>
-          )}
+          {/* Partner & Admin - fiscalità */}
+          <Route path="/financials" element={<Financials />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />

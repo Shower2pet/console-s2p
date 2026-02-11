@@ -2,15 +2,24 @@ import { Bell, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 
+const roleLabels: Record<string, string> = {
+  admin: "Amministratore",
+  partner: "Partner",
+  manager: "Manager",
+  user: "Utente",
+};
+
 export const AppHeader = () => {
-  const { user, isAdmin } = useAuth();
+  const { profile, role } = useAuth();
+  const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || profile?.email || "Utente";
+  const initials = displayName.charAt(0).toUpperCase();
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-card px-6">
       <div className="relative w-80">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Cerca stazioni, clienti..."
+          placeholder="Cerca stazioni, strutture..."
           className="pl-10 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary"
         />
       </div>
@@ -21,11 +30,11 @@ export const AppHeader = () => {
         </button>
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-heading text-sm font-bold">
-            {isAdmin ? 'A' : user?.name?.charAt(0) ?? 'C'}
+            {initials}
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-medium text-foreground">{user?.name ?? 'Utente'}</p>
-            <p className="text-xs text-muted-foreground">{isAdmin ? 'Amministratore' : 'Partner'}</p>
+            <p className="text-sm font-medium text-foreground">{displayName}</p>
+            <p className="text-xs text-muted-foreground">{roleLabels[role ?? "user"]}</p>
           </div>
         </div>
       </div>

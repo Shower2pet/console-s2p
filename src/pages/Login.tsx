@@ -5,25 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
   const { login } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const result = login(email, password);
-    if (result.success) {
-      navigate('/');
-    } else {
+    setSubmitting(true);
+    const result = await login(email, password);
+    if (!result.success) {
       setError(result.error || 'Errore di login');
     }
+    setSubmitting(false);
   };
 
   return (
@@ -73,10 +73,11 @@ const Login = () => {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="admin@test.com"
+                    placeholder="email@esempio.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     className="mt-1.5"
+                    disabled={submitting}
                   />
                 </div>
                 <div>
@@ -88,20 +89,14 @@ const Login = () => {
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     className="mt-1.5"
+                    disabled={submitting}
                   />
                 </div>
 
-                <Button type="submit" className="w-full h-11 text-base font-heading">
-                  Accedi
+                <Button type="submit" className="w-full h-11 text-base font-heading" disabled={submitting}>
+                  {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Accedi'}
                 </Button>
               </form>
-
-              <div className="mt-6 p-4 rounded-lg bg-muted text-xs text-muted-foreground space-y-1">
-                <p className="font-semibold text-foreground">Account demo:</p>
-                <p><span className="font-mono">admin@test.com</span> → Admin</p>
-                <p><span className="font-mono">client@test.com</span> → Partner</p>
-                <p className="text-[10px] mt-1">Password: qualsiasi valore</p>
-              </div>
 
               <p className="mt-6 text-center text-xs text-muted-foreground">
                 © 2026 Shower2Pet — Tutti i diritti riservati
