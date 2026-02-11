@@ -326,6 +326,11 @@ const StationDetail = () => {
             readonly={!canEditInfo}
             height="350px"
           />
+          {canEditInfo && stationLat != null && (
+            <p className="text-xs text-muted-foreground">
+              Ricorda di cliccare "Salva Modifiche" per salvare la nuova posizione.
+            </p>
+          )}
           {!canEditInfo && stationLat == null && (
             <p className="text-sm text-muted-foreground italic">Nessuna posizione impostata.</p>
           )}
