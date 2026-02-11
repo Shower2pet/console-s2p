@@ -104,9 +104,19 @@ Deno.serve(async (req) => {
       await adminClient.from("structure_managers").delete().in("structure_id", structureIds);
     }
 
-    // Reset stations back to inventory (clear owner_id and structure_id)
+    // Reset stations back to inventory (clear ALL user-specific data)
     if (stationIds.length > 0) {
-      await adminClient.from("stations").update({ owner_id: null, structure_id: null }).in("id", stationIds);
+      await adminClient.from("stations").update({ 
+        owner_id: null, 
+        structure_id: null,
+        geo_lat: null,
+        geo_lng: null,
+        washing_options: null,
+        image_url: null,
+        category: null,
+        status: "OFFLINE",
+        visibility: "HIDDEN",
+      }).in("id", stationIds);
     }
 
     // Delete structures

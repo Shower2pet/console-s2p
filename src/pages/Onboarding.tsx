@@ -89,8 +89,8 @@ const Onboarding = () => {
     setStructures(structures.filter((_, i) => i !== idx));
   };
 
-  const updateStructure = (idx: number, field: keyof NewStructure, value: any) => {
-    setStructures(structures.map((s, i) => (i === idx ? { ...s, [field]: value } : s)));
+  const updateStructure = (idx: number, updates: Partial<NewStructure>) => {
+    setStructures(prev => prev.map((s, i) => (i === idx ? { ...s, ...updates } : s)));
   };
 
   const toggleStationForStructure = (structIdx: number, stationId: string) => {
@@ -198,8 +198,8 @@ const Onboarding = () => {
                       </Button>
                     )}
                   </div>
-                  <Input placeholder="Nome struttura" value={s.name} onChange={(e) => updateStructure(idx, "name", e.target.value)} />
-                  <Input placeholder="Indirizzo (opzionale)" value={s.address} onChange={(e) => updateStructure(idx, "address", e.target.value)} />
+                  <Input placeholder="Nome struttura" value={s.name} onChange={(e) => updateStructure(idx, { name: e.target.value })} />
+                  <Input placeholder="Indirizzo (opzionale)" value={s.address} onChange={(e) => updateStructure(idx, { address: e.target.value })} />
 
                   {/* Map picker */}
                   <div>
@@ -211,10 +211,9 @@ const Onboarding = () => {
                         lat={s.geo_lat}
                         lng={s.geo_lng}
                         onChange={(lat, lng) => {
-                          updateStructure(idx, "geo_lat", lat);
-                          updateStructure(idx, "geo_lng", lng);
+                          updateStructure(idx, { geo_lat: lat, geo_lng: lng });
                         }}
-                        onAddressFound={(addr) => { if (!s.address) updateStructure(idx, "address", addr); }}
+                        onAddressFound={(addr) => { if (!s.address) updateStructure(idx, { address: addr }); }}
                         height="200px"
                       />
                     </div>
