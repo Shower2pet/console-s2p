@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import MapPicker from "@/components/MapPicker";
 
 const StationDetail = () => {
   const { id } = useParams();
@@ -33,6 +34,8 @@ const StationDetail = () => {
   const [ticketReason, setTicketReason] = useState("");
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [stationLat, setStationLat] = useState<number | null>(null);
+  const [stationLng, setStationLng] = useState<number | null>(null);
 
   // Fetch available structures for reassignment
   const { data: structures } = useQuery({
@@ -72,6 +75,13 @@ const StationDetail = () => {
         ? (station.washing_options as unknown as WashingOption[])
         : [];
       setWashingOptions(opts);
+      // Initialize station position: use station's own, or fall back to structure's
+      const sLat = station.geo_lat ? Number(station.geo_lat) : null;
+      const sLng = station.geo_lng ? Number(station.geo_lng) : null;
+      const structLat = (station as any).structures?.geo_lat ? Number((station as any).structures.geo_lat) : null;
+      const structLng = (station as any).structures?.geo_lng ? Number((station as any).structures.geo_lng) : null;
+      setStationLat(sLat ?? structLat);
+      setStationLng(sLng ?? structLng);
       setInitialized(true);
     }
   }, [station, initialized]);
@@ -89,6 +99,8 @@ const StationDetail = () => {
         status: editStatus,
         structure_id: editStructureId === "__none__" ? null : editStructureId,
         washing_options: washingOptions as any,
+        geo_lat: stationLat,
+        geo_lng: stationLng,
       };
       if (isAdmin) {
         payload.owner_id = editOwnerId === "__none__" ? null : editOwnerId;
@@ -294,7 +306,32 @@ const StationDetail = () => {
         </CardContent>
       </Card>
 
-      {/* Edit Section */}
+      {/* Map Position */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-heading flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-primary" /> Posizione Stazione
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {stationLat != null && stationLng != null && (
+            <p className="text-sm text-muted-foreground">
+              Lat: {stationLat.toFixed(6)}, Lng: {stationLng.toFixed(6)}
+            </p>
+          )}
+          <MapPicker
+            lat={stationLat}
+            lng={stationLng}
+            onChange={(lat, lng) => { setStationLat(lat); setStationLng(lng); }}
+            readonly={!canEditInfo}
+            height="350px"
+          />
+          {!canEditInfo && stationLat == null && (
+            <p className="text-sm text-muted-foreground italic">Nessuna posizione impostata.</p>
+          )}
+        </CardContent>
+      </Card>
+
       {canEditInfo && (
         <Card>
           <CardHeader className="pb-3">
