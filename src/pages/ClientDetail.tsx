@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Building2, Monitor, Loader2, Mail, Phone, User, Save, Plus, Trash2, Wrench } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -15,12 +15,15 @@ import { useUpdateStation, type WashingOption } from "@/hooks/useStations";
 import { useOpenMaintenanceTicket } from "@/hooks/useMaintenanceLogs";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import DeletePartnerDialog from "@/components/DeletePartnerDialog";
 
 const ClientDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const updateStation = useUpdateStation();
   const openTicket = useOpenMaintenanceTicket();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   // Sheet state
   const [selectedStation, setSelectedStation] = useState<any | null>(null);
@@ -134,17 +137,46 @@ const ClientDetail = () => {
 
   const displayName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "—";
 
+  const handleDeletePartner = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: { userId: id },
+      });
+      if (error) {
+        const msg = typeof data === "object" && data?.error ? data.error : error.message;
+        throw new Error(msg);
+      }
+      if (data?.error) throw new Error(data.error);
+      toast.success("Partner eliminato con successo");
+      navigate("/clients");
+    } catch (err: any) {
+      toast.error(err.message ?? "Errore durante l'eliminazione");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center gap-4">
-        <Link to="/clients" className="rounded-lg p-2 hover:bg-accent transition-colors">
-          <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-heading font-bold text-foreground">{displayName}</h1>
-          <p className="text-muted-foreground capitalize">{profile.role ?? "user"}</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link to="/clients" className="rounded-lg p-2 hover:bg-accent transition-colors">
+            <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-heading font-bold text-foreground">{displayName}</h1>
+            <p className="text-muted-foreground capitalize">{profile.role ?? "user"}</p>
+          </div>
         </div>
+        <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+          <Trash2 className="h-4 w-4 mr-2" /> Elimina Partner
+        </Button>
       </div>
+
+      <DeletePartnerDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        partnerName={displayName}
+        onConfirm={handleDeletePartner}
+      />
 
       {/* Profile info */}
       <Card>
