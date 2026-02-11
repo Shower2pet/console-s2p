@@ -40,7 +40,9 @@ const Login = () => {
           <div className="absolute bottom-[10%] right-[25%] w-40 h-40 rounded-full border border-white" />
         </div>
         <div className="relative z-10 text-center px-12">
-          <img src={logoVertical} alt="Shower2Pet Logo" className="w-40 h-40 mx-auto object-contain" />
+          <div className="w-44 h-44 mx-auto rounded-3xl bg-white/95 shadow-2xl flex items-center justify-center">
+            <img src={logoVertical} alt="Shower2Pet Logo" className="w-32 h-32 object-contain" />
+          </div>
           <p className="mt-6 text-lg font-body max-w-md mx-auto text-white/85">
             La piattaforma intelligente per gestire le tue stazioni di lavaggio per animali.
           </p>

@@ -11,6 +11,7 @@ import ClientHome from "@/pages/ClientHome";
 import StructuresList from "@/pages/StructuresList";
 import StructureDetail from "@/pages/StructureDetail";
 import StationsList from "@/pages/StationsList";
+import ClientsList from "@/pages/ClientsList";
 import Maintenance from "@/pages/Maintenance";
 import Financials from "@/pages/Financials";
 import Settings from "@/pages/Settings";
@@ -38,8 +39,8 @@ const AppRoutes = () => {
           <Route path="/structures" element={<StructuresList />} />
           <Route path="/structures/:id" element={<StructureDetail />} />
           <Route path="/stations" element={<StationsList />} />
+          {isAdmin && <Route path="/clients" element={<ClientsList />} />}
           <Route path="/maintenance" element={<Maintenance />} />
-          {/* Fiscalità: Partner & Admin only (manager hidden via sidebar) */}
           {!isManager && <Route path="/financials" element={<Financials />} />}
           <Route path="/settings" element={<Settings />} />
         </Route>
