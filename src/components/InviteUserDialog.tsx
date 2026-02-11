@@ -51,7 +51,11 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
 
       const { data, error } = await supabase.functions.invoke("invite-user", { body });
 
-      if (error) throw error;
+      if (error) {
+        // Extract message from response body if available
+        const msg = data?.error || error.message || "Errore sconosciuto";
+        throw new Error(msg);
+      }
       if (data?.error) throw new Error(data.error);
 
       toast({ title: "Invito inviato correttamente", description: `Un invito è stato inviato a ${values.email}` });
