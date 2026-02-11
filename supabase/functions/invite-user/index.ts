@@ -73,8 +73,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create user via admin API
-    const tempPassword = crypto.randomUUID();
+    // Create user via admin API with a readable temporary password
+    const tempPassword = crypto.randomUUID().slice(0, 8) + "A1!";
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password: tempPassword,
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ message: "Utente creato con successo", userId: newUser.user.id }),
+      JSON.stringify({ message: "Utente creato con successo", userId: newUser.user.id, tempPassword }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
