@@ -22,6 +22,7 @@ import Revenue from "@/pages/Revenue";
 import Inventory from "@/pages/Inventory";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
+import UpdatePassword from "@/pages/auth/UpdatePassword";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/auth/update-password" element={<UpdatePassword />} />
       <Route element={<PrivateRoute />}>
         <Route element={<DashboardLayout />}>
           <Route path="/" element={<HomePage />} />
