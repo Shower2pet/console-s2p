@@ -46,10 +46,10 @@ const ClientHome = () => {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Ricavo Totale" value={`€${totalRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={Euro} variant="primary" />
-        <StatCard title="Stazioni Attive" value={`${activeStations}/${totalStations}`} icon={Monitor} variant="success" />
-        <StatCard title="Incasso Oggi" value={`€${todayRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={TrendingUp} variant="warning" />
-        <StatCard title="Lavaggi Totali" value={totalWashes} icon={Droplets} variant="default" />
+        <StatCard title="Ricavo Totale" value={`€${totalRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={Euro} variant="primary" href="/financials" />
+        <StatCard title="Stazioni Attive" value={`${activeStations}/${totalStations}`} icon={Monitor} variant="success" href="/stations" />
+        <StatCard title="Incasso Oggi" value={`€${todayRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={TrendingUp} variant="warning" href="/financials" />
+        <StatCard title="Lavaggi Totali" value={totalWashes} icon={Droplets} variant="default" href="/stations" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

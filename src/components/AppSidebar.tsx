@@ -12,6 +12,7 @@ const adminItems = [
   { title: "Gestione Partner", url: "/clients", icon: Users },
   { title: "Tutte le Strutture", url: "/structures", icon: Building2 },
   { title: "Tutte le Stazioni", url: "/stations", icon: Monitor },
+  { title: "Resoconto Incassi", url: "/revenue", icon: Euro },
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
   { title: "Impostazioni Sistema", url: "/admin-settings", icon: Settings },
 ];

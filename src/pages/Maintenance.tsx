@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Wrench, AlertTriangle, AlertCircle, Info, Loader2, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,10 +63,10 @@ const Maintenance = () => {
           <CardContent>
             <div className="flex flex-wrap gap-3">
               {offlineStations.map(s => (
-                <div key={s.id} className="flex items-center gap-2 rounded-lg border p-3 bg-card">
+                <Link key={s.id} to="/stations" className="flex items-center gap-2 rounded-lg border p-3 bg-card hover:shadow-md hover:border-primary/30 transition-all">
                   <span className="text-sm font-medium text-foreground">{s.id}</span>
                   <StatusBadge status={s.status ?? "OFFLINE"} />
-                </div>
+                </Link>
               ))}
             </div>
           </CardContent>

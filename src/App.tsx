@@ -17,6 +17,7 @@ import Maintenance from "@/pages/Maintenance";
 import Financials from "@/pages/Financials";
 import Settings from "@/pages/Settings";
 import AdminSettings from "@/pages/AdminSettings";
+import Revenue from "@/pages/Revenue";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -28,7 +29,7 @@ const HomePage = () => {
 };
 
 const AppRoutes = () => {
-  const { user, isAdmin, isManager, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) return null;
 
@@ -41,13 +42,14 @@ const AppRoutes = () => {
           <Route path="/structures" element={<StructuresList />} />
           <Route path="/structures/:id" element={<StructureDetail />} />
           <Route path="/stations" element={<StationsList />} />
-          {isAdmin && <Route path="/clients" element={<ClientsList />} />}
-          {isAdmin && <Route path="/clients/:id" element={<ClientDetail />} />}
+          <Route path="/clients" element={<ClientsList />} />
+          <Route path="/clients/:id" element={<ClientDetail />} />
           <Route path="/maintenance" element={<Maintenance />} />
-          {!isManager && <Route path="/financials" element={<Financials />} />}
-          {!isManager && <Route path="/packages" element={<StructuresList />} />}
+          <Route path="/financials" element={<Financials />} />
+          <Route path="/revenue" element={<Revenue />} />
+          <Route path="/packages" element={<StructuresList />} />
           <Route path="/settings" element={<Settings />} />
-          {isAdmin && <Route path="/admin-settings" element={<AdminSettings />} />}
+          <Route path="/admin-settings" element={<AdminSettings />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />
