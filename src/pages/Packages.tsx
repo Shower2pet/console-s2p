@@ -1,27 +1,62 @@
 import { useState } from "react";
 import { Package, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useStructures } from "@/hooks/useStructures";
-import { useCreditPackages, useCreateCreditPackage, useUpdateCreditPackage, useDeleteCreditPackage, CreditPackage } from "@/hooks/useCreditPackages";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const Packages = () => {
-  const { data: structures, isLoading: structLoading } = useStructures();
-  const firstStructureId = structures?.[0]?.id;
-  const { data: packages, isLoading } = useCreditPackages(firstStructureId);
-  const createPkg = useCreateCreditPackage();
-  const updatePkg = useUpdateCreditPackage();
-  const deletePkg = useDeleteCreditPackage();
+  const { user } = useAuth();
+  const qc = useQueryClient();
   const { toast } = useToast();
 
+  const { data: packages, isLoading } = useQuery({
+    queryKey: ["my_credit_packages", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("credit_packages")
+        .select("*")
+        .eq("owner_id", user!.id)
+        .order("price_eur", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const createPkg = useMutation({
+    mutationFn: async (values: { name: string | null; price_eur: number; credits_value: number; is_active: boolean }) => {
+      const { error } = await supabase.from("credit_packages").insert({ ...values, owner_id: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["my_credit_packages"] }),
+  });
+
+  const updatePkg = useMutation({
+    mutationFn: async ({ id, ...values }: { id: string; name?: string | null; price_eur?: number; credits_value?: number; is_active?: boolean }) => {
+      const { error } = await supabase.from("credit_packages").update(values).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["my_credit_packages"] }),
+  });
+
+  const deletePkg = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("credit_packages").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["my_credit_packages"] }),
+  });
+
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<CreditPackage | null>(null);
+  const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ name: "", price_eur: "", credits_value: "", is_active: true });
 
   const openCreate = () => {
@@ -30,14 +65,9 @@ const Packages = () => {
     setDialogOpen(true);
   };
 
-  const openEdit = (pkg: CreditPackage) => {
+  const openEdit = (pkg: any) => {
     setEditing(pkg);
-    setForm({
-      name: pkg.name ?? "",
-      price_eur: String(pkg.price_eur),
-      credits_value: String(pkg.credits_value),
-      is_active: pkg.is_active ?? true,
-    });
+    setForm({ name: pkg.name ?? "", price_eur: String(pkg.price_eur), credits_value: String(pkg.credits_value), is_active: pkg.is_active ?? true });
     setDialogOpen(true);
   };
 
@@ -48,17 +78,13 @@ const Packages = () => {
       toast({ title: "Errore", description: "Prezzo e crediti devono essere valori positivi", variant: "destructive" });
       return;
     }
-
     try {
       if (editing) {
         await updatePkg.mutateAsync({ id: editing.id, name: form.name || null, price_eur: price, credits_value: credits, is_active: form.is_active });
         toast({ title: "Pacchetto aggiornato" });
       } else {
-        // Create package for ALL structures of this partner
-        for (const s of structures ?? []) {
-          await createPkg.mutateAsync({ structure_id: s.id, name: form.name || null, price_eur: price, credits_value: credits, is_active: form.is_active });
-        }
-        toast({ title: "Pacchetto creato per tutte le strutture" });
+        await createPkg.mutateAsync({ name: form.name || null, price_eur: price, credits_value: credits, is_active: form.is_active });
+        toast({ title: "Pacchetto creato" });
       }
       setDialogOpen(false);
     } catch {
@@ -75,12 +101,8 @@ const Packages = () => {
     }
   };
 
-  if (isLoading || structLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
@@ -91,38 +113,23 @@ const Packages = () => {
             <Package className="inline mr-2 h-6 w-6 text-primary" />
             Pacchetti Crediti
           </h1>
-          <p className="text-muted-foreground">I pacchetti creati saranno disponibili su tutte le tue strutture e stazioni</p>
+          <p className="text-muted-foreground">I pacchetti sono validi per tutte le tue strutture e stazioni</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openCreate}><Plus className="h-4 w-4 mr-1" /> Nuovo Pacchetto</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editing ? "Modifica Pacchetto" : "Nuovo Pacchetto"}</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>{editing ? "Modifica Pacchetto" : "Nuovo Pacchetto"}</DialogTitle></DialogHeader>
             <div className="space-y-4 py-2">
-              <div>
-                <Label>Nome</Label>
-                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="es. Ricarica Base" />
-              </div>
+              <div><Label>Nome</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="es. Ricarica Base" /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Prezzo (€)</Label>
-                  <Input type="number" step="0.01" value={form.price_eur} onChange={e => setForm(f => ({ ...f, price_eur: e.target.value }))} />
-                </div>
-                <div>
-                  <Label>Crediti</Label>
-                  <Input type="number" value={form.credits_value} onChange={e => setForm(f => ({ ...f, credits_value: e.target.value }))} />
-                </div>
+                <div><Label>Prezzo (€)</Label><Input type="number" step="0.01" value={form.price_eur} onChange={e => setForm(f => ({ ...f, price_eur: e.target.value }))} /></div>
+                <div><Label>Crediti</Label><Input type="number" value={form.credits_value} onChange={e => setForm(f => ({ ...f, credits_value: e.target.value }))} /></div>
               </div>
-              <div className="flex items-center gap-2">
-                <Switch checked={form.is_active} onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))} />
-                <Label>Attivo</Label>
-              </div>
+              <div className="flex items-center gap-2"><Switch checked={form.is_active} onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))} /><Label>Attivo</Label></div>
               <Button onClick={handleSave} className="w-full" disabled={createPkg.isPending || updatePkg.isPending}>
-                {(createPkg.isPending || updatePkg.isPending) && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                Salva
+                {(createPkg.isPending || updatePkg.isPending) && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Salva
               </Button>
             </div>
           </DialogContent>
@@ -145,7 +152,7 @@ const Packages = () => {
               {(packages ?? []).map(pkg => (
                 <TableRow key={pkg.id}>
                   <TableCell className="font-medium">{pkg.name || "—"}</TableCell>
-                  <TableCell>€{pkg.price_eur.toFixed(2)}</TableCell>
+                  <TableCell>€{Number(pkg.price_eur).toFixed(2)}</TableCell>
                   <TableCell>{pkg.credits_value}</TableCell>
                   <TableCell>
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${pkg.is_active ? "bg-success/20 text-success-foreground" : "bg-muted text-muted-foreground"}`}>
