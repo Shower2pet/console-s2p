@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import DeletePartnerDialog from "@/components/DeletePartnerDialog";
 import StaticMapPreview from "@/components/StaticMapPreview";
+import AssignStationDialog from "@/components/AssignStationDialog";
 
 const ClientDetail = () => {
   const { id } = useParams();
@@ -45,16 +46,16 @@ const ClientDetail = () => {
     },
   });
 
-  const structureIds = (structures ?? []).map((s) => s.id);
-
+  // All stations owned by this partner (both assigned to structures and unassigned)
   const { data: stations } = useQuery({
-    queryKey: ["client-stations", structureIds],
-    enabled: structureIds.length > 0,
+    queryKey: ["client-stations-all", id],
+    enabled: !!id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stations")
         .select("*, structures(name)")
-        .in("structure_id", structureIds);
+        .eq("owner_id", id!)
+        .order("id");
       if (error) throw error;
       return data;
     },
@@ -168,9 +169,12 @@ const ClientDetail = () => {
 
       {/* Stations */}
       <div>
-        <h2 className="text-lg font-heading font-semibold text-foreground mb-3 flex items-center gap-2">
-          <Monitor className="h-5 w-5 text-primary" /> Stazioni ({(stations ?? []).length})
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-heading font-semibold text-foreground flex items-center gap-2">
+            <Monitor className="h-5 w-5 text-primary" /> Stazioni ({(stations ?? []).length})
+          </h2>
+          <AssignStationDialog partnerId={id!} partnerName={displayName} />
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(stations ?? []).map((s) => (
             <Link key={s.id} to={`/stations/${s.id}`}>
