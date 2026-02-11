@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Building2, Monitor, Loader2, Mail, Phone, User, Trash2 } from "lucide-react";
+import { ArrowLeft, Building2, Monitor, Loader2, Mail, Phone, User, Trash2, MapPin } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import DeletePartnerDialog from "@/components/DeletePartnerDialog";
+import StaticMapPreview from "@/components/StaticMapPreview";
 
 const ClientDetail = () => {
   const { id } = useParams();
@@ -144,14 +145,19 @@ const ClientDetail = () => {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(structures ?? []).map((s) => (
             <Link key={s.id} to={`/structures/${s.id}`}>
-              <Card className="hover:shadow-md hover:border-primary/30 transition-all cursor-pointer h-full">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-heading">{s.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {s.address && <p className="text-xs text-muted-foreground">{s.address}</p>}
-                </CardContent>
-              </Card>
+            <Card className="hover:shadow-md hover:border-primary/30 transition-all cursor-pointer h-full">
+              <StaticMapPreview lat={s.geo_lat} lng={s.geo_lng} height="100px" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-heading">{s.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {s.address && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" /> {s.address}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
             </Link>
           ))}
           {(structures ?? []).length === 0 && (
