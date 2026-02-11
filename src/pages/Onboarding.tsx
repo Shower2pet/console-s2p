@@ -207,13 +207,14 @@ const Onboarding = () => {
                       <MapPin className="h-3 w-3" /> Posizione sulla mappa
                     </Label>
                     <div className="mt-1">
-                      <MapPicker
+                    <MapPicker
                         lat={s.geo_lat}
                         lng={s.geo_lng}
                         onChange={(lat, lng) => {
                           updateStructure(idx, "geo_lat", lat);
                           updateStructure(idx, "geo_lng", lng);
                         }}
+                        onAddressFound={(addr) => { if (!s.address) updateStructure(idx, "address", addr); }}
                         height="200px"
                       />
                     </div>
