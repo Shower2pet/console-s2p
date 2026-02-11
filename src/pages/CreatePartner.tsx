@@ -91,9 +91,9 @@ const CreatePartner = () => {
     const q = stationSearch.toLowerCase();
     let list = freeStations.filter(
       (s) =>
-        s.id.toLowerCase().includes(q) ||
-        s.type.toLowerCase().includes(q) ||
-        (s.category ?? "").toLowerCase().includes(q)
+        String(s.id).toLowerCase().includes(q) ||
+        String(s.type).toLowerCase().includes(q) ||
+        String(s.category ?? "").toLowerCase().includes(q)
     );
     list.sort((a, b) => {
       const aVal = (a[sortField] ?? "").toString().toLowerCase();
@@ -314,10 +314,10 @@ const CreatePartner = () => {
                               <td className="p-3">
                                 <Checkbox checked={isSelected} onCheckedChange={() => toggleStation(s.id)} />
                               </td>
-                              <td className="p-3 font-medium text-foreground">{s.id}</td>
-                              <td className="p-3 text-muted-foreground capitalize">{s.type}</td>
+                              <td className="p-3 font-medium text-foreground">{String(s.id)}</td>
+                              <td className="p-3 text-muted-foreground capitalize">{String(s.type ?? "")}</td>
                               <td className="p-3">
-                                {s.category ? (
+                                {s.category && typeof s.category === "string" ? (
                                   <Badge variant="secondary" className="capitalize text-xs">
                                     {s.category}
                                   </Badge>
