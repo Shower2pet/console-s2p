@@ -106,17 +106,23 @@ Deno.serve(async (req) => {
 
     // Reset stations back to inventory (clear ALL user-specific data)
     if (stationIds.length > 0) {
-      await adminClient.from("stations").update({ 
+      const { error: resetError } = await adminClient.from("stations").update({ 
         owner_id: null, 
         structure_id: null,
         geo_lat: null,
         geo_lng: null,
-        washing_options: null,
+        washing_options: [],
         image_url: null,
         category: null,
+        access_token: null,
         status: "OFFLINE",
         visibility: "HIDDEN",
       }).in("id", stationIds);
+      if (resetError) {
+        console.error("Station reset error:", resetError);
+      } else {
+        console.log(`Reset ${stationIds.length} stations:`, stationIds);
+      }
     }
 
     // Delete structures
