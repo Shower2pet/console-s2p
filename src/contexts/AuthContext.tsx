@@ -1,53 +1,142 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { User, Session } from "@supabase/supabase-js";
 
-export type AppRole = "ADMIN" | "CLIENT";
+export type AppRole = "admin" | "partner" | "manager" | "user";
 
-export interface MockUser {
+export interface Profile {
   id: string;
-  email: string;
-  name: string;
-  role: AppRole;
-  clientId?: string; // links CLIENT users to a client record
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  role: AppRole | null;
+  stripe_customer_id: string | null;
 }
 
-const MOCK_USERS: MockUser[] = [
-  { id: "u1", email: "admin@test.com", name: "Admin S2P", role: "ADMIN" },
-  { id: "u2", email: "client@test.com", name: "PetShop Roma", role: "CLIENT", clientId: "1" },
-];
-
-interface AuthContextValue {
-  user: MockUser | null;
-  login: (email: string, password: string) => { success: boolean; error?: string };
-  logout: () => void;
+/** IDs of structures the current user can manage (partner = owned, manager = assigned) */
+export interface AuthContextValue {
+  user: User | null;
+  session: Session | null;
+  profile: Profile | null;
+  role: AppRole | null;
+  loading: boolean;
+  /** structure IDs the user has access to */
+  structureIds: string[];
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   isAdmin: boolean;
+  isPartner: boolean;
+  isManager: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<MockUser | null>(() => {
-    const saved = localStorage.getItem("s2p_user");
-    if (saved) {
-      try { return JSON.parse(saved); } catch { return null; }
-    }
-    return null;
-  });
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [structureIds, setStructureIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const login = (email: string, _password: string) => {
-    const found = MOCK_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (!found) return { success: false, error: "Credenziali non valide" };
-    setUser(found);
-    localStorage.setItem("s2p_user", JSON.stringify(found));
+  const fetchProfile = useCallback(async (userId: string) => {
+    // Fetch profile
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profileData) {
+      setProfile(profileData as Profile);
+    }
+
+    // Determine structure access based on role
+    const role = profileData?.role as AppRole | null;
+
+    if (role === "admin") {
+      // Admin sees everything – no need to filter
+      setStructureIds([]);
+    } else if (role === "partner") {
+      const { data: owned } = await supabase
+        .from("structures")
+        .select("id")
+        .eq("owner_id", userId);
+      setStructureIds((owned ?? []).map((s) => s.id));
+    } else if (role === "manager") {
+      const { data: managed } = await supabase
+        .from("structure_managers")
+        .select("structure_id")
+        .eq("user_id", userId);
+      setStructureIds(
+        (managed ?? []).filter((m) => m.structure_id).map((m) => m.structure_id as string)
+      );
+    } else {
+      setStructureIds([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+
+        if (newSession?.user) {
+          // Defer profile fetch to avoid Supabase deadlocks
+          setTimeout(() => fetchProfile(newSession.user.id), 0);
+        } else {
+          setProfile(null);
+          setStructureIds([]);
+        }
+        setLoading(false);
+      }
+    );
+
+    // THEN check existing session
+    supabase.auth.getSession().then(({ data: { session: existing } }) => {
+      setSession(existing);
+      setUser(existing?.user ?? null);
+      if (existing?.user) {
+        fetchProfile(existing.user.id);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchProfile]);
+
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, error: error.message };
     return { success: true };
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("s2p_user");
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setProfile(null);
+    setStructureIds([]);
   };
 
+  const role = profile?.role ?? null;
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin: user?.role === "ADMIN" }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        profile,
+        role,
+        loading,
+        structureIds,
+        login,
+        logout,
+        isAdmin: role === "admin",
+        isPartner: role === "partner",
+        isManager: role === "manager",
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
