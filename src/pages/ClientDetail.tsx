@@ -173,7 +173,7 @@ const ClientDetail = () => {
           <h2 className="text-lg font-heading font-semibold text-foreground flex items-center gap-2">
             <Monitor className="h-5 w-5 text-primary" /> Stazioni ({(stations ?? []).length})
           </h2>
-          <AssignStationDialog partnerId={id!} partnerName={displayName} />
+          <AssignStationDialog partnerId={id!} partnerName={displayName} prominent />
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(stations ?? []).map((s) => (
