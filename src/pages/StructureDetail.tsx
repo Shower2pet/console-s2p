@@ -91,7 +91,7 @@ const StructureDetail = () => {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {(stations ?? []).map((s) => (
-                <Link key={s.id} to="/stations">
+                <Link key={s.id} to={`/stations/${s.id}`}>
                   <Card className="hover:shadow-md hover:border-primary/30 transition-all cursor-pointer h-full">
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
