@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { PrivateRoute } from "@/components/PrivateRoute";
 import AdminHome from "@/pages/AdminHome";
 import ClientHome from "@/pages/ClientHome";
+import Onboarding from "@/pages/Onboarding";
 import StructuresList from "@/pages/StructuresList";
 import Packages from "@/pages/Packages";
 import StructureDetail from "@/pages/StructureDetail";
@@ -27,7 +28,11 @@ import UpdatePassword from "@/pages/auth/UpdatePassword";
 const queryClient = new QueryClient();
 
 const HomePage = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, profile } = useAuth();
+  // Redirect to onboarding if must_change_password
+  if ((profile as any)?.must_change_password) {
+    return <Navigate to="/onboarding" replace />;
+  }
   return isAdmin ? <AdminHome /> : <ClientHome />;
 };
 
@@ -41,6 +46,7 @@ const AppRoutes = () => {
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/auth/update-password" element={<UpdatePassword />} />
       <Route element={<PrivateRoute />}>
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route element={<DashboardLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/structures" element={<StructuresList />} />

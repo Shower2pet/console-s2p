@@ -24,7 +24,6 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Verify caller's JWT
     const callerClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -38,7 +37,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, firstName, lastName, role, structureId } = await req.json();
+    const { email, firstName, lastName, role, structureId, stationIds } = await req.json();
 
     if (!email || !firstName || !lastName || !role) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -47,12 +46,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Admin client for user creation
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Check caller is admin (for partner invite) or partner/admin (for manager invite)
     const { data: callerProfile } = await adminClient
       .from("profiles")
       .select("role")
@@ -73,7 +70,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create user via admin API with a readable temporary password
+    // Create user with temporary password
     const tempPassword = crypto.randomUUID().slice(0, 8) + "A1!";
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
@@ -93,10 +90,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update profile with role
+    // Update profile with role and must_change_password flag
     const { error: profileError } = await adminClient
       .from("profiles")
-      .update({ role, first_name: firstName, last_name: lastName, email })
+      .update({ role, first_name: firstName, last_name: lastName, email, must_change_password: true })
       .eq("id", newUser.user.id);
 
     if (profileError) {
@@ -111,6 +108,18 @@ Deno.serve(async (req) => {
 
       if (managerError) {
         console.error("Manager assignment error:", managerError);
+      }
+    }
+
+    // If partner with selected stations, assign owner_id
+    if (role === "partner" && Array.isArray(stationIds) && stationIds.length > 0) {
+      const { error: stationError } = await adminClient
+        .from("stations")
+        .update({ owner_id: newUser.user.id })
+        .in("id", stationIds);
+
+      if (stationError) {
+        console.error("Station assignment error:", stationError);
       }
     }
 
