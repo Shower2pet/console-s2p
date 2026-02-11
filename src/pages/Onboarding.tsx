@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Lock, Building2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Lock, Building2, Plus, Trash2, MapPin } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import MapPicker from "@/components/MapPicker";
 
 interface PendingStation {
   id: string;
@@ -19,6 +20,8 @@ interface NewStructure {
   name: string;
   address: string;
   stationIds: string[];
+  geo_lat: number | null;
+  geo_lng: number | null;
 }
 
 const Onboarding = () => {
@@ -31,7 +34,7 @@ const Onboarding = () => {
 
   // Structures step
   const [pendingStations, setPendingStations] = useState<PendingStation[]>([]);
-  const [structures, setStructures] = useState<NewStructure[]>([{ name: "", address: "", stationIds: [] }]);
+  const [structures, setStructures] = useState<NewStructure[]>([{ name: "", address: "", stationIds: [], geo_lat: null, geo_lng: null }]);
   const [loadingStations, setLoadingStations] = useState(false);
 
   useEffect(() => {
@@ -65,12 +68,10 @@ const Onboarding = () => {
       setSaving(false);
       return;
     }
-    // Clear must_change_password flag
     await supabase.from("profiles").update({ must_change_password: false }).eq("id", user!.id);
     await refreshProfile();
     toast.success("Password aggiornata!");
 
-    // If partner, go to structures step; otherwise finish
     if (profile?.role === "partner") {
       setStep("structures");
     } else {
@@ -80,7 +81,7 @@ const Onboarding = () => {
   };
 
   const addStructure = () => {
-    setStructures([...structures, { name: "", address: "", stationIds: [] }]);
+    setStructures([...structures, { name: "", address: "", stationIds: [], geo_lat: null, geo_lng: null }]);
   };
 
   const removeStructure = (idx: number) => {
@@ -93,7 +94,6 @@ const Onboarding = () => {
   };
 
   const toggleStationForStructure = (structIdx: number, stationId: string) => {
-    // Remove from any other structure first
     const updated = structures.map((s, i) => ({
       ...s,
       stationIds: i === structIdx
@@ -116,12 +116,17 @@ const Onboarding = () => {
       for (const s of valid) {
         const { data: created, error } = await supabase
           .from("structures")
-          .insert({ name: s.name.trim(), address: s.address.trim() || null, owner_id: user!.id })
+          .insert({
+            name: s.name.trim(),
+            address: s.address.trim() || null,
+            owner_id: user!.id,
+            geo_lat: s.geo_lat,
+            geo_lng: s.geo_lng,
+          })
           .select()
           .single();
         if (error) throw error;
 
-        // Assign stations to this structure
         if (s.stationIds.length > 0) {
           const { error: stErr } = await supabase
             .from("stations")
@@ -195,6 +200,24 @@ const Onboarding = () => {
                   </div>
                   <Input placeholder="Nome struttura" value={s.name} onChange={(e) => updateStructure(idx, "name", e.target.value)} />
                   <Input placeholder="Indirizzo (opzionale)" value={s.address} onChange={(e) => updateStructure(idx, "address", e.target.value)} />
+
+                  {/* Map picker */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <MapPin className="h-3 w-3" /> Posizione sulla mappa
+                    </Label>
+                    <div className="mt-1">
+                      <MapPicker
+                        lat={s.geo_lat}
+                        lng={s.geo_lng}
+                        onChange={(lat, lng) => {
+                          updateStructure(idx, "geo_lat", lat);
+                          updateStructure(idx, "geo_lng", lng);
+                        }}
+                        height="200px"
+                      />
+                    </div>
+                  </div>
 
                   {/* Station assignment */}
                   {pendingStations.length > 0 && (

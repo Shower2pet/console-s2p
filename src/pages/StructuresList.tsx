@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useAuth } from "@/contexts/AuthContext";
 import { useStructures, useCreateStructure } from "@/hooks/useStructures";
 import { toast } from "sonner";
+import MapPicker from "@/components/MapPicker";
+import StaticMapPreview from "@/components/StaticMapPreview";
 
 const StructuresList = () => {
   const { role, structureIds, user } = useAuth();
@@ -17,6 +19,8 @@ const StructuresList = () => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [geoLat, setGeoLat] = useState<number | null>(null);
+  const [geoLng, setGeoLng] = useState<number | null>(null);
 
   // Manager with one structure → redirect to detail
   if (role === "manager" && structureIds.length === 1) {
@@ -26,11 +30,19 @@ const StructuresList = () => {
   const handleCreate = async () => {
     if (!name.trim()) return;
     try {
-      await createStructure.mutateAsync({ name: name.trim(), address: address.trim() || null, owner_id: user?.id });
+      await createStructure.mutateAsync({
+        name: name.trim(),
+        address: address.trim() || null,
+        owner_id: user?.id,
+        geo_lat: geoLat,
+        geo_lng: geoLng,
+      });
       toast.success("Struttura creata");
       setOpen(false);
       setName("");
       setAddress("");
+      setGeoLat(null);
+      setGeoLng(null);
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -59,7 +71,7 @@ const StructuresList = () => {
             <DialogTrigger asChild>
               <Button className="gap-2"><Plus className="h-4 w-4" /> Aggiungi Struttura</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle className="font-heading">Nuova Struttura</DialogTitle>
               </DialogHeader>
@@ -71,6 +83,17 @@ const StructuresList = () => {
                 <div>
                   <Label>Indirizzo</Label>
                   <Input value={address} onChange={e => setAddress(e.target.value)} className="mt-1.5" placeholder="Via Roma 1, Roma" />
+                </div>
+                <div>
+                  <Label>Posizione sulla mappa</Label>
+                  <div className="mt-1.5">
+                    <MapPicker
+                      lat={geoLat}
+                      lng={geoLng}
+                      onChange={(lat, lng) => { setGeoLat(lat); setGeoLng(lng); }}
+                      height="250px"
+                    />
+                  </div>
                 </div>
                 <Button onClick={handleCreate} disabled={createStructure.isPending} className="w-full">
                   {createStructure.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
@@ -86,6 +109,7 @@ const StructuresList = () => {
         {(structures ?? []).map((s) => (
           <Link key={s.id} to={`/structures/${s.id}`}>
             <Card className="hover:shadow-md hover:border-primary/30 transition-all cursor-pointer h-full">
+              <StaticMapPreview lat={s.geo_lat} lng={s.geo_lng} height="120px" />
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-heading">{s.name}</CardTitle>
               </CardHeader>
