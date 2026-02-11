@@ -1,24 +1,49 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Monitor, Loader2, UsersRound, UserPlus } from "lucide-react";
+import { ArrowLeft, Monitor, Loader2, UsersRound, UserPlus, MapPin, Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useStructure } from "@/hooks/useStructures";
+import { useStructure, useUpdateStructure } from "@/hooks/useStructures";
 import { useStations } from "@/hooks/useStations";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/contexts/AuthContext";
 import InviteUserDialog from "@/components/InviteUserDialog";
+import MapPicker from "@/components/MapPicker";
+import { toast } from "sonner";
 
 const StructureDetail = () => {
   const { id } = useParams();
-  const { isPartner, isAdmin } = useAuth();
+  const { isPartner, isAdmin, isManager } = useAuth();
   const queryClient = useQueryClient();
   const { data: structure, isLoading } = useStructure(id);
   const { data: stations, isLoading: stLoading } = useStations(id);
+  const updateStructure = useUpdateStructure();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [mapLat, setMapLat] = useState<number | null>(null);
+  const [mapLng, setMapLng] = useState<number | null>(null);
+  const [mapInitialized, setMapInitialized] = useState(false);
+
+  // Initialize map coords from structure
+  if (structure && !mapInitialized) {
+    setMapLat(structure.geo_lat ? Number(structure.geo_lat) : null);
+    setMapLng(structure.geo_lng ? Number(structure.geo_lng) : null);
+    setMapInitialized(true);
+  }
+
+  const handleSavePosition = async () => {
+    if (!structure || mapLat == null || mapLng == null) return;
+    try {
+      await updateStructure.mutateAsync({ id: structure.id, geo_lat: mapLat, geo_lng: mapLng });
+      toast.success("Posizione struttura aggiornata");
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  const canEditPosition = isAdmin || isPartner || isManager;
 
   // Fetch managers for this structure
   const { data: managers, isLoading: managersLoading } = useQuery({
@@ -78,6 +103,9 @@ const StructureDetail = () => {
           <TabsTrigger value="stations">
             <Monitor className="h-4 w-4 mr-1.5" /> Stazioni
           </TabsTrigger>
+          <TabsTrigger value="position">
+            <MapPin className="h-4 w-4 mr-1.5" /> Posizione
+          </TabsTrigger>
           {showTeamTab && (
             <TabsTrigger value="team">
               <UsersRound className="h-4 w-4 mr-1.5" /> Team & Gestori
@@ -109,6 +137,39 @@ const StructureDetail = () => {
               {(stations ?? []).length === 0 && <p className="text-muted-foreground col-span-full text-center py-8">Nessuna stazione collegata.</p>}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="position">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-heading flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" /> Posizione Struttura
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {mapLat != null && mapLng != null && (
+                <p className="text-sm text-muted-foreground">
+                  Lat: {mapLat.toFixed(6)}, Lng: {mapLng.toFixed(6)}
+                </p>
+              )}
+              <MapPicker
+                lat={mapLat}
+                lng={mapLng}
+                onChange={(lat, lng) => { setMapLat(lat); setMapLng(lng); }}
+                readonly={!canEditPosition}
+                height="400px"
+              />
+              {canEditPosition && (
+                <Button
+                  onClick={handleSavePosition}
+                  disabled={updateStructure.isPending || mapLat == null}
+                  className="w-full gap-2"
+                >
+                  <Save className="h-4 w-4" /> Salva Posizione
+                </Button>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {showTeamTab && (
