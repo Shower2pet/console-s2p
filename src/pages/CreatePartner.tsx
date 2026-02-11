@@ -311,7 +311,7 @@ const CreatePartner = () => {
                                   : "hover:bg-accent/50"
                               }`}
                             >
-                              <td className="p-3">
+                              <td className="p-3" onClick={(e) => e.stopPropagation()}>
                                 <Checkbox checked={isSelected} onCheckedChange={() => toggleStation(s.id)} />
                               </td>
                               <td className="p-3 font-medium text-foreground">{String(s.id)}</td>
