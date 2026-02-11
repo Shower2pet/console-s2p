@@ -1,4 +1,4 @@
-import { Home, Monitor, Users, BarChart3, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText } from "lucide-react";
+import { Home, Monitor, Users, BarChart3, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText, Warehouse } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
@@ -14,6 +14,7 @@ const adminItems = [
   { title: "Tutte le Stazioni", url: "/stations", icon: Monitor },
   { title: "Resoconto Incassi", url: "/revenue", icon: Euro },
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
+  { title: "Magazzino", url: "/inventory", icon: Warehouse },
   { title: "Impostazioni Sistema", url: "/admin-settings", icon: Settings },
 ];
 

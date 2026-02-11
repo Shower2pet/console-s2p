@@ -19,6 +19,7 @@ import Financials from "@/pages/Financials";
 import Settings from "@/pages/Settings";
 import AdminSettings from "@/pages/AdminSettings";
 import Revenue from "@/pages/Revenue";
+import Inventory from "@/pages/Inventory";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -50,6 +51,7 @@ const AppRoutes = () => {
           <Route path="/revenue" element={<Revenue />} />
           <Route path="/packages" element={<Packages />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/inventory" element={<Inventory />} />
           <Route path="/admin-settings" element={<AdminSettings />} />
         </Route>
       </Route>
