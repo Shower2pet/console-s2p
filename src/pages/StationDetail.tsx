@@ -66,8 +66,8 @@ const StationDetail = () => {
   useEffect(() => {
     if (station && !initialized) {
       setEditStatus(station.status ?? "AVAILABLE");
-      setEditStructureId(station.structure_id ?? "");
-      setEditOwnerId(station.owner_id ?? "");
+      setEditStructureId(station.structure_id ?? "__none__");
+      setEditOwnerId(station.owner_id ?? "__none__");
       const opts = Array.isArray(station.washing_options)
         ? (station.washing_options as unknown as WashingOption[])
         : [];
@@ -87,11 +87,11 @@ const StationDetail = () => {
       const payload: Record<string, any> = {
         id: station.id,
         status: editStatus,
-        structure_id: editStructureId || null,
+        structure_id: editStructureId === "__none__" ? null : editStructureId,
         washing_options: washingOptions as any,
       };
       if (isAdmin) {
-        payload.owner_id = editOwnerId || null;
+        payload.owner_id = editOwnerId === "__none__" ? null : editOwnerId;
       }
       await updateStation.mutateAsync(payload as any);
       toast.success("Stazione aggiornata con successo");
@@ -322,7 +322,7 @@ const StationDetail = () => {
                 <Select value={editStructureId} onValueChange={setEditStructureId}>
                   <SelectTrigger className="mt-1.5"><SelectValue placeholder="Nessuna struttura" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nessuna (magazzino)</SelectItem>
+                    <SelectItem value="__none__">Nessuna (magazzino)</SelectItem>
                     {(structures ?? []).map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
@@ -338,7 +338,7 @@ const StationDetail = () => {
                 <Select value={editOwnerId} onValueChange={setEditOwnerId}>
                   <SelectTrigger className="mt-1.5"><SelectValue placeholder="Nessun proprietario" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nessuno (magazzino)</SelectItem>
+                    <SelectItem value="__none__">Nessuno (magazzino)</SelectItem>
                     {(partners ?? []).map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {[p.first_name, p.last_name].filter(Boolean).join(" ") || p.email || p.id}
