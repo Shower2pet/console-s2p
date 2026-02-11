@@ -91,6 +91,7 @@ const StructuresList = () => {
                       lat={geoLat}
                       lng={geoLng}
                       onChange={(lat, lng) => { setGeoLat(lat); setGeoLng(lng); }}
+                      onAddressFound={(addr) => { if (!address) setAddress(addr); }}
                       height="250px"
                     />
                   </div>
