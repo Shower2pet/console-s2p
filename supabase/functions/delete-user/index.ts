@@ -80,43 +80,41 @@ Deno.serve(async (req) => {
       .eq("owner_id", userId);
     const structureIds = (ownedStructures ?? []).map((s) => s.id);
 
+    // 2. Get ALL stations owned by this user (via structure OR owner_id)
+    const { data: allOwnedStations } = await adminClient
+      .from("stations")
+      .select("id")
+      .or(`owner_id.eq.${userId}${structureIds.length > 0 ? `,structure_id.in.(${structureIds.join(",")})` : ""}`);
+    const stationIds = (allOwnedStations ?? []).map((s) => s.id);
+
+    if (stationIds.length > 0) {
+      await adminClient.from("maintenance_logs").delete().in("station_id", stationIds);
+      await adminClient.from("wash_sessions").delete().in("station_id", stationIds);
+      await adminClient.from("transactions").delete().in("station_id", stationIds);
+    }
+
     if (structureIds.length > 0) {
-      // 2. Delete stations belonging to owned structures
-      // First delete maintenance_logs for those stations
-      const { data: ownedStations } = await adminClient
-        .from("stations")
-        .select("id")
-        .in("structure_id", structureIds);
-      const stationIds = (ownedStations ?? []).map((s) => s.id);
-
-      if (stationIds.length > 0) {
-        await adminClient.from("maintenance_logs").delete().in("station_id", stationIds);
-        await adminClient.from("wash_sessions").delete().in("station_id", stationIds);
-        await adminClient.from("transactions").delete().in("station_id", stationIds);
-      }
-
-      // 3. Delete transactions linked to owned structures
+      // Delete transactions linked to owned structures
       await adminClient.from("transactions").delete().in("structure_id", structureIds);
-
-      // 4. Delete credit_packages for owned structures
+      // Delete credit_packages for owned structures
       await adminClient.from("credit_packages").delete().in("structure_id", structureIds);
-
-      // 5. Delete structure_wallets for owned structures
+      // Delete structure_wallets for owned structures
       await adminClient.from("structure_wallets").delete().in("structure_id", structureIds);
-
-      // 6. Delete structure_managers for owned structures
+      // Delete structure_managers for owned structures
       await adminClient.from("structure_managers").delete().in("structure_id", structureIds);
+    }
 
-      // 7. Delete stations
-      if (stationIds.length > 0) {
-        await adminClient.from("stations").delete().in("id", stationIds);
-      }
+    // Delete all stations (owned + in structures)
+    if (stationIds.length > 0) {
+      await adminClient.from("stations").delete().in("id", stationIds);
+    }
 
-      // 8. Delete structures
+    // Delete structures
+    if (structureIds.length > 0) {
       await adminClient.from("structures").delete().in("id", structureIds);
     }
 
-    // 9. Delete remaining references to this user_id
+    // Delete remaining references to this user_id
     await adminClient.from("structure_managers").delete().eq("user_id", userId);
     await adminClient.from("credit_packages").delete().eq("owner_id", userId);
     await adminClient.from("structure_wallets").delete().eq("user_id", userId);
@@ -125,14 +123,17 @@ Deno.serve(async (req) => {
     await adminClient.from("wash_sessions").delete().eq("user_id", userId);
     await adminClient.from("partners_fiscal_data").delete().eq("profile_id", userId);
 
-    // 10. Delete profile
+    // Delete profile
     await adminClient.from("profiles").delete().eq("id", userId);
 
     // 11. Delete auth user
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
     if (deleteError) {
       console.error("Delete user error:", deleteError);
-      return new Response(JSON.stringify({ error: deleteError.message }), {
+      return new Response(JSON.stringify({ 
+        error: "Impossibile eliminare l'utente dall'autenticazione. Potrebbe esserci un riferimento residuo nel database. Contatta il supporto tecnico.",
+        detail: deleteError.message 
+      }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
