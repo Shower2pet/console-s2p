@@ -33,7 +33,7 @@ const Packages = () => {
 
   const createPkg = useMutation({
     mutationFn: async (values: { name: string | null; price_eur: number; credits_value: number; is_active: boolean }) => {
-      const { error } = await supabase.from("credit_packages").insert({ ...values, owner_id: user!.id });
+      const { error } = await supabase.from("credit_packages").insert({ ...values, owner_id: user!.id } as any);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my_credit_packages"] }),
