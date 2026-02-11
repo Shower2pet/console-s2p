@@ -13,6 +13,7 @@ import StructuresList from "@/pages/StructuresList";
 import Packages from "@/pages/Packages";
 import StructureDetail from "@/pages/StructureDetail";
 import StationsList from "@/pages/StationsList";
+import StationDetail from "@/pages/StationDetail";
 import ClientsList from "@/pages/ClientsList";
 import ClientDetail from "@/pages/ClientDetail";
 import Maintenance from "@/pages/Maintenance";
@@ -52,6 +53,7 @@ const AppRoutes = () => {
           <Route path="/structures" element={<StructuresList />} />
           <Route path="/structures/:id" element={<StructureDetail />} />
           <Route path="/stations" element={<StationsList />} />
+          <Route path="/stations/:id" element={<StationDetail />} />
           <Route path="/clients" element={<ClientsList />} />
           <Route path="/clients/:id" element={<ClientDetail />} />
           <Route path="/maintenance" element={<Maintenance />} />
