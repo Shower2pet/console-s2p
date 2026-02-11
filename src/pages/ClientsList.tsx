@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Users, Search, ArrowRight, Loader2, Building2 } from "lucide-react";
+import { Users, Search, ArrowRight, Loader2, Building2, UserPlus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import InviteUserDialog from "@/components/InviteUserDialog";
 
 const ClientsList = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   // Admin: fetch only partners (not managers)
   const { data: profiles, isLoading } = useQuery({
@@ -55,13 +59,27 @@ const ClientsList = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-heading font-bold text-foreground">
-          <Users className="inline mr-2 h-6 w-6 text-primary" />
-          Gestione Clienti
-        </h1>
-        <p className="text-muted-foreground">{filtered.length} clienti registrati</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-heading font-bold text-foreground">
+            <Users className="inline mr-2 h-6 w-6 text-primary" />
+            Gestione Clienti
+          </h1>
+          <p className="text-muted-foreground">{filtered.length} clienti registrati</p>
+        </div>
+        <Button onClick={() => setInviteOpen(true)}>
+          <UserPlus className="h-4 w-4 mr-2" /> Nuovo Partner
+        </Button>
       </div>
+
+      <InviteUserDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        role="partner"
+        title="Invita Nuovo Partner"
+        description="Inserisci i dati del nuovo partner. Riceverà un invito via email."
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["clients-profiles"] })}
+      />
 
       <Card>
         <CardContent className="p-4">
