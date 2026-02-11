@@ -16,9 +16,10 @@ import { toast } from "sonner";
 interface AssignStationDialogProps {
   partnerId: string;
   partnerName: string;
+  prominent?: boolean;
 }
 
-const AssignStationDialog = ({ partnerId, partnerName }: AssignStationDialogProps) => {
+const AssignStationDialog = ({ partnerId, partnerName, prominent = false }: AssignStationDialogProps) => {
   const [open, setOpen] = useState(false);
   const [assigning, setAssigning] = useState<string | null>(null);
   const qc = useQueryClient();
@@ -60,7 +61,7 @@ const AssignStationDialog = ({ partnerId, partnerName }: AssignStationDialogProp
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button variant={prominent ? "default" : "outline"} size={prominent ? "default" : "sm"} className="gap-2">
           <Plus className="h-4 w-4" /> Assegna Stazione
         </Button>
       </DialogTrigger>

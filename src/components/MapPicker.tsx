@@ -134,10 +134,18 @@ const MapPicker = ({ lat, lng, onChange, onAddressFound, readonly = false, heigh
         marker.current = new mapboxgl.Marker({ draggable: !readonly })
           .setLngLat([lng, lat])
           .addTo(map.current);
+
+        if (!readonly) {
+          marker.current.on("dragend", () => {
+            const pos = marker.current!.getLngLat();
+            onChangeRef.current(pos.lat, pos.lng);
+            reverseGeocode(pos.lng, pos.lat);
+          });
+        }
       }
       map.current.flyTo({ center: [lng, lat], zoom: 15 });
     }
-  }, [lat, lng, readonly]);
+  }, [lat, lng, readonly, reverseGeocode]);
 
   // Geocode search
   const handleSearch = useCallback(async (query: string) => {
