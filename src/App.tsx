@@ -16,6 +16,7 @@ import StationsList from "@/pages/StationsList";
 import StationDetail from "@/pages/StationDetail";
 import ClientsList from "@/pages/ClientsList";
 import ClientDetail from "@/pages/ClientDetail";
+import CreatePartner from "@/pages/CreatePartner";
 import Maintenance from "@/pages/Maintenance";
 import Financials from "@/pages/Financials";
 import Settings from "@/pages/Settings";
@@ -55,6 +56,7 @@ const AppRoutes = () => {
           <Route path="/stations" element={<StationsList />} />
           <Route path="/stations/:id" element={<StationDetail />} />
           <Route path="/clients" element={<ClientsList />} />
+          <Route path="/clients/new" element={<CreatePartner />} />
           <Route path="/clients/:id" element={<ClientDetail />} />
           <Route path="/maintenance" element={<Maintenance />} />
           <Route path="/financials" element={<Financials />} />
