@@ -15,8 +15,8 @@ export const useStations = (structureId?: string) => {
   return useQuery({
     queryKey: ["stations", structureId],
     queryFn: async () => {
-      let query = supabase.from("stations").select("*, structures(name)");
-      if (structureId) query = query.eq("structure_id", structureId);
+      let query = supabase.from("stations").select("*, structures(name)").not("structure_id", "is", null);
+      if (structureId) query = supabase.from("stations").select("*, structures(name)").eq("structure_id", structureId);
       const { data, error } = await query.order("created_at", { ascending: false });
       if (error) throw error;
       return data;
