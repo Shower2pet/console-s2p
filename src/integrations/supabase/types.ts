@@ -20,6 +20,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string | null
+          owner_id: string | null
           price_eur: number
           structure_id: string | null
         }
@@ -28,6 +29,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string | null
+          owner_id?: string | null
           price_eur: number
           structure_id?: string | null
         }
@@ -36,10 +38,18 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string | null
+          owner_id?: string | null
           price_eur?: number
           structure_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "credit_packages_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "credit_packages_structure_id_fkey"
             columns: ["structure_id"]
