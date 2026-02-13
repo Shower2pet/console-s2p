@@ -235,43 +235,70 @@ const StationDetail = () => {
       </div>
 
       {/* Commands */}
-      {canCommand && (
+      {canCommand && (() => {
+        const hasStructure = !!station.structure_id;
+        const hasGeo = !!(station.geo_lat ?? (station as any).structures?.geo_lat);
+        const opts = Array.isArray(station.washing_options)
+          ? (station.washing_options as unknown as any[])
+          : [];
+        const hasPricing = opts.length > 0;
+        const canActivate = isAdmin || (hasStructure && hasGeo && hasPricing);
+        const missingReqs = !isAdmin && (!hasStructure || !hasGeo || !hasPricing);
+
+        return (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-heading flex items-center gap-2">
               <Power className="h-5 w-5 text-primary" /> Comandi Stazione
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
-            <Button
-              variant={editStatus === "AVAILABLE" ? "default" : "outline"}
-              onClick={() => handleCommand("AVAILABLE")}
-              disabled={updateStation.isPending}
-              className="gap-2"
-            >
-              <Power className="h-4 w-4" /> Accendi
-            </Button>
-            <Button
-              variant={editStatus === "OFFLINE" ? "destructive" : "outline"}
-              onClick={() => handleCommand("OFFLINE")}
-              disabled={updateStation.isPending}
-              className="gap-2"
-            >
-              <PowerOff className="h-4 w-4" /> Spegni
-            </Button>
-            {(isAdmin || isPartner) && (
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap gap-3">
               <Button
-                variant="outline"
-                onClick={() => handleCommand("MAINTENANCE")}
-                disabled={updateStation.isPending}
-                className="gap-2 border-warning/50 text-warning-foreground hover:bg-warning/10"
+                variant={editStatus === "AVAILABLE" ? "default" : "outline"}
+                onClick={() => handleCommand("AVAILABLE")}
+                disabled={updateStation.isPending || !canActivate}
+                className="gap-2"
               >
-                <RotateCcw className="h-4 w-4" /> Reset
+                <Power className="h-4 w-4" /> Accendi
               </Button>
+              <Button
+                variant={editStatus === "OFFLINE" ? "destructive" : "outline"}
+                onClick={() => handleCommand("OFFLINE")}
+                disabled={updateStation.isPending}
+                className="gap-2"
+              >
+                <PowerOff className="h-4 w-4" /> Spegni
+              </Button>
+              {(isAdmin || isPartner) && (
+                <Button
+                  variant="outline"
+                  onClick={() => handleCommand("MAINTENANCE")}
+                  disabled={updateStation.isPending}
+                  className="gap-2 border-warning/50 text-warning-foreground hover:bg-warning/10"
+                >
+                  <RotateCcw className="h-4 w-4" /> Reset
+                </Button>
+              )}
+            </div>
+            {missingReqs && (
+              <div className="text-xs text-muted-foreground space-y-0.5 border-t pt-2">
+                <p className="font-medium text-foreground text-sm">Per attivare la stazione servono:</p>
+                <p className={hasStructure ? "text-success-foreground" : "text-destructive"}>
+                  {hasStructure ? "✓" : "✗"} Assegnata a una struttura
+                </p>
+                <p className={hasGeo ? "text-success-foreground" : "text-destructive"}>
+                  {hasGeo ? "✓" : "✗"} Posizione GPS inserita
+                </p>
+                <p className={hasPricing ? "text-success-foreground" : "text-destructive"}>
+                  {hasPricing ? "✓" : "✗"} Almeno un'opzione di lavaggio configurata
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>
-      )}
+        );
+      })()}
 
       {/* Info Card */}
       <Card>

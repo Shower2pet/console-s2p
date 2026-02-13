@@ -1,40 +1,23 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Plus, Trash2, Pencil, Package } from "lucide-react";
+import { Plus, Trash2, Pencil, Package, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-const MODELS = ["BRACCO", "BARBONCINO", "AKITA", "HUSKY"] as const;
-
-const stationSchema = z.object({
-  id: z.string().trim().min(1, "Serial Number obbligatorio").max(50, "Max 50 caratteri"),
-  type: z.enum(MODELS, { required_error: "Seleziona un modello" }),
-});
-
-type StationForm = z.infer<typeof stationSchema>;
 
 const useStockStations = () =>
   useQuery({
@@ -42,7 +25,7 @@ const useStockStations = () =>
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stations")
-        .select("*")
+        .select("*, products:product_id(name, type)")
         .is("structure_id", null)
         .is("owner_id", null)
         .order("created_at", { ascending: false });
@@ -51,68 +34,63 @@ const useStockStations = () =>
     },
   });
 
+const useProducts = () =>
+  useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
 const Inventory = () => {
   const qc = useQueryClient();
   const { data: stations, isLoading } = useStockStations();
+  const { data: products } = useProducts();
   const [createOpen, setCreateOpen] = useState(false);
-  const [editStation, setEditStation] = useState<{ id: string; type: string } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const createForm = useForm<StationForm>({
-    resolver: zodResolver(stationSchema),
-    defaultValues: { id: "", type: undefined },
-  });
+  // Create form state
+  const [serialNumber, setSerialNumber] = useState("");
+  const [productId, setProductId] = useState("");
+  const [stationDescription, setStationDescription] = useState("");
 
-  const editForm = useForm<StationForm>({
-    resolver: zodResolver(stationSchema),
-  });
+  const resetForm = () => {
+    setSerialNumber("");
+    setProductId("");
+    setStationDescription("");
+  };
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["stations"] });
 
   const createMutation = useMutation({
-    mutationFn: async (values: StationForm) => {
-      const { error } = await supabase.from("stations").insert({ id: values.id, type: values.type } as any);
+    mutationFn: async () => {
+      const product = (products ?? []).find(p => p.id === productId);
+      if (!product) throw new Error("Seleziona un prodotto");
+      const { error } = await supabase.from("stations").insert({
+        id: serialNumber.trim(),
+        type: product.name,
+        category: product.type,
+        product_id: productId,
+        description: stationDescription.trim() || null,
+        status: "OFFLINE",
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Stazione registrata", description: "La stazione è stata aggiunta al magazzino." });
+      toast.success("Stazione registrata nel magazzino");
       setCreateOpen(false);
-      createForm.reset();
+      resetForm();
       invalidate();
     },
     onError: (err: any) => {
       const msg = err?.message?.includes("duplicate") ? "Serial Number già esistente." : err?.message || "Errore durante il salvataggio.";
-      toast({ title: "Errore", description: msg, variant: "destructive" });
-    },
-  });
-
-  const editMutation = useMutation({
-    mutationFn: async ({ oldId, values }: { oldId: string; values: StationForm }) => {
-      // If ID changed, we need to delete and recreate since id is the PK
-      if (oldId !== values.id) {
-        const { data: existing, error: fetchErr } = await supabase.from("stations").select("*").eq("id", oldId).single();
-        if (fetchErr) throw fetchErr;
-        const { error: delErr } = await supabase.from("stations").delete().eq("id", oldId);
-        if (delErr) throw delErr;
-        const { error: insErr } = await supabase.from("stations").insert({
-          ...existing,
-          id: values.id,
-          type: values.type,
-        } as any);
-        if (insErr) throw insErr;
-      } else {
-        const { error } = await supabase.from("stations").update({ type: values.type }).eq("id", oldId);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      toast({ title: "Stazione aggiornata" });
-      setEditStation(null);
-      invalidate();
-    },
-    onError: (err: any) => {
-      const msg = err?.message?.includes("duplicate") ? "Serial Number già esistente." : err?.message || "Errore durante la modifica.";
-      toast({ title: "Errore", description: msg, variant: "destructive" });
+      toast.error(msg);
     },
   });
 
@@ -122,54 +100,47 @@ const Inventory = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Stazione eliminata" });
+      toast.success("Stazione eliminata");
       setDeleteId(null);
       invalidate();
     },
-    onError: (err: any) => {
-      toast({ title: "Errore", description: err?.message || "Impossibile eliminare.", variant: "destructive" });
-    },
+    onError: (err: any) => toast.error(err?.message || "Impossibile eliminare."),
   });
 
-  const openEdit = (station: { id: string; type: string }) => {
-    setEditStation(station);
-    editForm.reset({ id: station.id, type: station.type as any });
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Magazzino Hardware</h1>
+          <h1 className="text-2xl font-heading font-bold text-foreground flex items-center gap-2">
+            <Package className="h-6 w-6 text-primary" /> Magazzino Hardware
+          </h1>
           <p className="text-muted-foreground">Stazioni prodotte non ancora assegnate</p>
         </div>
-        <Button onClick={() => { createForm.reset(); setCreateOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuova Produzione
+        <Button onClick={() => { resetForm(); setCreateOpen(true); }} className="gap-2">
+          <Plus className="h-4 w-4" /> Nuova Produzione
         </Button>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
             Stazioni in Stock ({stations?.length ?? 0})
           </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-muted-foreground py-8 text-center">Caricamento...</p>
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
           ) : !stations?.length ? (
             <p className="text-muted-foreground py-8 text-center">Nessuna stazione in magazzino.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Serial Number</TableHead>
-                  <TableHead>Modello</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Data Creazione</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Seriale</TableHead>
+                  <TableHead>Prodotto</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Descrizione</TableHead>
+                  <TableHead>Data</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
                 </TableRow>
               </TableHeader>
@@ -177,16 +148,13 @@ const Inventory = () => {
                 {stations.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-mono font-medium">{s.id}</TableCell>
-                    <TableCell>{s.type}</TableCell>
-                    <TableCell>{s.category ?? "—"}</TableCell>
-                    <TableCell>{s.created_at ? format(new Date(s.created_at), "dd MMM yyyy", { locale: it }) : "—"}</TableCell>
+                    <TableCell>{(s as any).products?.name ?? s.type}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className="bg-accent text-accent-foreground">Libera</Badge>
+                      <Badge variant="secondary" className="capitalize">{(s as any).products?.type ?? s.category ?? "—"}</Badge>
                     </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit({ id: s.id, type: s.type })}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                    <TableCell className="text-muted-foreground max-w-[200px] truncate">{(s as any).description ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{s.created_at ? format(new Date(s.created_at), "dd MMM yyyy", { locale: it }) : "—"}</TableCell>
+                    <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => setDeleteId(s.id)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -204,74 +172,38 @@ const Inventory = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Registra Nuova Stazione</DialogTitle>
-            <DialogDescription>Inserisci i dati della stazione appena prodotta.</DialogDescription>
+            <DialogDescription>Seleziona il prodotto e inserisci il seriale.</DialogDescription>
           </DialogHeader>
-          <Form {...createForm}>
-            <form onSubmit={createForm.handleSubmit((v) => createMutation.mutate(v))} className="space-y-4">
-              <FormField control={createForm.control} name="id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Serial Number</FormLabel>
-                  <FormControl><Input placeholder="SN-2024-001" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={createForm.control} name="type" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Modello</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Seleziona modello" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      {MODELS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <DialogFooter>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Salvataggio..." : "Registra"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editStation} onOpenChange={(open) => !open && setEditStation(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Modifica Stazione</DialogTitle>
-            <DialogDescription>Modifica il Serial Number o il modello.</DialogDescription>
-          </DialogHeader>
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit((v) => editMutation.mutate({ oldId: editStation!.id, values: v }))} className="space-y-4">
-              <FormField control={editForm.control} name="id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Serial Number</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={editForm.control} name="type" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Modello</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      {MODELS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <DialogFooter>
-                <Button type="submit" disabled={editMutation.isPending}>
-                  {editMutation.isPending ? "Salvataggio..." : "Salva"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Prodotto *</Label>
+              <Select value={productId} onValueChange={setProductId}>
+                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Seleziona prodotto" /></SelectTrigger>
+                <SelectContent>
+                  {(products ?? []).map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name} ({p.type})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(products ?? []).length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Nessun prodotto nel catalogo. Creane uno prima.</p>
+              )}
+            </div>
+            <div>
+              <Label>Numero Seriale *</Label>
+              <Input value={serialNumber} onChange={e => setSerialNumber(e.target.value)} placeholder="SN-2024-001" className="mt-1.5" />
+            </div>
+            <div>
+              <Label>Descrizione (opzionale)</Label>
+              <Textarea value={stationDescription} onChange={e => setStationDescription(e.target.value)} placeholder="Note aggiuntive..." className="mt-1.5" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !serialNumber.trim() || !productId}>
+              {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Registra
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -280,7 +212,7 @@ const Inventory = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminare la stazione?</AlertDialogTitle>
-            <AlertDialogDescription>Questa azione è irreversibile. La stazione "{deleteId}" verrà rimossa definitivamente.</AlertDialogDescription>
+            <AlertDialogDescription>La stazione "{deleteId}" verrà rimossa definitivamente.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Monitor, Loader2, UsersRound, UserPlus, MapPin, Save } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Monitor, Loader2, UsersRound, UserPlus, MapPin, Save, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 
 const StructureDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { isPartner, isAdmin, isManager } = useAuth();
   const queryClient = useQueryClient();
   const { data: structure, isLoading } = useStructure(id);
@@ -26,6 +28,8 @@ const StructureDetail = () => {
   const [mapLat, setMapLat] = useState<number | null>(null);
   const [mapLng, setMapLng] = useState<number | null>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Initialize map coords from structure
   if (structure && !mapInitialized) {
@@ -87,17 +91,68 @@ const StructureDetail = () => {
 
   const showTeamTab = isPartner || isAdmin;
 
+  const handleDeleteStructure = async () => {
+    if (!structure || deleteConfirmName !== structure.name) return;
+    try {
+      // Set stations to unassigned/offline
+      await supabase.from("stations").update({ structure_id: null, status: "OFFLINE" } as any).eq("structure_id", structure.id);
+      // Delete structure
+      const { error } = await supabase.from("structures").delete().eq("id", structure.id);
+      if (error) throw error;
+      toast.success("Struttura eliminata");
+      navigate("/structures");
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center gap-4">
-        <Link to="/structures" className="rounded-lg p-2 hover:bg-accent transition-colors">
-          <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-heading font-bold text-foreground">{structure.name}</h1>
-          {structure.address && <p className="text-muted-foreground">{structure.address}</p>}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link to="/structures" className="rounded-lg p-2 hover:bg-accent transition-colors">
+            <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-heading font-bold text-foreground">{structure.name}</h1>
+            {structure.address && <p className="text-muted-foreground">{structure.address}</p>}
+          </div>
         </div>
+        {(isAdmin || isPartner) && (
+          <Button variant="destructive" size="sm" onClick={() => setShowDeleteDialog(true)}>
+            <Trash2 className="h-4 w-4 mr-2" /> Elimina Struttura
+          </Button>
+        )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && (
+        <Card className="border-destructive/30">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm text-foreground">
+              Per eliminare la struttura, digita <strong>"{structure.name}"</strong> nel campo sottostante:
+            </p>
+            <Input
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              placeholder="Digita il nome della struttura..."
+            />
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setShowDeleteDialog(false); setDeleteConfirmName(""); }}>
+                Annulla
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={deleteConfirmName !== structure.name}
+                onClick={handleDeleteStructure}
+              >
+                Conferma Eliminazione
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="stations">
         <TabsList>
