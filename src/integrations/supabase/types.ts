@@ -148,6 +148,33 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -210,12 +237,14 @@ export type Database = {
           access_token: string | null
           category: string | null
           created_at: string | null
+          description: string | null
           geo_lat: number | null
           geo_lng: number | null
           id: string
           image_url: string | null
           last_heartbeat_at: string | null
           owner_id: string | null
+          product_id: string | null
           status: Database["public"]["Enums"]["station_status"] | null
           structure_id: string | null
           type: string
@@ -226,12 +255,14 @@ export type Database = {
           access_token?: string | null
           category?: string | null
           created_at?: string | null
+          description?: string | null
           geo_lat?: number | null
           geo_lng?: number | null
           id: string
           image_url?: string | null
           last_heartbeat_at?: string | null
           owner_id?: string | null
+          product_id?: string | null
           status?: Database["public"]["Enums"]["station_status"] | null
           structure_id?: string | null
           type: string
@@ -242,12 +273,14 @@ export type Database = {
           access_token?: string | null
           category?: string | null
           created_at?: string | null
+          description?: string | null
           geo_lat?: number | null
           geo_lng?: number | null
           id?: string
           image_url?: string | null
           last_heartbeat_at?: string | null
           owner_id?: string | null
+          product_id?: string | null
           status?: Database["public"]["Enums"]["station_status"] | null
           structure_id?: string | null
           type?: string
@@ -260,6 +293,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
           {
