@@ -1,15 +1,21 @@
-import { Euro, Monitor, Users, TrendingUp, ArrowRight, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Euro, Monitor, Users, TrendingUp, ArrowRight, Loader2, Droplets, MapPin } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
 import { useTransactionsByDate } from "@/hooks/useTransactions";
 import { useStations } from "@/hooks/useStations";
 import { useStructures } from "@/hooks/useStructures";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { format } from "date-fns";
+import { format, subDays, startOfMonth } from "date-fns";
 import { it } from "date-fns/locale";
+import StationsMap from "@/components/StationsMap";
+
+type Period = "today" | "7d" | "month";
 
 const AdminHome = () => {
+  const [period, setPeriod] = useState<Period>("month");
   const { chartData, transactions, isLoading: txLoading } = useTransactionsByDate();
   const { data: stations, isLoading: stLoading } = useStations();
   const { data: structures } = useStructures();
@@ -20,8 +26,28 @@ const AdminHome = () => {
 
   const today = new Date().toISOString().slice(0, 10);
   const todayRevenue = (transactions ?? []).filter(t => t.created_at?.startsWith(today)).reduce((s, t) => s + Number(t.total_value ?? 0), 0);
+  const todayWashes = (transactions ?? []).filter(t => t.created_at?.startsWith(today) && (t.transaction_type === "WASH_SERVICE" || t.transaction_type === "GUEST_WASH")).length;
 
-  const last30 = chartData.slice(-30);
+  // Chart period filtering
+  const now = new Date();
+  const periodStart = period === "today" ? today
+    : period === "7d" ? subDays(now, 7).toISOString().slice(0, 10)
+    : startOfMonth(now).toISOString().slice(0, 10);
+
+  const filteredChart = chartData.filter(d => d.date >= periodStart);
+
+  // Map pins
+  const mapPins = (stations ?? []).filter(s => {
+    const lat = s.geo_lat ?? (s as any).structures?.geo_lat;
+    const lng = s.geo_lng ?? (s as any).structures?.geo_lng;
+    return lat && lng;
+  }).map(s => ({
+    id: s.id,
+    lat: Number(s.geo_lat ?? (s as any).structures?.geo_lat),
+    lng: Number(s.geo_lng ?? (s as any).structures?.geo_lng),
+    status: s.status ?? "OFFLINE",
+    name: (s as any).structures?.name,
+  }));
 
   if (txLoading || stLoading) {
     return (
@@ -38,21 +64,34 @@ const AdminHome = () => {
         <p className="text-muted-foreground">Panoramica globale Shower2Pet</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard title="Incasso Totale" value={`€${totalRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={Euro} variant="primary" href="/revenue" />
         <StatCard title="Stazioni Attive" value={activeStations} icon={Monitor} variant="success" href="/stations" />
         <StatCard title="Partner Totali" value={totalPartners} icon={Users} variant="default" href="/clients" />
         <StatCard title="Incasso Oggi" value={`€${todayRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={TrendingUp} variant="warning" href="/revenue" />
+        <StatCard title="Lavaggi Oggi" value={todayWashes} icon={Droplets} variant="primary" href="/revenue" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2 animate-fade-in">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-heading">Ricavi per Giorno (ultimi 30 gg)</CardTitle>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <CardTitle className="text-lg font-heading">Ricavi per Giorno</CardTitle>
+              <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+                <SelectTrigger className="w-[160px] h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Oggi</SelectItem>
+                  <SelectItem value="7d">Ultimi 7 giorni</SelectItem>
+                  <SelectItem value="month">Questo Mese</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={last30}>
+              <BarChart data={filteredChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(210, 20%, 90%)" />
                 <XAxis
                   dataKey="date"
@@ -94,6 +133,33 @@ const AdminHome = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Global Stations Map */}
+      {mapPins.length > 0 && (
+        <Card className="animate-fade-in">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-heading flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" /> Mappa Stazioni
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-3 mb-3 flex-wrap">
+              {[
+                { label: "Libera", color: "#22c55e" },
+                { label: "In uso", color: "#3b82f6" },
+                { label: "Manutenzione", color: "#ef4444" },
+                { label: "Offline", color: "#6b7280" },
+              ].map(l => (
+                <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: l.color }} />
+                  {l.label}
+                </div>
+              ))}
+            </div>
+            <StationsMap stations={mapPins} height="380px" />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

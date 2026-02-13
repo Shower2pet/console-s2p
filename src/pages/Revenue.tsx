@@ -89,10 +89,9 @@ const Revenue = () => {
         <p className="text-muted-foreground">Panoramica delle performance economiche</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <StatCard title="Incasso Totale" value={`€${totalRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={Euro} variant="primary" />
-        <StatCard title="Incasso Carta" value={`€${totalStripe.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={TrendingUp} variant="success" />
-        <StatCard title="Incasso Crediti" value={`€${totalWallet.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={TrendingUp} variant="warning" />
+        <StatCard title="Transazioni" value={(transactions ?? []).length} icon={TrendingUp} variant="success" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

@@ -30,6 +30,7 @@ const StationDetail = () => {
   const [editStatus, setEditStatus] = useState<string>("");
   const [editStructureId, setEditStructureId] = useState<string>("");
   const [editOwnerId, setEditOwnerId] = useState<string>("");
+  const [editVisibility, setEditVisibility] = useState<string>("PUBLIC");
   const [washingOptions, setWashingOptions] = useState<WashingOption[]>([]);
   const [ticketReason, setTicketReason] = useState("");
   const [showTicketForm, setShowTicketForm] = useState(false);
@@ -71,6 +72,8 @@ const StationDetail = () => {
       setEditStatus(station.status ?? "AVAILABLE");
       setEditStructureId(station.structure_id ?? "__none__");
       setEditOwnerId(station.owner_id ?? "__none__");
+      setEditVisibility(station.visibility ?? "PUBLIC");
+      setEditOwnerId(station.owner_id ?? "__none__");
       const opts = Array.isArray(station.washing_options)
         ? (station.washing_options as unknown as WashingOption[])
         : [];
@@ -99,6 +102,7 @@ const StationDetail = () => {
         status: editStatus,
         structure_id: editStructureId === "__none__" ? null : editStructureId,
         washing_options: washingOptions as any,
+        visibility: editVisibility as any,
         geo_lat: stationLat,
         geo_lng: stationLng,
       };
@@ -262,7 +266,7 @@ const StationDetail = () => {
                 disabled={updateStation.isPending}
                 className="gap-2 border-warning/50 text-warning-foreground hover:bg-warning/10"
               >
-                <RotateCcw className="h-4 w-4" /> Reset / Manutenzione
+                <RotateCcw className="h-4 w-4" /> Reset
               </Button>
             )}
           </CardContent>
@@ -391,6 +395,19 @@ const StationDetail = () => {
               </div>
             )}
 
+            {/* Visibility selector */}
+            <div>
+              <Label>Visibilità (sulla mappa)</Label>
+              <Select value={editVisibility} onValueChange={setEditVisibility}>
+                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PUBLIC">Pubblico</SelectItem>
+                  <SelectItem value="RESTRICTED">Struttura (solo clienti)</SelectItem>
+                  <SelectItem value="HIDDEN">Invisibile</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Washing Options Editor */}
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -411,8 +428,8 @@ const StationDetail = () => {
                         <Input type="number" step="0.50" value={opt.price} onChange={(e) => updateOption(opt.id, "price", parseFloat(e.target.value) || 0)} />
                       </div>
                       <div>
-                        <Label className="text-xs">Durata (sec)</Label>
-                        <Input type="number" step="30" value={opt.duration} onChange={(e) => updateOption(opt.id, "duration", parseInt(e.target.value) || 0)} />
+                        <Label className="text-xs">Durata (min)</Label>
+                        <Input type="number" step="1" min="1" value={Math.round(opt.duration / 60)} onChange={(e) => updateOption(opt.id, "duration", (parseInt(e.target.value) || 0) * 60)} />
                       </div>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => removeOption(opt.id)} className="mt-1 text-destructive hover:text-destructive">
