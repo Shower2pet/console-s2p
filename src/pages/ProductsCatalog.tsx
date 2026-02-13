@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -182,7 +183,13 @@ const ProductsCatalog = () => {
             </div>
             <div>
               <Label>Tipo *</Label>
-              <Input value={type} onChange={e => setType(e.target.value)} placeholder="Es. Vasca, Tub" className="mt-1.5" />
+              <Select value={type} onValueChange={setType}>
+                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Seleziona tipo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="doccia">Doccia</SelectItem>
+                  <SelectItem value="vasca">Vasca</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Descrizione</Label>

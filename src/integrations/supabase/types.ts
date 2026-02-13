@@ -59,6 +59,41 @@ export type Database = {
           },
         ]
       }
+      gate_commands: {
+        Row: {
+          command: string
+          created_at: string
+          id: string
+          station_id: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          command?: string
+          created_at?: string
+          id?: string
+          station_id: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          command?: string
+          created_at?: string
+          id?: string
+          station_id?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gate_commands_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       maintenance_logs: {
         Row: {
           created_at: string | null
@@ -234,11 +269,13 @@ export type Database = {
       }
       stations: {
         Row: {
+          access_code: string | null
           access_token: string | null
           created_at: string | null
           description: string | null
           geo_lat: number | null
           geo_lng: number | null
+          has_access_gate: boolean | null
           id: string
           image_url: string | null
           last_heartbeat_at: string | null
@@ -251,11 +288,13 @@ export type Database = {
           washing_options: Json | null
         }
         Insert: {
+          access_code?: string | null
           access_token?: string | null
           created_at?: string | null
           description?: string | null
           geo_lat?: number | null
           geo_lng?: number | null
+          has_access_gate?: boolean | null
           id: string
           image_url?: string | null
           last_heartbeat_at?: string | null
@@ -268,11 +307,13 @@ export type Database = {
           washing_options?: Json | null
         }
         Update: {
+          access_code?: string | null
           access_token?: string | null
           created_at?: string | null
           description?: string | null
           geo_lat?: number | null
           geo_lng?: number | null
+          has_access_gate?: boolean | null
           id?: string
           image_url?: string | null
           last_heartbeat_at?: string | null
@@ -693,6 +734,7 @@ export type Database = {
           created_at: string
           geo_lat: number
           geo_lng: number
+          has_access_gate: boolean
           id: string
           image_url: string
           last_heartbeat_at: string
