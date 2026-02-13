@@ -74,11 +74,10 @@ const Financials = () => {
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard title="Totale" value={`€${totalRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={Euro} variant="primary" />
-        <StatCard title="Incasso Carta" value={`€${totalStripe.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={Euro} variant="success" />
-        <StatCard title="Incasso Crediti" value={`€${totalWallet.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={TrendingUp} variant="warning" />
-        <StatCard title="Lavaggi" value={totalWashes} icon={TrendingUp} variant="default" />
+        <StatCard title="Lavaggi" value={totalWashes} icon={TrendingUp} variant="success" />
+        <StatCard title="Transazioni" value={filtered.length} icon={Euro} variant="default" />
       </div>
 
       <Card>
@@ -125,27 +124,23 @@ const Financials = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="text-right">Totale</TableHead>
-                <TableHead className="text-right">Carta</TableHead>
-                <TableHead className="text-right">Crediti</TableHead>
-                <TableHead>Stato</TableHead>
-              </TableRow>
+                 <TableHead>Data</TableHead>
+                 <TableHead>Tipo</TableHead>
+                 <TableHead className="text-right">Totale</TableHead>
+                 <TableHead>Stato</TableHead>
+               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.slice(0, 100).map(t => (
                 <TableRow key={t.id}>
                   <TableCell className="text-foreground">{t.created_at ? format(new Date(t.created_at), "dd/MM/yy HH:mm") : "—"}</TableCell>
-                  <TableCell className="text-foreground">{t.transaction_type.replace(/_/g, " ")}</TableCell>
-                  <TableCell className="text-right font-semibold text-foreground">€{Number(t.total_value).toFixed(2)}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">€{Number(t.amount_paid_stripe ?? 0).toFixed(2)}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">€{Number(t.amount_paid_wallet ?? 0).toFixed(2)}</TableCell>
-                  <TableCell><span className="capitalize text-xs">{t.status ?? "—"}</span></TableCell>
+                   <TableCell className="text-foreground">{t.transaction_type.replace(/_/g, " ")}</TableCell>
+                   <TableCell className="text-right font-semibold text-foreground">€{Number(t.total_value).toFixed(2)}</TableCell>
+                   <TableCell><span className="capitalize text-xs">{t.status ?? "—"}</span></TableCell>
                 </TableRow>
               ))}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Nessuna transazione</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">Nessuna transazione</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

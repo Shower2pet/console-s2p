@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { FileText, Save, Loader2 } from "lucide-react";
+import { FileText, Save, Loader2, Plus, Trash2, CreditCard } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,13 +59,12 @@ const Settings = () => {
 
   const [businessName, setBusinessName] = useState("");
   const [vatNumber, setVatNumber] = useState("");
-  const [sdiCode, setSdiCode] = useState("");
 
   useEffect(() => {
     if (fiscalData) {
       setBusinessName(fiscalData.business_name ?? "");
       setVatNumber(fiscalData.vat_number ?? "");
-      setSdiCode(fiscalData.sdi_code ?? "");
+      // SDI removed
     }
   }, [fiscalData]);
 
@@ -76,7 +76,7 @@ const Settings = () => {
           profile_id: user!.id,
           business_name: businessName.trim(),
           vat_number: vatNumber.trim(),
-          sdi_code: sdiCode.trim() || null,
+          sdi_code: null,
         }, { onConflict: "profile_id" });
       if (error) throw error;
     },
@@ -143,15 +143,9 @@ const Settings = () => {
                   <Label>Ragione Sociale</Label>
                   <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="mt-1.5" />
                 </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Partita IVA</Label>
-                    <Input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} className="mt-1.5" />
-                  </div>
-                  <div>
-                    <Label>Codice SDI</Label>
-                    <Input value={sdiCode} onChange={(e) => setSdiCode(e.target.value)} className="mt-1.5" />
-                  </div>
+                <div>
+                  <Label>Partita IVA</Label>
+                  <Input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} className="mt-1.5" />
                 </div>
                 <Button
                   onClick={() => upsertFiscal.mutate()}
@@ -166,7 +160,138 @@ const Settings = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Subscription Plans - for partners */}
+      {role === "partner" && <SubscriptionPlansSection userId={user!.id} />}
     </div>
+  );
+};
+
+
+const SubscriptionPlansSection = ({ userId }: { userId: string }) => {
+  const qc = useQueryClient();
+  const [newName, setNewName] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [newInterval, setNewInterval] = useState("month");
+  const [newMaxWashes, setNewMaxWashes] = useState("");
+
+  const { data: plans, isLoading } = useQuery({
+    queryKey: ["subscription-plans", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("subscription_plans")
+        .select("*")
+        .eq("owner_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const createPlan = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("subscription_plans").insert({
+        owner_id: userId,
+        name: newName.trim(),
+        price_eur: parseFloat(newPrice),
+        interval: newInterval,
+        max_washes_per_month: newMaxWashes ? parseInt(newMaxWashes) : null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Piano creato");
+      setNewName("");
+      setNewPrice("");
+      setNewMaxWashes("");
+      qc.invalidateQueries({ queryKey: ["subscription-plans"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deletePlan = useMutation({
+    mutationFn: async (planId: string) => {
+      const { error } = await supabase.from("subscription_plans").update({ is_active: false }).eq("id", planId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Piano disattivato");
+      qc.invalidateQueries({ queryKey: ["subscription-plans"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg font-heading flex items-center gap-2">
+          <CreditCard className="h-5 w-5 text-primary" /> Piani di Abbonamento
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : (
+          <>
+            {/* Existing plans */}
+            {(plans ?? []).filter(p => p.is_active).map((plan) => (
+              <div key={plan.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                <div>
+                  <p className="font-medium text-foreground">{plan.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    €{Number(plan.price_eur).toFixed(2)} / {plan.interval === "month" ? "mese" : plan.interval === "year" ? "anno" : plan.interval}
+                    {plan.max_washes_per_month && ` • Max ${plan.max_washes_per_month} lavaggi/mese`}
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => deletePlan.mutate(plan.id)} className="text-destructive hover:text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+
+            {(plans ?? []).filter(p => p.is_active).length === 0 && (
+              <p className="text-sm text-muted-foreground">Nessun piano attivo.</p>
+            )}
+
+            {/* Add new plan */}
+            <div className="border-t border-border pt-4 space-y-3">
+              <p className="text-sm font-medium text-foreground">Nuovo Piano</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Nome</Label>
+                  <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Es. Piano Base" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Prezzo (€)</Label>
+                  <Input type="number" step="0.50" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} placeholder="9.99" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Durata</Label>
+                  <Select value={newInterval} onValueChange={setNewInterval}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="month">Mensile</SelectItem>
+                      <SelectItem value="year">Annuale</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Max lavaggi/mese (opz.)</Label>
+                  <Input type="number" value={newMaxWashes} onChange={(e) => setNewMaxWashes(e.target.value)} placeholder="Illimitati" className="mt-1" />
+                </div>
+              </div>
+              <Button
+                onClick={() => createPlan.mutate()}
+                disabled={createPlan.isPending || !newName.trim() || !newPrice}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" /> Crea Piano
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

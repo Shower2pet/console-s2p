@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/contexts/AuthContext";
 import InviteUserDialog from "@/components/InviteUserDialog";
 import MapPicker from "@/components/MapPicker";
+import StationsMap from "@/components/StationsMap";
 import { toast } from "sonner";
 
 const StructureDetail = () => {
@@ -117,24 +118,66 @@ const StructureDetail = () => {
           {stLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(stations ?? []).map((s) => (
-                <Link key={s.id} to={`/stations/${s.id}`}>
-                  <Card className="hover:shadow-md hover:border-primary/30 transition-all cursor-pointer h-full">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-base font-heading">{s.id}</CardTitle>
-                        <StatusBadge status={s.status ?? "OFFLINE"} />
-                      </div>
+            <div className="space-y-6">
+              {/* Stations Map */}
+              {(() => {
+                const mapPins = (stations ?? []).filter(s => {
+                  const lat = s.geo_lat ?? (s as any).structures?.geo_lat ?? structure.geo_lat;
+                  const lng = s.geo_lng ?? (s as any).structures?.geo_lng ?? structure.geo_lng;
+                  return lat && lng;
+                }).map(s => ({
+                  id: s.id,
+                  lat: Number(s.geo_lat ?? (s as any).structures?.geo_lat ?? structure.geo_lat),
+                  lng: Number(s.geo_lng ?? (s as any).structures?.geo_lng ?? structure.geo_lng),
+                  status: s.status ?? "OFFLINE",
+                }));
+
+                return mapPins.length > 0 ? (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg font-heading flex items-center gap-2">
+                        <MapPin className="h-5 w-5 text-primary" /> Mappa Stazioni
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-xs text-muted-foreground capitalize">Tipo: {s.type}</p>
-                      {s.category && <p className="text-xs text-muted-foreground">Categoria: {s.category}</p>}
+                      <div className="flex gap-3 mb-3 flex-wrap">
+                        {[
+                          { label: "Libera", color: "#22c55e" },
+                          { label: "In uso", color: "#3b82f6" },
+                          { label: "Manutenzione", color: "#ef4444" },
+                          { label: "Offline", color: "#6b7280" },
+                        ].map(l => (
+                          <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: l.color }} />
+                            {l.label}
+                          </div>
+                        ))}
+                      </div>
+                      <StationsMap stations={mapPins} height="300px" />
                     </CardContent>
                   </Card>
-                </Link>
-              ))}
-              {(stations ?? []).length === 0 && <p className="text-muted-foreground col-span-full text-center py-8">Nessuna stazione collegata.</p>}
+                ) : null;
+              })()}
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {(stations ?? []).map((s) => (
+                  <Link key={s.id} to={`/stations/${s.id}`}>
+                    <Card className="hover:shadow-md hover:border-primary/30 transition-all cursor-pointer h-full">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between">
+                          <CardTitle className="text-base font-heading">{s.id}</CardTitle>
+                          <StatusBadge status={s.status ?? "OFFLINE"} />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-xs text-muted-foreground capitalize">Tipo: {s.type}</p>
+                        {s.category && <p className="text-xs text-muted-foreground">Categoria: {String(s.category)}</p>}
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+                {(stations ?? []).length === 0 && <p className="text-muted-foreground col-span-full text-center py-8">Nessuna stazione collegata.</p>}
+              </div>
             </div>
           )}
         </TabsContent>
