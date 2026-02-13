@@ -23,7 +23,6 @@ type InviteFormValues = z.infer<typeof inviteSchema>;
 interface FreeStation {
   id: string;
   type: string;
-  category: string | null;
 }
 
 interface InviteUserDialogProps {
@@ -55,7 +54,7 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
       setLoadingStations(true);
       supabase
         .from("stations")
-        .select("id, type, category, structure_id, owner_id")
+        .select("id, type, structure_id, owner_id")
         .is("structure_id", null)
         .is("owner_id", null)
         .then(({ data }) => {
@@ -204,7 +203,7 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
                             <div className="text-sm">
                               <span className="font-medium text-foreground">{s.id}</span>
                               <span className="text-muted-foreground ml-2 text-xs capitalize">
-                                {s.type}{s.category ? ` • ${s.category}` : ""}
+                                {s.type}
                               </span>
                             </div>
                           </label>

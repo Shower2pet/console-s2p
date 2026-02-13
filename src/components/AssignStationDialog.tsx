@@ -30,7 +30,7 @@ const AssignStationDialog = ({ partnerId, partnerName, prominent = false }: Assi
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stations")
-        .select("id, type, category")
+        .select("id, type")
         .is("owner_id", null)
         .is("structure_id", null)
         .order("id");
@@ -94,7 +94,7 @@ const AssignStationDialog = ({ partnerId, partnerName, prominent = false }: Assi
                 <div>
                   <p className="text-sm font-medium">{st.id}</p>
                   <p className="text-xs text-muted-foreground capitalize">
-                    {st.type}{st.category ? ` • ${st.category}` : ""}
+                    {st.type}
                   </p>
                 </div>
                 <Button

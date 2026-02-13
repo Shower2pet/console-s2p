@@ -82,7 +82,6 @@ const StationsList = () => {
                 <p className="text-xs text-muted-foreground">Struttura: {(s as any).structures?.name ?? "—"}</p>
                 <div className="flex items-center justify-between pt-2 border-t">
                   <span className="capitalize rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">{s.type}</span>
-                  {s.category && <span className="text-xs text-muted-foreground">{s.category}</span>}
                 </div>
               </CardContent>
             </Card>
