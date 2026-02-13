@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useStation, useUpdateStation, type WashingOption } from "@/hooks/useStations";
-import { useOpenMaintenanceTicket } from "@/hooks/useMaintenanceLogs";
+import { useCreateMaintenanceTicket } from "@/hooks/useMaintenanceLogs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,7 +25,7 @@ const StationDetail = () => {
   const { user, isAdmin, isPartner, isManager } = useAuth();
   const { data: station, isLoading, error: stationError } = useStation(id);
   const updateStation = useUpdateStation();
-  const openTicket = useOpenMaintenanceTicket();
+  const openTicket = useCreateMaintenanceTicket();
 
   const [editStatus, setEditStatus] = useState<string>("");
   const [editStructureId, setEditStructureId] = useState<string>("");
@@ -148,15 +148,16 @@ const StationDetail = () => {
     }
   };
 
-  const handleOpenTicket = async () => {
+  const handleOpenTicket = async (severity: "low" | "high" = "low") => {
     if (!station || !ticketReason.trim()) return;
     try {
       await openTicket.mutateAsync({
         stationId: station.id,
         reason: ticketReason.trim(),
+        severity,
         performedBy: user?.id,
       });
-      toast.success("Ticket manutenzione aperto");
+      toast.success(`Ticket manutenzione aperto (gravità: ${severity === "high" ? "Alta" : "Bassa"})`);
       setShowTicketForm(false);
       setTicketReason("");
     } catch (e: any) {
@@ -513,10 +514,14 @@ const StationDetail = () => {
               <div className="space-y-3">
                 <Label>Motivo Manutenzione</Label>
                 <Textarea value={ticketReason} onChange={(e) => setTicketReason(e.target.value)} placeholder="Descrivi il problema..." />
+                <p className="text-xs text-muted-foreground">Gravità Bassa: la stazione resta operativa. Gravità Alta: la stazione va in manutenzione.</p>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setShowTicketForm(false)} className="flex-1">Annulla</Button>
-                  <Button onClick={handleOpenTicket} disabled={openTicket.isPending || !ticketReason.trim()} className="flex-1 gap-2">
-                    <Wrench className="h-4 w-4" /> Conferma
+                  <Button variant="outline" onClick={() => handleOpenTicket("low")} disabled={openTicket.isPending || !ticketReason.trim()} className="flex-1 gap-2">
+                    Bassa
+                  </Button>
+                  <Button variant="destructive" onClick={() => handleOpenTicket("high")} disabled={openTicket.isPending || !ticketReason.trim()} className="flex-1 gap-2">
+                    <AlertTriangle className="h-4 w-4" /> Alta
                   </Button>
                 </div>
               </div>

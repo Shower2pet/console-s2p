@@ -12,28 +12,50 @@ export const useMaintenanceLogs = () => {
         .from("maintenance_logs")
         .select("*, stations(id, type, structure_id, structures(name))")
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(500);
       if (error) throw error;
-      return data;
+
+      // Fetch author profiles for performed_by
+      const authorIds = [...new Set((data ?? []).map(d => d.performed_by).filter(Boolean))] as string[];
+      let profileMap = new Map<string, { first_name: string | null; last_name: string | null; email: string | null }>();
+      if (authorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, email")
+          .in("id", authorIds);
+        (profiles ?? []).forEach(p => profileMap.set(p.id, p));
+      }
+
+      return (data ?? []).map(d => ({
+        ...d,
+        author_profile: d.performed_by ? profileMap.get(d.performed_by) ?? null : null,
+      }));
     },
   });
 };
 
-export const useOpenMaintenanceTicket = () => {
+export const useCreateMaintenanceTicket = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ stationId, reason, performedBy }: { stationId: string; reason: string; performedBy?: string }) => {
-      // 1. Create maintenance log
-      const { error: logError } = await supabase.from("maintenance_logs").insert({
+    mutationFn: async ({
+      stationId,
+      reason,
+      severity,
+      performedBy,
+    }: {
+      stationId: string;
+      reason: string;
+      severity: "low" | "high";
+      performedBy?: string;
+    }) => {
+      const { error } = await supabase.from("maintenance_logs").insert({
         station_id: stationId,
         reason,
+        severity,
+        status: "open",
         performed_by: performedBy ?? null,
       });
-      if (logError) throw logError;
-
-      // 2. Update station status (trigger also does this, but explicit for safety)
-      const { error: stError } = await supabase.from("stations").update({ status: "MAINTENANCE" as any }).eq("id", stationId);
-      if (stError) throw stError;
+      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["maintenance_logs"] });
@@ -42,19 +64,25 @@ export const useOpenMaintenanceTicket = () => {
   });
 };
 
-export const useCloseMaintenanceTicket = () => {
+export const useUpdateMaintenanceStatus = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ logId, notes, stationId }: { logId: string; notes: string; stationId: string }) => {
-      const { error: logError } = await supabase
+    mutationFn: async ({
+      logId,
+      status,
+      notes,
+    }: {
+      logId: string;
+      status: string;
+      notes?: string;
+    }) => {
+      const updateData: Record<string, any> = { status };
+      if (notes !== undefined) updateData.notes = notes;
+      const { error } = await supabase
         .from("maintenance_logs")
-        .update({ ended_at: new Date().toISOString(), notes })
+        .update(updateData)
         .eq("id", logId);
-      if (logError) throw logError;
-
-      // Trigger should handle this, but explicit fallback
-      const { error: stError } = await supabase.from("stations").update({ status: "AVAILABLE" as any }).eq("id", stationId);
-      if (stError) throw stError;
+      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["maintenance_logs"] });

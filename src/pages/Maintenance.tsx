@@ -1,37 +1,159 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Wrench, AlertTriangle, AlertCircle, Info, Loader2, CheckCircle } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Wrench, Plus, Loader2, ArrowUpDown, Search, AlertTriangle, ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { StatusBadge } from "@/components/StatusBadge";
-import { useMaintenanceLogs, useCloseMaintenanceTicket } from "@/hooks/useMaintenanceLogs";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useMaintenanceLogs, useCreateMaintenanceTicket, useUpdateMaintenanceStatus } from "@/hooks/useMaintenanceLogs";
 import { useStations } from "@/hooks/useStations";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
+
+type TicketStatus = "open" | "in_progress" | "risolto";
+type SortField = "created_at" | "severity" | "status";
+type SortDir = "asc" | "desc";
+
+const statusLabels: Record<string, string> = {
+  open: "Da risolvere",
+  in_progress: "In risoluzione",
+  risolto: "Risolto",
+};
+
+const statusColors: Record<string, string> = {
+  open: "bg-destructive/15 text-destructive border-destructive/30",
+  in_progress: "bg-warning/15 text-warning-foreground border-warning/30",
+  risolto: "bg-success/15 text-success-foreground border-success/30",
+};
+
+const severityLabels: Record<string, string> = { low: "Basso", high: "Alto" };
+const severityColors: Record<string, string> = {
+  low: "bg-muted text-muted-foreground border-border",
+  high: "bg-destructive/15 text-destructive border-destructive/30",
+};
 
 const Maintenance = () => {
   const { data: logs, isLoading } = useMaintenanceLogs();
   const { data: stations } = useStations();
-  const closeTicket = useCloseMaintenanceTicket();
-  const [closingId, setClosingId] = useState<string | null>(null);
-  const [closeNotes, setCloseNotes] = useState("");
+  const { user, isAdmin } = useAuth();
+  const createTicket = useCreateMaintenanceTicket();
+  const updateStatus = useUpdateMaintenanceStatus();
 
-  const offlineStations = (stations ?? []).filter(s => s.status === "OFFLINE" || s.status === "MAINTENANCE");
-  const openTickets = (logs ?? []).filter(l => !l.ended_at);
-  const closedTickets = (logs ?? []).filter(l => l.ended_at);
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterSeverity, setFilterSeverity] = useState<string>("all");
+  const [sortField, setSortField] = useState<SortField>("created_at");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  const handleClose = async (logId: string, stationId: string) => {
+  // Create ticket dialog
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newStationId, setNewStationId] = useState("");
+  const [newReason, setNewReason] = useState("");
+  const [newSeverity, setNewSeverity] = useState<"low" | "high">("low");
+
+  // Status change dialog
+  const [statusDialogLog, setStatusDialogLog] = useState<any | null>(null);
+  const [newTicketStatus, setNewTicketStatus] = useState<string>("open");
+  const [statusNotes, setStatusNotes] = useState("");
+
+  const stationOptions = useMemo(() => {
+    return (stations ?? []).map(s => ({
+      id: s.id,
+      label: `${(s as any).structures?.name ? (s as any).structures.name + " - " : ""}${s.id}`,
+    }));
+  }, [stations]);
+
+  const filteredLogs = useMemo(() => {
+    let items = [...(logs ?? [])];
+
+    // Text search
+    if (search) {
+      const q = search.toLowerCase();
+      items = items.filter(l => {
+        const structName = (l as any).stations?.structures?.name ?? "";
+        return (
+          l.reason?.toLowerCase().includes(q) ||
+          l.station_id?.toLowerCase().includes(q) ||
+          structName.toLowerCase().includes(q) ||
+          (l as any).author_profile?.first_name?.toLowerCase().includes(q) ||
+          (l as any).author_profile?.last_name?.toLowerCase().includes(q)
+        );
+      });
+    }
+
+    // Filters
+    if (filterStatus !== "all") items = items.filter(l => l.status === filterStatus);
+    if (filterSeverity !== "all") items = items.filter(l => l.severity === filterSeverity);
+
+    // Sort
+    items.sort((a, b) => {
+      let va: any, vb: any;
+      if (sortField === "created_at") {
+        va = a.created_at ?? ""; vb = b.created_at ?? "";
+      } else if (sortField === "severity") {
+        va = a.severity === "high" ? 1 : 0; vb = b.severity === "high" ? 1 : 0;
+      } else {
+        const order = { open: 0, in_progress: 1, risolto: 2 };
+        va = order[a.status as keyof typeof order] ?? 3;
+        vb = order[b.status as keyof typeof order] ?? 3;
+      }
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return items;
+  }, [logs, search, filterStatus, filterSeverity, sortField, sortDir]);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortField(field); setSortDir("desc"); }
+  };
+
+  const handleCreateTicket = async () => {
+    if (!newStationId || !newReason.trim()) {
+      toast.error("Seleziona una stazione e inserisci la descrizione");
+      return;
+    }
     try {
-      await closeTicket.mutateAsync({ logId, notes: closeNotes, stationId });
-      toast.success("Ticket chiuso, stazione riportata in AVAILABLE");
-      setClosingId(null);
-      setCloseNotes("");
+      await createTicket.mutateAsync({
+        stationId: newStationId,
+        reason: newReason.trim(),
+        severity: newSeverity,
+        performedBy: user?.id,
+      });
+      toast.success("Ticket creato");
+      setCreateOpen(false);
+      setNewStationId("");
+      setNewReason("");
+      setNewSeverity("low");
     } catch (e: any) {
       toast.error(e.message);
     }
   };
+
+  const handleUpdateStatus = async () => {
+    if (!statusDialogLog) return;
+    try {
+      await updateStatus.mutateAsync({
+        logId: statusDialogLog.id,
+        status: newTicketStatus,
+        notes: statusNotes || undefined,
+      });
+      toast.success("Stato aggiornato");
+      setStatusDialogLog(null);
+      setStatusNotes("");
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  const openTicketsCount = (logs ?? []).filter(l => l.status !== "risolto").length;
 
   if (isLoading) {
     return (
@@ -43,98 +165,248 @@ const Maintenance = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-heading font-bold text-foreground">
-          <Wrench className="inline mr-2 h-6 w-6 text-primary" />
-          Manutenzione
-        </h1>
-        <p className="text-muted-foreground">Ticket aperti: {openTickets.length}</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-heading font-bold text-foreground flex items-center gap-2">
+            <Wrench className="h-6 w-6 text-primary" /> Manutenzione
+          </h1>
+          <p className="text-muted-foreground">
+            {openTicketsCount} ticket aperti
+          </p>
+        </div>
+        <Button onClick={() => setCreateOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" /> Nuovo Ticket
+        </Button>
       </div>
 
-      {/* Offline/Maintenance stations alert */}
-      {offlineStations.length > 0 && (
-        <Card className="border-destructive/30 bg-destructive/5">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-heading flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              Stazioni Non Operative ({offlineStations.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-3">
-              {offlineStations.map(s => (
-                <Link key={s.id} to="/stations" className="flex items-center gap-2 rounded-lg border p-3 bg-card hover:shadow-md hover:border-primary/30 transition-all">
-                  <span className="text-sm font-medium text-foreground">{s.id}</span>
-                  <StatusBadge status={s.status ?? "OFFLINE"} />
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Open tickets */}
-      {openTickets.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-heading flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-warning" />
-              Ticket Aperti
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {openTickets.map(log => (
-              <div key={log.id} className="flex items-start gap-4 rounded-lg p-3 border bg-warning/5">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{log.reason ?? "Nessun motivo"}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Stazione: {log.station_id} • Aperto: {log.started_at ? format(new Date(log.started_at), "dd/MM/yyyy HH:mm") : "—"}
-                  </p>
-                </div>
-                {closingId === log.id ? (
-                  <div className="flex items-center gap-2">
-                    <Input placeholder="Note chiusura..." value={closeNotes} onChange={e => setCloseNotes(e.target.value)} className="w-48" />
-                    <Button size="sm" onClick={() => handleClose(log.id, log.station_id!)} disabled={closeTicket.isPending}>
-                      <CheckCircle className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setClosingId(null)}>✕</Button>
-                  </div>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={() => setClosingId(log.id)}>
-                    Chiudi Ticket
-                  </Button>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Closed tickets */}
+      {/* Filters */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-heading">Storico Ticket</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {closedTickets.map(log => (
-            <div key={log.id} className="flex items-start gap-4 rounded-lg p-3 hover:bg-accent/50 transition-colors border">
-              <div className={cn("rounded-lg p-2 flex-shrink-0 bg-success/10")}>
-                <CheckCircle className="h-4 w-4 text-success-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">{log.reason ?? "—"}</p>
-                {log.notes && <p className="text-xs text-muted-foreground mt-0.5">Note: {log.notes}</p>}
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Stazione: {log.station_id} •
-                  {log.started_at ? ` Da ${format(new Date(log.started_at), "dd/MM HH:mm")}` : ""} 
-                  {log.ended_at ? ` a ${format(new Date(log.ended_at), "dd/MM HH:mm")}` : ""}
-                </p>
+        <CardContent className="pt-4 pb-3">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cerca per stazione, struttura, motivo..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-9"
+                />
               </div>
             </div>
-          ))}
-          {closedTickets.length === 0 && <p className="text-sm text-muted-foreground">Nessun ticket chiuso.</p>}
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Stato" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti gli stati</SelectItem>
+                <SelectItem value="open">Da risolvere</SelectItem>
+                <SelectItem value="in_progress">In risoluzione</SelectItem>
+                <SelectItem value="risolto">Risolto</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterSeverity} onValueChange={setFilterSeverity}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Gravità" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte</SelectItem>
+                <SelectItem value="low">Basso</SelectItem>
+                <SelectItem value="high">Alto</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Data Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Titolo</TableHead>
+                <TableHead>Descrizione</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("severity")}>
+                  <span className="flex items-center gap-1">
+                    Gravità <ArrowUpDown className="h-3 w-3" />
+                  </span>
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("status")}>
+                  <span className="flex items-center gap-1">
+                    Stato <ArrowUpDown className="h-3 w-3" />
+                  </span>
+                </TableHead>
+                <TableHead>Autore</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("created_at")}>
+                  <span className="flex items-center gap-1">
+                    Data <ArrowUpDown className="h-3 w-3" />
+                  </span>
+                </TableHead>
+                <TableHead className="text-right">Azioni</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredLogs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                    Nessun ticket trovato.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredLogs.map(log => {
+                  const structName = (log as any).stations?.structures?.name ?? "—";
+                  const title = `${structName} - ${log.station_id ?? "?"}`;
+                  const authorProfile = (log as any).author_profile;
+                  const authorName = authorProfile
+                    ? [authorProfile.first_name, authorProfile.last_name].filter(Boolean).join(" ") || authorProfile.email || "—"
+                    : "Sistema";
+
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-medium text-foreground max-w-[200px] truncate">
+                        {title}
+                      </TableCell>
+                      <TableCell className="max-w-[250px] truncate text-muted-foreground">
+                        {log.reason ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={severityColors[log.severity ?? "low"]}>
+                          {log.severity === "high" && <AlertTriangle className="h-3 w-3 mr-1" />}
+                          {severityLabels[log.severity ?? "low"]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={statusColors[log.status ?? "open"]}>
+                          {statusLabels[log.status ?? "open"]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{authorName}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {log.created_at ? format(new Date(log.created_at), "dd/MM/yy HH:mm") : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {log.status !== "risolto" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setStatusDialogLog(log);
+                              setNewTicketStatus(log.status === "open" ? "in_progress" : "risolto");
+                              setStatusNotes(log.notes ?? "");
+                            }}
+                          >
+                            Aggiorna
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {log.ended_at ? format(new Date(log.ended_at), "dd/MM HH:mm") : "—"}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Create Ticket Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nuovo Ticket Manutenzione</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Stazione *</Label>
+              <Select value={newStationId} onValueChange={setNewStationId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona stazione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {stationOptions.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Descrizione *</Label>
+              <Textarea
+                value={newReason}
+                onChange={e => setNewReason(e.target.value)}
+                placeholder="Descrivi il problema..."
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label>Gravità</Label>
+              <Select value={newSeverity} onValueChange={v => setNewSeverity(v as "low" | "high")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Basso — La stazione può continuare a funzionare</SelectItem>
+                  <SelectItem value="high">Alto — La stazione verrà messa in MANUTENZIONE</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Annulla</Button>
+            <Button onClick={handleCreateTicket} disabled={createTicket.isPending}>
+              Crea Ticket
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Status Dialog */}
+      <Dialog open={!!statusDialogLog} onOpenChange={open => { if (!open) setStatusDialogLog(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Aggiorna Stato Ticket</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nuovo stato</Label>
+              <Select value={newTicketStatus} onValueChange={setNewTicketStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Da risolvere</SelectItem>
+                  <SelectItem value="in_progress">In risoluzione</SelectItem>
+                  <SelectItem value="risolto">Risolto</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Note</Label>
+              <Textarea
+                value={statusNotes}
+                onChange={e => setStatusNotes(e.target.value)}
+                placeholder="Note di aggiornamento..."
+                rows={2}
+              />
+            </div>
+            {statusDialogLog?.severity === "high" && newTicketStatus === "risolto" && (
+              <p className="text-xs text-muted-foreground bg-success/10 p-2 rounded">
+                ✅ Risolvendo questo ticket, la stazione tornerà DISPONIBILE automaticamente.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusDialogLog(null)}>Annulla</Button>
+            <Button onClick={handleUpdateStatus} disabled={updateStatus.isPending}>
+              Salva
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

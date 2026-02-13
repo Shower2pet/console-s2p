@@ -2,3 +2,6 @@ project_id = "rbdzinajiyswzdeoenil"
 
 [functions.invite-user]
 verify_jwt = false
+
+[functions.check-heartbeat]
+verify_jwt = false
