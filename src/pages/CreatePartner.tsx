@@ -290,15 +290,14 @@ const CreatePartner = () => {
                   <div className="max-h-[400px] overflow-y-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 sticky top-0">
-                        <tr className="border-b text-left text-xs">
-                          <th className="p-3 w-10"></th>
-                          <th className="p-3"><SortButton field="id" label="ID" /></th>
-                          <th className="p-3"><SortButton field="type" label="Tipo" /></th>
-                          <th className="p-3">Seleziona</th>
-                        </tr>
+                         <tr className="border-b text-left text-xs">
+                           <th className="p-3 w-10"></th>
+                           <th className="p-3"><SortButton field="id" label="ID" /></th>
+                           <th className="p-3"><SortButton field="type" label="Tipo" /></th>
+                         </tr>
                       </thead>
                       <tbody className="divide-y">
-                        {filteredStations.map((s) => {
+                         {filteredStations.map((s) => {
                           const isSelected = selectedStationIds.includes(s.id);
                           return (
                             <tr
@@ -315,18 +314,12 @@ const CreatePartner = () => {
                               </td>
                               <td className="p-3 font-medium text-foreground">{String(s.id)}</td>
                               <td className="p-3 text-muted-foreground capitalize">{String(s.type ?? "")}</td>
-                              <td className="p-3">
-                                <Checkbox
-                                  checked={selectedStationIds.includes(s.id)}
-                                  onCheckedChange={() => toggleStation(s.id)}
-                                />
-                              </td>
                             </tr>
                           );
                         })}
-                        {filteredStations.length === 0 && (
+                         {filteredStations.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="p-6 text-center text-muted-foreground text-sm">
+                            <td colSpan={3} className="p-6 text-center text-muted-foreground text-sm">
                               Nessuna stazione trovata per "{stationSearch}"
                             </td>
                           </tr>
