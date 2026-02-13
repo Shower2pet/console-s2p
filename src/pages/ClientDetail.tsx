@@ -187,7 +187,7 @@ const ClientDetail = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-xs text-muted-foreground">Struttura: {(s as any).structures?.name ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground capitalize">Tipo: {s.type} {s.category ? `• ${s.category}` : ""}</p>
+                  <p className="text-xs text-muted-foreground capitalize">Tipo: {s.type}</p>
                 </CardContent>
               </Card>
             </Link>

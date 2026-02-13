@@ -27,10 +27,9 @@ type InviteFormValues = z.infer<typeof inviteSchema>;
 interface FreeStation {
   id: string;
   type: string;
-  category: string | null;
 }
 
-type SortField = "id" | "type" | "category";
+type SortField = "id" | "type";
 type SortDir = "asc" | "desc";
 
 const CreatePartner = () => {
@@ -55,7 +54,7 @@ const CreatePartner = () => {
   useEffect(() => {
     supabase
       .from("stations")
-      .select("id, type, category")
+      .select("id, type")
       .is("structure_id", null)
       .is("owner_id", null)
       .then(({ data }) => {
@@ -93,7 +92,7 @@ const CreatePartner = () => {
       (s) =>
         String(s.id).toLowerCase().includes(q) ||
         String(s.type).toLowerCase().includes(q) ||
-        String(s.category ?? "").toLowerCase().includes(q)
+        String(s.type).toLowerCase().includes(q)
     );
     list.sort((a, b) => {
       const aVal = (a[sortField] ?? "").toString().toLowerCase();
@@ -295,7 +294,7 @@ const CreatePartner = () => {
                           <th className="p-3 w-10"></th>
                           <th className="p-3"><SortButton field="id" label="ID" /></th>
                           <th className="p-3"><SortButton field="type" label="Tipo" /></th>
-                          <th className="p-3"><SortButton field="category" label="Categoria" /></th>
+                          <th className="p-3">Seleziona</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -317,13 +316,10 @@ const CreatePartner = () => {
                               <td className="p-3 font-medium text-foreground">{String(s.id)}</td>
                               <td className="p-3 text-muted-foreground capitalize">{String(s.type ?? "")}</td>
                               <td className="p-3">
-                                {s.category && typeof s.category === "string" ? (
-                                  <Badge variant="secondary" className="capitalize text-xs">
-                                    {s.category}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-muted-foreground text-xs">—</span>
-                                )}
+                                <Checkbox
+                                  checked={selectedStationIds.includes(s.id)}
+                                  onCheckedChange={() => toggleStation(s.id)}
+                                />
                               </td>
                             </tr>
                           );

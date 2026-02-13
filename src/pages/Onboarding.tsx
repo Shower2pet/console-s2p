@@ -13,7 +13,6 @@ import MapPicker from "@/components/MapPicker";
 interface PendingStation {
   id: string;
   type: string;
-  category: string | null;
 }
 
 interface NewStructure {
@@ -42,7 +41,7 @@ const Onboarding = () => {
       setLoadingStations(true);
       supabase
         .from("stations")
-        .select("id, type, category")
+        .select("id, type")
         .eq("owner_id", user.id)
         .is("structure_id", null)
         .then(({ data }) => {
@@ -240,7 +239,7 @@ const Onboarding = () => {
                                 className="rounded"
                               />
                               <span className="font-medium">{st.id}</span>
-                              <span className="text-muted-foreground capitalize">{st.type}{st.category ? ` • ${st.category}` : ""}</span>
+                              <span className="text-muted-foreground capitalize">{st.type}</span>
                             </label>
                           );
                         })}

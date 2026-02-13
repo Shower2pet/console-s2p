@@ -235,7 +235,6 @@ export type Database = {
       stations: {
         Row: {
           access_token: string | null
-          category: string | null
           created_at: string | null
           description: string | null
           geo_lat: number | null
@@ -253,7 +252,6 @@ export type Database = {
         }
         Insert: {
           access_token?: string | null
-          category?: string | null
           created_at?: string | null
           description?: string | null
           geo_lat?: number | null
@@ -271,7 +269,6 @@ export type Database = {
         }
         Update: {
           access_token?: string | null
-          category?: string | null
           created_at?: string | null
           description?: string | null
           geo_lat?: number | null

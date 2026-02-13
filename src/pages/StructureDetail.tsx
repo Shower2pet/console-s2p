@@ -226,7 +226,7 @@ const StructureDetail = () => {
                       </CardHeader>
                       <CardContent>
                         <p className="text-xs text-muted-foreground capitalize">Tipo: {s.type}</p>
-                        {s.category && <p className="text-xs text-muted-foreground">Categoria: {String(s.category)}</p>}
+                        <p className="text-xs text-muted-foreground capitalize">Tipo: {s.type}</p>
                       </CardContent>
                     </Card>
                   </Link>

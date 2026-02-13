@@ -75,7 +75,6 @@ const Inventory = () => {
       const { error } = await supabase.from("stations").insert({
         id: serialNumber.trim(),
         type: product.name,
-        category: product.type,
         product_id: productId,
         description: stationDescription.trim() || null,
         status: "OFFLINE",
@@ -150,7 +149,7 @@ const Inventory = () => {
                     <TableCell className="font-mono font-medium">{s.id}</TableCell>
                     <TableCell>{(s as any).products?.name ?? s.type}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className="capitalize">{(s as any).products?.type ?? s.category ?? "—"}</Badge>
+                      <Badge variant="secondary" className="capitalize">{(s as any).products?.type ?? "—"}</Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground max-w-[200px] truncate">{(s as any).description ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{s.created_at ? format(new Date(s.created_at), "dd MMM yyyy", { locale: it }) : "—"}</TableCell>

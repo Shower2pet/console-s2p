@@ -229,7 +229,7 @@ const StationDetail = () => {
             <Monitor className="h-6 w-6 text-primary" /> {station.id}
           </h1>
           <p className="text-muted-foreground capitalize">
-            {station.type} {station.category ? `• ${station.category}` : ""}
+            {station.type}
           </p>
         </div>
         <StatusBadge status={station.status ?? "OFFLINE"} />
@@ -323,12 +323,6 @@ const StationDetail = () => {
             <span className="text-muted-foreground">Tipo:</span>{" "}
             <span className="capitalize font-medium text-foreground">{station.type}</span>
           </div>
-          {station.category && (
-            <div>
-              <span className="text-muted-foreground">Categoria:</span>{" "}
-              <span className="font-medium text-foreground">{station.category}</span>
-            </div>
-          )}
           {station.owner_id && (
             <div>
               <span className="text-muted-foreground">Proprietario ID:</span>{" "}
