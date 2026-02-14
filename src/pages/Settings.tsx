@@ -42,47 +42,34 @@ const Settings = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Fiscal data (only for partners)
-  const { data: fiscalData, isLoading: fiscalLoading } = useQuery({
-    queryKey: ["fiscal-data", user?.id],
-    enabled: role === "partner" && !!user,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("partners_fiscal_data")
-        .select("*")
-        .eq("profile_id", user!.id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const [businessName, setBusinessName] = useState("");
-  const [vatNumber, setVatNumber] = useState("");
+  // Fiscal fields from profiles (for partners & admin viewing)
+  const [legalName, setLegalName] = useState("");
+  const [profileVat, setProfileVat] = useState("");
+  const [fiscalCode, setFiscalCode] = useState("");
 
   useEffect(() => {
-    if (fiscalData) {
-      setBusinessName(fiscalData.business_name ?? "");
-      setVatNumber(fiscalData.vat_number ?? "");
-      // SDI removed
+    if (profile) {
+      setLegalName(profile.legal_name ?? "");
+      setProfileVat(profile.vat_number ?? "");
+      setFiscalCode(profile.fiscal_code ?? "");
     }
-  }, [fiscalData]);
+  }, [profile]);
 
-  const upsertFiscal = useMutation({
+  const updateFiscal = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
-        .from("partners_fiscal_data")
-        .upsert({
-          profile_id: user!.id,
-          business_name: businessName.trim(),
-          vat_number: vatNumber.trim(),
-          sdi_code: null,
-        }, { onConflict: "profile_id" });
+        .from("profiles")
+        .update({
+          legal_name: legalName.trim() || null,
+          vat_number: profileVat.trim() || null,
+          fiscal_code: fiscalCode.trim() || null,
+        })
+        .eq("id", user!.id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Dati fiscali salvati");
-      qc.invalidateQueries({ queryKey: ["fiscal-data"] });
+      qc.invalidateQueries({ queryKey: ["profile"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -129,34 +116,40 @@ const Settings = () => {
       </Card>
 
       {/* Fiscal data - only for partners */}
-      {role === "partner" && (
+      {(role === "partner" || role === "admin") && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-heading">Dati Fiscali</CardTitle>
+            <CardTitle className="text-lg font-heading">Dati Fiscali (Corrispettivi Telematici)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {fiscalLoading ? (
-              <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-            ) : (
-              <>
-                <div>
-                  <Label>Ragione Sociale</Label>
-                  <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="mt-1.5" />
-                </div>
-                <div>
-                  <Label>Partita IVA</Label>
-                  <Input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} className="mt-1.5" />
-                </div>
-                <Button
-                  onClick={() => upsertFiscal.mutate()}
-                  disabled={upsertFiscal.isPending || !businessName.trim() || !vatNumber.trim()}
-                  className="gap-2"
-                >
-                  {upsertFiscal.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                  <Save className="h-4 w-4" /> Salva Dati Fiscali
-                </Button>
-              </>
+            <div>
+              <Label>Ragione Sociale *</Label>
+              <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} className="mt-1.5" placeholder="Obbligatorio" />
+              {!legalName.trim() && <p className="text-xs text-destructive mt-1">Campo obbligatorio per attivare le stazioni</p>}
+            </div>
+            <div>
+              <Label>Partita IVA *</Label>
+              <Input value={profileVat} onChange={(e) => setProfileVat(e.target.value)} className="mt-1.5" placeholder="Obbligatorio" />
+              {!profileVat.trim() && <p className="text-xs text-destructive mt-1">Campo obbligatorio per attivare le stazioni</p>}
+            </div>
+            <div>
+              <Label>Codice Fiscale</Label>
+              <Input value={fiscalCode} onChange={(e) => setFiscalCode(e.target.value)} className="mt-1.5" />
+            </div>
+            {role === "admin" && (
+              <div>
+                <Label>ACube Company ID (solo admin)</Label>
+                <Input value={profile?.acube_company_id ?? ""} disabled className="mt-1.5 opacity-60" />
+              </div>
             )}
+            <Button
+              onClick={() => updateFiscal.mutate()}
+              disabled={updateFiscal.isPending || !legalName.trim() || !profileVat.trim()}
+              className="gap-2"
+            >
+              {updateFiscal.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Save className="h-4 w-4" /> Salva Dati Fiscali
+            </Button>
           </CardContent>
         </Card>
       )}
