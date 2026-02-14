@@ -128,29 +128,13 @@ const StationDetail = () => {
       const body: Record<string, any> = { station_id: station.id, command };
       if (command === "PULSE" && duration_minutes != null) body.duration_minutes = duration_minutes;
       const { data, error } = await supabase.functions.invoke("station-control", { body });
-      if (error) throw new Error(error.message ?? "Errore nella chiamata hardware");
+      if (error) throw new Error(error.message ?? "Errore di comunicazione con la stazione");
       if (data?.error) throw new Error(data.error);
-      toast.success("Comando inviato con successo");
+      toast.success("Comando hardware inviato");
     } catch (e: any) {
-      toast.error(e.message ?? "Errore sconosciuto");
+      toast.error(e.message ?? "Errore di comunicazione con la stazione");
     } finally {
       setHwBusy(false);
-    }
-  };
-
-  const handleCommand = async (action: "AVAILABLE" | "OFFLINE" | "MAINTENANCE") => {
-    if (!station) return;
-    try {
-      await updateStation.mutateAsync({ id: station.id, status: action } as any);
-      setEditStatus(action);
-      const labels: Record<string, string> = {
-        AVAILABLE: "Stazione accesa",
-        OFFLINE: "Stazione spenta",
-        MAINTENANCE: "Stazione in reset/manutenzione",
-      };
-      toast.success(labels[action]);
-    } catch (e: any) {
-      toast.error(e.message);
     }
   };
 
@@ -158,26 +142,20 @@ const StationDetail = () => {
     await invokeHardware("ON");
   };
 
-  const handleHwOff = async () => {
-    await invokeHardware("OFF");
-  };
-
   const handleHwReset = async () => {
     if (!station) return;
     setHwBusy(true);
     try {
-      // 1) Send OFF to hardware
       const { data, error } = await supabase.functions.invoke("station-control", {
         body: { station_id: station.id, command: "OFF" },
       });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(error.message ?? "Errore di comunicazione con la stazione");
       if (data?.error) throw new Error(data.error);
-      // 2) Set DB status to AVAILABLE
       await updateStation.mutateAsync({ id: station.id, status: "AVAILABLE" } as any);
       setEditStatus("AVAILABLE");
-      toast.success("Reset completato: hardware spento e stazione disponibile");
+      toast.success("Comando hardware inviato");
     } catch (e: any) {
-      toast.error(e.message ?? "Errore durante il reset");
+      toast.error(e.message ?? "Errore di comunicazione con la stazione");
     } finally {
       setHwBusy(false);
     }
@@ -305,66 +283,56 @@ const StationDetail = () => {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-heading flex items-center gap-2">
-              <Power className="h-5 w-5 text-primary" /> Comandi Stazione
+              <Power className="h-5 w-5 text-primary" /> Controlli Hardware
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap gap-3">
-              {/* Accendi (ON) — with confirmation dialog */}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant={editStatus === "AVAILABLE" ? "default" : "outline"}
-                    disabled={hwBusy || updateStation.isPending || !canActivate}
-                    className="gap-2"
-                  >
-                    {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />} Accendi
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Conferma Accensione</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Sei sicuro di voler forzare l'erogazione continua? L'acqua non si fermerà da sola.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annulla</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleHwOn}>Conferma</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
-              {/* Spegni (OFF) */}
-              <Button
-                variant={editStatus === "OFFLINE" ? "destructive" : "outline"}
-                onClick={handleHwOff}
-                disabled={hwBusy || updateStation.isPending}
-                className="gap-2"
-              >
-                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />} Spegni
-              </Button>
-
-              {/* Reset — admin & partner */}
-              {(isAdmin || isPartner) && (
-                <Button
-                  variant="outline"
-                  onClick={handleHwReset}
-                  disabled={hwBusy || updateStation.isPending}
-                  className="gap-2 border-warning/50 text-warning-foreground hover:bg-warning/10"
-                >
-                  {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Reset
-                </Button>
-              )}
-
-              {/* Test 1 Min (PULSE) */}
+              {/* Avvia Test 1 Min (PULSE) */}
               <Button
                 variant="outline"
                 onClick={handleHwTest}
                 disabled={hwBusy || updateStation.isPending}
                 className="gap-2"
               >
-                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Timer className="h-4 w-4" />} Test (1 Min)
+                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Timer className="h-4 w-4" />} Avvia Test (1 Minuto)
+              </Button>
+
+              {/* Accendi Forzato (ON) — with warning confirmation dialog */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={hwBusy || updateStation.isPending || !canActivate}
+                    className="gap-2 border-warning/50 text-warning-foreground hover:bg-warning/10"
+                  >
+                    {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />} Accendi (Forzato)
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-destructive" /> Attenzione
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      L'erogazione forzata non si fermerà in automatico. Vuoi procedere?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleHwOn} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Conferma</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              {/* Spegni / Reset (OFF + status AVAILABLE) */}
+              <Button
+                variant="destructive"
+                onClick={handleHwReset}
+                disabled={hwBusy || updateStation.isPending}
+                className="gap-2"
+              >
+                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />} Spegni / Reset
               </Button>
             </div>
             {missingReqs && (
