@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, Timer
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useStation, useUpdateStation, type WashingOption } from "@/hooks/useStations";
 import { useCreateMaintenanceTicket } from "@/hooks/useMaintenanceLogs";
@@ -37,6 +41,7 @@ const StationDetail = () => {
   const [initialized, setInitialized] = useState(false);
   const [stationLat, setStationLat] = useState<number | null>(null);
   const [stationLng, setStationLng] = useState<number | null>(null);
+  const [hwBusy, setHwBusy] = useState(false);
 
   // Fetch available structures for reassignment
   const { data: structures } = useQuery({
@@ -116,6 +121,23 @@ const StationDetail = () => {
     }
   };
 
+  const invokeHardware = async (command: "ON" | "OFF" | "PULSE", duration_minutes?: number) => {
+    if (!station) return;
+    setHwBusy(true);
+    try {
+      const body: Record<string, any> = { station_id: station.id, command };
+      if (command === "PULSE" && duration_minutes != null) body.duration_minutes = duration_minutes;
+      const { data, error } = await supabase.functions.invoke("station-control", { body });
+      if (error) throw new Error(error.message ?? "Errore nella chiamata hardware");
+      if (data?.error) throw new Error(data.error);
+      toast.success("Comando inviato con successo");
+    } catch (e: any) {
+      toast.error(e.message ?? "Errore sconosciuto");
+    } finally {
+      setHwBusy(false);
+    }
+  };
+
   const handleCommand = async (action: "AVAILABLE" | "OFFLINE" | "MAINTENANCE") => {
     if (!station) return;
     try {
@@ -130,6 +152,39 @@ const StationDetail = () => {
     } catch (e: any) {
       toast.error(e.message);
     }
+  };
+
+  const handleHwOn = async () => {
+    await invokeHardware("ON");
+  };
+
+  const handleHwOff = async () => {
+    await invokeHardware("OFF");
+  };
+
+  const handleHwReset = async () => {
+    if (!station) return;
+    setHwBusy(true);
+    try {
+      // 1) Send OFF to hardware
+      const { data, error } = await supabase.functions.invoke("station-control", {
+        body: { station_id: station.id, command: "OFF" },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      // 2) Set DB status to AVAILABLE
+      await updateStation.mutateAsync({ id: station.id, status: "AVAILABLE" } as any);
+      setEditStatus("AVAILABLE");
+      toast.success("Reset completato: hardware spento e stazione disponibile");
+    } catch (e: any) {
+      toast.error(e.message ?? "Errore durante il reset");
+    } finally {
+      setHwBusy(false);
+    }
+  };
+
+  const handleHwTest = async () => {
+    await invokeHardware("PULSE", 1);
   };
 
   const handleRemoveFromClient = async () => {
@@ -255,32 +310,62 @@ const StationDetail = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap gap-3">
-              <Button
-                variant={editStatus === "AVAILABLE" ? "default" : "outline"}
-                onClick={() => handleCommand("AVAILABLE")}
-                disabled={updateStation.isPending || !canActivate}
-                className="gap-2"
-              >
-                <Power className="h-4 w-4" /> Accendi
-              </Button>
+              {/* Accendi (ON) — with confirmation dialog */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant={editStatus === "AVAILABLE" ? "default" : "outline"}
+                    disabled={hwBusy || updateStation.isPending || !canActivate}
+                    className="gap-2"
+                  >
+                    {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />} Accendi
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Conferma Accensione</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Sei sicuro di voler forzare l'erogazione continua? L'acqua non si fermerà da sola.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleHwOn}>Conferma</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              {/* Spegni (OFF) */}
               <Button
                 variant={editStatus === "OFFLINE" ? "destructive" : "outline"}
-                onClick={() => handleCommand("OFFLINE")}
-                disabled={updateStation.isPending}
+                onClick={handleHwOff}
+                disabled={hwBusy || updateStation.isPending}
                 className="gap-2"
               >
-                <PowerOff className="h-4 w-4" /> Spegni
+                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />} Spegni
               </Button>
+
+              {/* Reset — admin & partner */}
               {(isAdmin || isPartner) && (
                 <Button
                   variant="outline"
-                  onClick={() => handleCommand("MAINTENANCE")}
-                  disabled={updateStation.isPending}
+                  onClick={handleHwReset}
+                  disabled={hwBusy || updateStation.isPending}
                   className="gap-2 border-warning/50 text-warning-foreground hover:bg-warning/10"
                 >
-                  <RotateCcw className="h-4 w-4" /> Reset
+                  {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Reset
                 </Button>
               )}
+
+              {/* Test 1 Min (PULSE) */}
+              <Button
+                variant="outline"
+                onClick={handleHwTest}
+                disabled={hwBusy || updateStation.isPending}
+                className="gap-2"
+              >
+                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Timer className="h-4 w-4" />} Test (1 Min)
+              </Button>
             </div>
             {missingReqs && (
               <div className="text-xs text-muted-foreground space-y-0.5 border-t pt-2">
