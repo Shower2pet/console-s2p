@@ -13,6 +13,10 @@ export interface Profile {
   role: AppRole | null;
   stripe_customer_id: string | null;
   must_change_password: boolean | null;
+  legal_name: string | null;
+  vat_number: string | null;
+  fiscal_code: string | null;
+  acube_company_id: string | null;
 }
 
 /** IDs of structures the current user can manage (partner = owned, manager = assigned) */

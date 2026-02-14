@@ -59,6 +59,53 @@ export type Database = {
           },
         ]
       }
+      daily_corrispettivi_logs: {
+        Row: {
+          acube_transaction_id: string | null
+          created_at: string
+          error_details: string | null
+          id: string
+          partner_id: string
+          reference_date: string
+          status: string
+          tax_rate: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          acube_transaction_id?: string | null
+          created_at?: string
+          error_details?: string | null
+          id?: string
+          partner_id: string
+          reference_date: string
+          status?: string
+          tax_rate?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          acube_transaction_id?: string | null
+          created_at?: string
+          error_details?: string | null
+          id?: string
+          partner_id?: string
+          reference_date?: string
+          status?: string
+          tax_rate?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_corrispettivi_logs_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gate_commands: {
         Row: {
           command: string
@@ -212,37 +259,49 @@ export type Database = {
       }
       profiles: {
         Row: {
+          acube_company_id: string | null
           created_at: string | null
           email: string | null
           first_name: string | null
+          fiscal_code: string | null
           id: string
           last_name: string | null
+          legal_name: string | null
           must_change_password: boolean | null
           phone: string | null
           role: Database["public"]["Enums"]["user_role"] | null
           stripe_customer_id: string | null
+          vat_number: string | null
         }
         Insert: {
+          acube_company_id?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
+          fiscal_code?: string | null
           id: string
           last_name?: string | null
+          legal_name?: string | null
           must_change_password?: boolean | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
           stripe_customer_id?: string | null
+          vat_number?: string | null
         }
         Update: {
+          acube_company_id?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
+          fiscal_code?: string | null
           id?: string
           last_name?: string | null
+          legal_name?: string | null
           must_change_password?: boolean | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
           stripe_customer_id?: string | null
+          vat_number?: string | null
         }
         Relationships: []
       }
