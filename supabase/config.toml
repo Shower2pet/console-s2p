@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.station-control]
 verify_jwt = false
+
+[functions.generate-receipt]
+verify_jwt = false
