@@ -114,9 +114,17 @@ Deno.serve(async (req) => {
   }
 
   // --- MQTT publish ---
-  const mqttHost = Deno.env.get("MQTT_HOST")!;
+  // Deno Edge Functions only support WebSocket connections (no raw TCP).
+  // Convert mqtts:// URL to wss:// on port 8884 for HiveMQ Cloud.
+  const rawHost = Deno.env.get("MQTT_HOST")!;
+  const mqttHost = rawHost
+    .replace(/^mqtts?:\/\//, "wss://")
+    .replace(/:8883\b/, ":8884")
+    + (rawHost.includes("/mqtt") ? "" : "/mqtt");
   const mqttUser = Deno.env.get("MQTT_USER")!;
   const mqttPass = Deno.env.get("MQTT_PASSWORD")!;
+
+  console.log("[STATION-CONTROL] Connecting to", mqttHost);
 
   try {
     const published = await publishMqtt(mqttHost, mqttUser, mqttPass, topic, payload);
