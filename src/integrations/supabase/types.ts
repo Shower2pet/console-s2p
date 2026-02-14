@@ -583,6 +583,60 @@ export type Database = {
           },
         ]
       }
+      transaction_receipts: {
+        Row: {
+          acube_transaction_id: string | null
+          amount: number
+          created_at: string
+          error_details: string | null
+          id: string
+          partner_id: string
+          session_id: string | null
+          status: string
+          tax_rate: number
+          updated_at: string
+        }
+        Insert: {
+          acube_transaction_id?: string | null
+          amount: number
+          created_at?: string
+          error_details?: string | null
+          id?: string
+          partner_id: string
+          session_id?: string | null
+          status?: string
+          tax_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          acube_transaction_id?: string | null
+          amount?: number
+          created_at?: string
+          error_details?: string | null
+          id?: string
+          partner_id?: string
+          session_id?: string | null
+          status?: string
+          tax_rate?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_receipts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_receipts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "wash_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount_paid_stripe: number | null
