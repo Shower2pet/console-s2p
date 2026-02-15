@@ -43,13 +43,17 @@ const StationDetail = () => {
   const [stationLng, setStationLng] = useState<number | null>(null);
   const [hwBusy, setHwBusy] = useState(false);
 
-  // Fetch available structures for reassignment
+  // Fetch structures for reassignment – filtered by station owner
+  const stationOwnerId = station?.owner_id ?? editOwnerId;
+  const effectiveOwnerId = stationOwnerId && stationOwnerId !== "__none__" ? stationOwnerId : null;
   const { data: structures } = useQuery({
-    queryKey: ["all-structures-for-station"],
+    queryKey: ["structures-for-station-owner", effectiveOwnerId],
+    enabled: !!effectiveOwnerId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("structures")
         .select("id, name, owner_id")
+        .eq("owner_id", effectiveOwnerId!)
         .order("name");
       if (error) throw error;
       return data;
