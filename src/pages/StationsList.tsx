@@ -18,7 +18,7 @@ const StationsList = () => {
 
   const filtered = useMemo(() => (stations ?? []).filter(s => {
     // Admin: hide unassigned stations (those belong to Inventory)
-    if (role === "admin" && !s.structure_id) return false;
+    if (role === "admin" && !s.structure_id && !s.owner_id) return false;
     const matchSearch = s.id.toLowerCase().includes(search.toLowerCase()) || s.type.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || s.status === statusFilter;
     return matchSearch && matchStatus;
