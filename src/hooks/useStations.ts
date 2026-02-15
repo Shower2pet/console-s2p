@@ -15,7 +15,7 @@ export const useStations = (structureId?: string) => {
   return useQuery({
     queryKey: ["stations", structureId],
     queryFn: async () => {
-      let query = supabase.from("stations").select("*, structures(name, geo_lat, geo_lng)");
+      let query = supabase.from("stations").select("*, structures!left(name, geo_lat, geo_lng)");
       if (structureId) {
         query = query.eq("structure_id", structureId);
       }
@@ -33,7 +33,7 @@ export const useStation = (id: string | undefined) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stations")
-        .select("*, structures(name, geo_lat, geo_lng)")
+        .select("*, structures!left(name, geo_lat, geo_lng)")
         .eq("id", id!)
         .maybeSingle();
       if (error) throw error;
