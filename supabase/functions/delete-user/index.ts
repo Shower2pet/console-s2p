@@ -119,8 +119,6 @@ Deno.serve(async (req) => {
       }).in("id", stationIds);
       if (resetError) {
         console.error("Station reset error:", resetError);
-      } else {
-        console.log(`Reset ${stationIds.length} stations:`, stationIds);
       }
     }
 
