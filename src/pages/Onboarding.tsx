@@ -6,14 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MapPicker from "@/components/MapPicker";
-
-interface PendingStation {
-  id: string;
-  type: string;
-}
+import { updatePassword } from "@/services/authService";
+import { updateMustChangePassword } from "@/services/profileService";
+import { fetchPendingStations, assignStationsToStructure, type FreeStation } from "@/services/stationService";
+import { createStructure } from "@/services/structureService";
 
 interface NewStructure {
   name: string;
@@ -31,23 +29,17 @@ const Onboarding = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Structures step
-  const [pendingStations, setPendingStations] = useState<PendingStation[]>([]);
+  const [pendingStations, setPendingStations] = useState<FreeStation[]>([]);
   const [structures, setStructures] = useState<NewStructure[]>([{ name: "", address: "", stationIds: [], geo_lat: null, geo_lng: null }]);
   const [loadingStations, setLoadingStations] = useState(false);
 
   useEffect(() => {
     if (step === "structures" && user) {
       setLoadingStations(true);
-      supabase
-        .from("stations")
-        .select("id, type")
-        .eq("owner_id", user.id)
-        .is("structure_id", null)
-        .then(({ data }) => {
-          setPendingStations((data ?? []) as PendingStation[]);
-          setLoadingStations(false);
-        });
+      fetchPendingStations(user.id)
+        .then(setPendingStations)
+        .catch(() => toast.error("Errore caricamento stazioni"))
+        .finally(() => setLoadingStations(false));
     }
   }, [step, user]);
 
@@ -61,22 +53,21 @@ const Onboarding = () => {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) {
-      toast.error(error.message);
+    try {
+      await updatePassword(newPassword);
+      await updateMustChangePassword(user!.id, false);
+      await refreshProfile();
+      toast.success("Password aggiornata!");
+      if (profile?.role === "partner") {
+        setStep("structures");
+      } else {
+        navigate("/", { replace: true });
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
       setSaving(false);
-      return;
     }
-    await supabase.from("profiles").update({ must_change_password: false }).eq("id", user!.id);
-    await refreshProfile();
-    toast.success("Password aggiornata!");
-
-    if (profile?.role === "partner") {
-      setStep("structures");
-    } else {
-      navigate("/", { replace: true });
-    }
-    setSaving(false);
   };
 
   const addStructure = () => {
@@ -113,25 +104,20 @@ const Onboarding = () => {
     setSaving(true);
     try {
       for (const s of valid) {
-        const { data: created, error } = await supabase
-          .from("structures")
-          .insert({
-            name: s.name.trim(),
-            address: s.address.trim() || null,
-            owner_id: user!.id,
-            geo_lat: s.geo_lat,
-            geo_lng: s.geo_lng,
-          })
-          .select()
-          .single();
-        if (error) throw error;
+        const created = await createStructure({
+          name: s.name.trim(),
+          address: s.address.trim() || null,
+          owner_id: user!.id,
+          geo_lat: s.geo_lat,
+          geo_lng: s.geo_lng,
+        });
 
         if (s.stationIds.length > 0) {
-          const { error: stErr } = await supabase
-            .from("stations")
-            .update({ structure_id: created.id })
-            .in("id", s.stationIds);
-          if (stErr) toast.error(`Errore assegnazione stazioni: ${stErr.message}`);
+          try {
+            await assignStationsToStructure(s.stationIds, created.id);
+          } catch (stErr: any) {
+            toast.error(`Errore assegnazione stazioni: ${stErr.message}`);
+          }
         }
       }
       toast.success("Strutture create con successo!");
