@@ -1,23 +1,10 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import type { Profile, UserRole } from "@/types/database";
 
-export type AppRole = "admin" | "partner" | "manager" | "user";
-
-export interface Profile {
-  id: string;
-  email: string | null;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-  role: AppRole | null;
-  stripe_customer_id: string | null;
-  must_change_password: boolean | null;
-  legal_name: string | null;
-  vat_number: string | null;
-  fiscal_code: string | null;
-  acube_company_id: string | null;
-}
+export type AppRole = UserRole; // re-export for backward compat
+export type { Profile };
 
 /** IDs of structures the current user can manage (partner = owned, manager = assigned) */
 export interface AuthContextValue {
