@@ -7,14 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { updateProfile, updateFiscalData } from "@/services/profileService";
+import {
+  fetchSubscriptionPlans,
+  createSubscriptionPlan,
+  deactivateSubscriptionPlan,
+} from "@/services/subscriptionPlanService";
 
 const Settings = () => {
   const { user, role, profile } = useAuth();
   const qc = useQueryClient();
 
-  // Profile editing
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -27,14 +31,13 @@ const Settings = () => {
     }
   }, [profile]);
 
-  const updateProfile = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ first_name: firstName.trim(), last_name: lastName.trim(), phone: phone.trim() || null })
-        .eq("id", user!.id);
-      if (error) throw error;
-    },
+  const updateProfileMutation = useMutation({
+    mutationFn: () =>
+      updateProfile(user!.id, {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        phone: phone.trim() || null,
+      }),
     onSuccess: () => {
       toast.success("Profilo aggiornato");
       qc.invalidateQueries({ queryKey: ["profile"] });
@@ -42,7 +45,6 @@ const Settings = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Fiscal fields from profiles (for partners & admin viewing)
   const [legalName, setLegalName] = useState("");
   const [profileVat, setProfileVat] = useState("");
   const [fiscalCode, setFiscalCode] = useState("");
@@ -55,18 +57,13 @@ const Settings = () => {
     }
   }, [profile]);
 
-  const updateFiscal = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          legal_name: legalName.trim() || null,
-          vat_number: profileVat.trim() || null,
-          fiscal_code: fiscalCode.trim() || null,
-        })
-        .eq("id", user!.id);
-      if (error) throw error;
-    },
+  const updateFiscalMutation = useMutation({
+    mutationFn: () =>
+      updateFiscalData(user!.id, {
+        legal_name: legalName.trim() || null,
+        vat_number: profileVat.trim() || null,
+        fiscal_code: fiscalCode.trim() || null,
+      }),
     onSuccess: () => {
       toast.success("Dati fiscali salvati");
       qc.invalidateQueries({ queryKey: ["profile"] });
@@ -84,7 +81,6 @@ const Settings = () => {
         <p className="text-muted-foreground">Gestisci il tuo profilo e i dati aziendali</p>
       </div>
 
-      {/* Profile */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-heading">Profilo Utente</CardTitle>
@@ -108,14 +104,13 @@ const Settings = () => {
             <Label>Email</Label>
             <Input value={profile?.email ?? ""} disabled className="mt-1.5 opacity-60" />
           </div>
-          <Button onClick={() => updateProfile.mutate()} disabled={updateProfile.isPending} className="gap-2">
-            {updateProfile.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+          <Button onClick={() => updateProfileMutation.mutate()} disabled={updateProfileMutation.isPending} className="gap-2">
+            {updateProfileMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             <Save className="h-4 w-4" /> Salva Profilo
           </Button>
         </CardContent>
       </Card>
 
-      {/* Fiscal data - only for partners */}
       {(role === "partner" || role === "admin") && (
         <Card>
           <CardHeader>
@@ -143,23 +138,21 @@ const Settings = () => {
               </div>
             )}
             <Button
-              onClick={() => updateFiscal.mutate()}
-              disabled={updateFiscal.isPending || !legalName.trim() || !profileVat.trim()}
+              onClick={() => updateFiscalMutation.mutate()}
+              disabled={updateFiscalMutation.isPending || !legalName.trim() || !profileVat.trim()}
               className="gap-2"
             >
-              {updateFiscal.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {updateFiscalMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               <Save className="h-4 w-4" /> Salva Dati Fiscali
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Subscription Plans - for partners */}
       {role === "partner" && <SubscriptionPlansSection userId={user!.id} />}
     </div>
   );
 };
-
 
 const SubscriptionPlansSection = ({ userId }: { userId: string }) => {
   const qc = useQueryClient();
@@ -170,28 +163,18 @@ const SubscriptionPlansSection = ({ userId }: { userId: string }) => {
 
   const { data: plans, isLoading } = useQuery({
     queryKey: ["subscription-plans", userId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("subscription_plans")
-        .select("*")
-        .eq("owner_id", userId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => fetchSubscriptionPlans(userId),
   });
 
   const createPlan = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("subscription_plans").insert({
+    mutationFn: () =>
+      createSubscriptionPlan({
         owner_id: userId,
         name: newName.trim(),
         price_eur: parseFloat(newPrice),
         interval: newInterval,
         max_washes_per_month: newMaxWashes ? parseInt(newMaxWashes) : null,
-      });
-      if (error) throw error;
-    },
+      }),
     onSuccess: () => {
       toast.success("Piano creato");
       setNewName("");
@@ -203,10 +186,7 @@ const SubscriptionPlansSection = ({ userId }: { userId: string }) => {
   });
 
   const deletePlan = useMutation({
-    mutationFn: async (planId: string) => {
-      const { error } = await supabase.from("subscription_plans").update({ is_active: false }).eq("id", planId);
-      if (error) throw error;
-    },
+    mutationFn: deactivateSubscriptionPlan,
     onSuccess: () => {
       toast.success("Piano disattivato");
       qc.invalidateQueries({ queryKey: ["subscription-plans"] });
@@ -226,7 +206,6 @@ const SubscriptionPlansSection = ({ userId }: { userId: string }) => {
           <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
           <>
-            {/* Existing plans */}
             {(plans ?? []).filter(p => p.is_active).map((plan) => (
               <div key={plan.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
                 <div>
@@ -241,12 +220,9 @@ const SubscriptionPlansSection = ({ userId }: { userId: string }) => {
                 </Button>
               </div>
             ))}
-
             {(plans ?? []).filter(p => p.is_active).length === 0 && (
               <p className="text-sm text-muted-foreground">Nessun piano attivo.</p>
             )}
-
-            {/* Add new plan */}
             <div className="border-t border-border pt-4 space-y-3">
               <p className="text-sm font-medium text-foreground">Nuovo Piano</p>
               <div className="grid sm:grid-cols-2 gap-3">

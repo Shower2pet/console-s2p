@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchPartnerProfiles } from "@/services/profileService";
+import { fetchAllStructuresLight } from "@/services/structureService";
 
 const ClientsList = () => {
   const navigate = useNavigate();
@@ -13,24 +14,12 @@ const ClientsList = () => {
 
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["clients-profiles"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("role", "partner")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: fetchPartnerProfiles,
   });
 
   const { data: structures } = useQuery({
     queryKey: ["clients-structures"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("structures").select("id, owner_id, name");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: fetchAllStructuresLight,
   });
 
   const structureCountMap = (structures ?? []).reduce<Record<string, number>>((acc, s) => {

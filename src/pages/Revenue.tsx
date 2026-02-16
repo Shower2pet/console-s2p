@@ -6,8 +6,9 @@ import { StatCard } from "@/components/StatCard";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useStations } from "@/hooks/useStations";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { fetchPartnerProfiles } from "@/services/profileService";
+import { fetchAllStructuresLight } from "@/services/structureService";
 
 const Revenue = () => {
   const { data: transactions, isLoading } = useTransactions();
@@ -15,20 +16,12 @@ const Revenue = () => {
 
   const { data: profiles } = useQuery({
     queryKey: ["revenue-profiles"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*").eq("role", "partner");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: fetchPartnerProfiles,
   });
 
   const { data: structures } = useQuery({
     queryKey: ["revenue-structures"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("structures").select("id, name, owner_id");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: fetchAllStructuresLight,
   });
 
   // Most profitable stations
@@ -68,8 +61,6 @@ const Revenue = () => {
   }, [transactions, structures, profiles]);
 
   const totalRevenue = (transactions ?? []).reduce((s, t) => s + Number(t.total_value ?? 0), 0);
-  const totalStripe = (transactions ?? []).reduce((s, t) => s + Number(t.amount_paid_stripe ?? 0), 0);
-  const totalWallet = (transactions ?? []).reduce((s, t) => s + Number(t.amount_paid_wallet ?? 0), 0);
 
   if (isLoading) {
     return (

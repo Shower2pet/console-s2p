@@ -9,8 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  fetchCreditPackages,
+  createCreditPackage,
+  updateCreditPackage,
+  deleteCreditPackage,
+} from "@/services/creditPackageService";
 
 const Packages = () => {
   const { user } = useAuth();
@@ -19,38 +24,25 @@ const Packages = () => {
   const { data: packages, isLoading } = useQuery({
     queryKey: ["my_credit_packages", user?.id],
     enabled: !!user?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("credit_packages")
-        .select("*")
-        .eq("owner_id", user!.id)
-        .order("price_eur", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => fetchCreditPackages(user!.id),
   });
 
   const createPkg = useMutation({
     mutationFn: async (values: { name: string | null; price_eur: number; credits_value: number; is_active: boolean }) => {
-      const { error } = await supabase.from("credit_packages").insert({ ...values, owner_id: user!.id } as any);
-      if (error) throw error;
+      await createCreditPackage({ ...values, owner_id: user!.id });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my_credit_packages"] }),
   });
 
   const updatePkg = useMutation({
     mutationFn: async ({ id, ...values }: { id: string; name?: string | null; price_eur?: number; credits_value?: number; is_active?: boolean }) => {
-      const { error } = await supabase.from("credit_packages").update(values).eq("id", id);
-      if (error) throw error;
+      await updateCreditPackage(id, values);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my_credit_packages"] }),
   });
 
   const deletePkg = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("credit_packages").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: deleteCreditPackage,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my_credit_packages"] }),
   });
 

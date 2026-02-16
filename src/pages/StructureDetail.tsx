@@ -8,13 +8,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStructure, useUpdateStructure } from "@/hooks/useStructures";
 import { useStations } from "@/hooks/useStations";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/contexts/AuthContext";
 import InviteUserDialog from "@/components/InviteUserDialog";
 import MapPicker from "@/components/MapPicker";
 import StationsMap from "@/components/StationsMap";
 import { toast } from "sonner";
+import { fetchStructureManagers } from "@/services/structureService";
+import { unassignStationsFromStructure } from "@/services/stationService";
+import { deleteStructure } from "@/services/structureService";
 
 const StructureDetail = () => {
   const { id } = useParams();
@@ -31,7 +33,6 @@ const StructureDetail = () => {
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // Initialize map coords from structure
   if (structure && !mapInitialized) {
     setMapLat(structure.geo_lat ? Number(structure.geo_lat) : null);
     setMapLng(structure.geo_lng ? Number(structure.geo_lng) : null);
@@ -50,32 +51,9 @@ const StructureDetail = () => {
 
   const canEditPosition = isAdmin || isPartner || isManager;
 
-  // Fetch managers for this structure
   const { data: managers, isLoading: managersLoading } = useQuery({
     queryKey: ["structure-managers", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("structure_managers")
-        .select("id, user_id, created_at, permissions")
-        .eq("structure_id", id!);
-      if (error) throw error;
-
-      // Fetch profile info for each manager
-      const userIds = data.map((m) => m.user_id).filter(Boolean) as string[];
-      if (userIds.length === 0) return [];
-
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, email")
-        .in("id", userIds);
-
-      const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
-
-      return data.map((m) => ({
-        ...m,
-        profile: m.user_id ? profileMap.get(m.user_id) : null,
-      }));
-    },
+    queryFn: () => fetchStructureManagers(id!),
     enabled: !!id,
   });
 
@@ -94,11 +72,8 @@ const StructureDetail = () => {
   const handleDeleteStructure = async () => {
     if (!structure || deleteConfirmName !== structure.name) return;
     try {
-      // Set stations to unassigned/offline
-      await supabase.from("stations").update({ structure_id: null, status: "OFFLINE" } as any).eq("structure_id", structure.id);
-      // Delete structure
-      const { error } = await supabase.from("structures").delete().eq("id", structure.id);
-      if (error) throw error;
+      await unassignStationsFromStructure(structure.id);
+      await deleteStructure(structure.id);
       toast.success("Struttura eliminata");
       navigate("/structures");
     } catch (e: any) {
@@ -125,7 +100,6 @@ const StructureDetail = () => {
         )}
       </div>
 
-      {/* Delete Confirmation Dialog */}
       {showDeleteDialog && (
         <Card className="border-destructive/30">
           <CardContent className="p-4 space-y-3">
@@ -175,7 +149,6 @@ const StructureDetail = () => {
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
           ) : (
             <div className="space-y-6">
-              {/* Stations Map */}
               {(() => {
                 const mapPins = (stations ?? []).filter(s => {
                   const lat = s.geo_lat ?? (s as any).structures?.geo_lat ?? structure.geo_lat;

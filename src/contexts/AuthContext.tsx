@@ -2,18 +2,19 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import type { Profile, UserRole } from "@/types/database";
+import { fetchProfileById, fetchUserStructureIds, fetchManagerStructureIds } from "@/services/profileService";
+import { onAuthStateChange, getSession } from "@/services/authService";
+import * as authService from "@/services/authService";
 
-export type AppRole = UserRole; // re-export for backward compat
+export type AppRole = UserRole;
 export type { Profile };
 
-/** IDs of structures the current user can manage (partner = owned, manager = assigned) */
 export interface AuthContextValue {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
   loading: boolean;
-  /** structure IDs the user has access to */
   structureIds: string[];
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -33,51 +34,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = useCallback(async (userId: string) => {
-    // Fetch profile
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
+    const profileData = await fetchProfileById(userId);
 
     if (profileData) {
-      setProfile(profileData as Profile);
+      setProfile(profileData);
     }
 
-    // Determine structure access based on role
     const role = profileData?.role as AppRole | null;
 
     if (role === "admin") {
-      // Admin sees everything – no need to filter
       setStructureIds([]);
     } else if (role === "partner") {
-      const { data: owned } = await supabase
-        .from("structures")
-        .select("id")
-        .eq("owner_id", userId);
-      setStructureIds((owned ?? []).map((s) => s.id));
+      const ids = await fetchUserStructureIds(userId);
+      setStructureIds(ids);
     } else if (role === "manager") {
-      const { data: managed } = await supabase
-        .from("structure_managers")
-        .select("structure_id")
-        .eq("user_id", userId);
-      setStructureIds(
-        (managed ?? []).filter((m) => m.structure_id).map((m) => m.structure_id as string)
-      );
+      const ids = await fetchManagerStructureIds(userId);
+      setStructureIds(ids);
     } else {
       setStructureIds([]);
     }
   }, []);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = onAuthStateChange(
       async (_event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
         if (newSession?.user) {
-          // Defer profile fetch to avoid Supabase deadlocks
           setTimeout(() => fetchProfile(newSession.user.id), 0);
         } else {
           setProfile(null);
@@ -87,8 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    // THEN check existing session
-    supabase.auth.getSession().then(({ data: { session: existing } }) => {
+    getSession().then((existing) => {
       setSession(existing);
       setUser(existing?.user ?? null);
       if (existing?.user) {
@@ -101,13 +84,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [fetchProfile]);
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { success: false, error: error.message };
-    return { success: true };
+    try {
+      await authService.signIn(email, password);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    await authService.signOut();
     setProfile(null);
     setStructureIds([]);
   };

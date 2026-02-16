@@ -1,16 +1,15 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Plus, Trash2, Pencil, Package, Loader2 } from "lucide-react";
+import { Plus, Trash2, Package, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -18,44 +17,22 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-const useStockStations = () =>
-  useQuery({
-    queryKey: ["stations", "stock"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stations")
-        .select("*, products:product_id(name, type)")
-        .is("structure_id", null)
-        .is("owner_id", null)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-
-const useProducts = () =>
-  useQuery({
-    queryKey: ["products"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
+import { fetchStockStations, createStation, deleteStation } from "@/services/stationService";
+import { fetchActiveProducts } from "@/services/productService";
 
 const Inventory = () => {
   const qc = useQueryClient();
-  const { data: stations, isLoading } = useStockStations();
-  const { data: products } = useProducts();
+  const { data: stations, isLoading } = useQuery({
+    queryKey: ["stations", "stock"],
+    queryFn: fetchStockStations,
+  });
+  const { data: products } = useQuery({
+    queryKey: ["products"],
+    queryFn: fetchActiveProducts,
+  });
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Create form state
   const [serialNumber, setSerialNumber] = useState("");
   const [productId, setProductId] = useState("");
   const [stationDescription, setStationDescription] = useState("");
@@ -72,14 +49,13 @@ const Inventory = () => {
     mutationFn: async () => {
       const product = (products ?? []).find(p => p.id === productId);
       if (!product) throw new Error("Seleziona un prodotto");
-      const { error } = await supabase.from("stations").insert({
+      await createStation({
         id: serialNumber.trim(),
         type: product.name,
         product_id: productId,
         description: stationDescription.trim() || null,
         status: "OFFLINE",
-      } as any);
-      if (error) throw error;
+      });
     },
     onSuccess: () => {
       toast.success("Stazione registrata nel magazzino");
@@ -94,10 +70,7 @@ const Inventory = () => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("stations").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: deleteStation,
     onSuccess: () => {
       toast.success("Stazione eliminata");
       setDeleteId(null);
@@ -166,7 +139,6 @@ const Inventory = () => {
         </CardContent>
       </Card>
 
-      {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
@@ -206,7 +178,6 @@ const Inventory = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirm */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
