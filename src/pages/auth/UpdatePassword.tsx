@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import logoHorizontal from "@/assets/logo-horizontal.png";
 import logoVertical from "@/assets/logo-vertical.png";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,11 +65,11 @@ const UpdatePassword = () => {
     setSubmitting(false);
 
     if (error) {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
+      toast.error(error.message);
       return;
     }
 
-    toast({ title: "Password impostata con successo!" });
+    toast.success("Password impostata con successo!");
     navigate("/", { replace: true });
   };
 

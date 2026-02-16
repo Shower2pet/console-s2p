@@ -131,7 +131,7 @@ const Onboarding = () => {
             .from("stations")
             .update({ structure_id: created.id })
             .in("id", s.stationIds);
-          if (stErr) console.error("Station assign error:", stErr);
+          if (stErr) toast.error(`Errore assegnazione stazioni: ${stErr.message}`);
         }
       }
       toast.success("Strutture create con successo!");

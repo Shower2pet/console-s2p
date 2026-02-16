@@ -144,9 +144,10 @@ const StructureDetail = () => {
               <Button
                 variant="destructive"
                 size="sm"
-                disabled={deleteConfirmName !== structure.name}
+                disabled={deleteConfirmName !== structure.name || updateStructure.isPending}
                 onClick={handleDeleteStructure}
               >
+                {updateStructure.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Conferma Eliminazione
               </Button>
             </div>
@@ -263,6 +264,7 @@ const StructureDetail = () => {
                   disabled={updateStructure.isPending || mapLat == null}
                   className="w-full gap-2"
                 >
+                  {updateStructure.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                   <Save className="h-4 w-4" /> Salva Posizione
                 </Button>
               )}

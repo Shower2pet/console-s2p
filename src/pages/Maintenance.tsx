@@ -358,6 +358,7 @@ const Maintenance = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Annulla</Button>
             <Button onClick={handleCreateTicket} disabled={createTicket.isPending}>
+              {createTicket.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Crea Ticket
             </Button>
           </DialogFooter>
@@ -402,6 +403,7 @@ const Maintenance = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setStatusDialogLog(null)}>Annulla</Button>
             <Button onClick={handleUpdateStatus} disabled={updateStatus.isPending}>
+              {updateStatus.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Salva
             </Button>
           </DialogFooter>
