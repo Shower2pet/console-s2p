@@ -10,10 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useAuth } from "@/contexts/AuthContext";
 import { useStructures, useCreateStructure } from "@/hooks/useStructures";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MapPicker from "@/components/MapPicker";
 import StaticMapPreview from "@/components/StaticMapPreview";
+import { fetchPartnersList } from "@/services/profileService";
 
 const StructuresList = () => {
   const { role, structureIds, user, isAdmin } = useAuth();
@@ -26,22 +26,12 @@ const StructuresList = () => {
   const [geoLng, setGeoLng] = useState<number | null>(null);
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>("");
 
-  // Fetch partners for admin client selector
   const { data: partners } = useQuery({
     queryKey: ["partners-for-structure"],
     enabled: isAdmin,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, email")
-        .eq("role", "partner")
-        .order("last_name");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: fetchPartnersList,
   });
 
-  // Manager with one structure → redirect to detail
   if (role === "manager" && structureIds.length === 1) {
     return <Navigate to={`/structures/${structureIds[0]}`} replace />;
   }

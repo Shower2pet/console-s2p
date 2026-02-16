@@ -5,12 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import DeletePartnerDialog from "@/components/DeletePartnerDialog";
 import StaticMapPreview from "@/components/StaticMapPreview";
 import AssignStationDialog from "@/components/AssignStationDialog";
+import { fetchProfileById } from "@/services/profileService";
+import { fetchStructuresByOwner } from "@/services/structureService";
+import { fetchStationsByOwner } from "@/services/stationService";
+import { deleteUser } from "@/services/userService";
 
 const ClientDetail = () => {
   const { id } = useParams();
@@ -21,44 +24,19 @@ const ClientDetail = () => {
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ["client-profile", id],
     enabled: !!id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", id!)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => fetchProfileById(id!),
   });
 
   const { data: structures, isLoading: structLoading } = useQuery({
     queryKey: ["client-structures", id],
     enabled: !!id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("structures")
-        .select("*")
-        .eq("owner_id", id!)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => fetchStructuresByOwner(id!),
   });
 
-  // All stations owned by this partner (both assigned to structures and unassigned)
   const { data: stations } = useQuery({
     queryKey: ["client-stations-all", id],
     enabled: !!id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stations")
-        .select("*, structures(name)")
-        .eq("owner_id", id!)
-        .order("id");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => fetchStationsByOwner(id!),
   });
 
   if (profileLoading || structLoading) {
@@ -75,14 +53,7 @@ const ClientDetail = () => {
 
   const handleDeletePartner = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("delete-user", {
-        body: { userId: id },
-      });
-      if (error) {
-        const msg = typeof data === "object" && data?.error ? data.error : error.message;
-        throw new Error(msg);
-      }
-      if (data?.error) throw new Error(data.error);
+      await deleteUser(id!);
       toast.success("Partner eliminato con successo");
       navigate("/clients");
     } catch (err: any) {

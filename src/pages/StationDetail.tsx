@@ -19,7 +19,9 @@ import { useStation, useUpdateStation, type WashingOption } from "@/hooks/useSta
 import { useCreateMaintenanceTicket } from "@/hooks/useMaintenanceLogs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchStructuresForOwner } from "@/services/structureService";
+import { fetchPartnersList } from "@/services/profileService";
+import { invokeStationControl } from "@/services/stationService";
 import { toast } from "sonner";
 import MapPicker from "@/components/MapPicker";
 
@@ -49,30 +51,14 @@ const StationDetail = () => {
   const { data: structures } = useQuery({
     queryKey: ["structures-for-station-owner", effectiveOwnerId],
     enabled: !!effectiveOwnerId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("structures")
-        .select("id, name, owner_id")
-        .eq("owner_id", effectiveOwnerId!)
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => fetchStructuresForOwner(effectiveOwnerId!),
   });
 
   // Admin: fetch partners for owner reassignment
   const { data: partners } = useQuery({
     queryKey: ["partners-list"],
     enabled: isAdmin,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, email")
-        .eq("role", "partner")
-        .order("last_name");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: fetchPartnersList,
   });
 
   // Initialize form state from station data
@@ -129,11 +115,7 @@ const StationDetail = () => {
     if (!station) return;
     setHwBusy(true);
     try {
-      const body: Record<string, any> = { station_id: station.id, command };
-      if (command === "PULSE" && duration_minutes != null) body.duration_minutes = duration_minutes;
-      const { data, error } = await supabase.functions.invoke("station-control", { body });
-      if (error) throw new Error(error.message ?? "Errore di comunicazione con la stazione");
-      if (data?.error) throw new Error(data.error);
+      await invokeStationControl(station.id, command, duration_minutes);
       toast.success("Comando hardware inviato");
     } catch (e: any) {
       toast.error(e.message ?? "Errore di comunicazione con la stazione");
@@ -150,11 +132,7 @@ const StationDetail = () => {
     if (!station) return;
     setHwBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("station-control", {
-        body: { station_id: station.id, command: "OFF" },
-      });
-      if (error) throw new Error(error.message ?? "Errore di comunicazione con la stazione");
-      if (data?.error) throw new Error(data.error);
+      await invokeStationControl(station.id, "OFF");
       await updateStation.mutateAsync({ id: station.id, status: "AVAILABLE" } as any);
       setEditStatus("AVAILABLE");
       toast.success("Comando hardware inviato");

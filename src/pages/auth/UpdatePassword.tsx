@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { onAuthStateChange, getSession, updatePassword } from "@/services/authService";
 import logoHorizontal from "@/assets/logo-horizontal.png";
 import logoVertical from "@/assets/logo-vertical.png";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,20 +36,18 @@ const UpdatePassword = () => {
   });
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setChecking(false);
       }
     });
 
-    // Also check existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    getSession().then((session) => {
       if (session) {
         setChecking(false);
       } else {
-        // Give a moment for the token exchange to happen
         setTimeout(async () => {
-          const { data: { session: s } } = await supabase.auth.getSession();
+          const s = await getSession();
           if (!s) navigate("/login", { replace: true });
           else setChecking(false);
         }, 2000);
@@ -61,16 +59,15 @@ const UpdatePassword = () => {
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
-    const { error } = await supabase.auth.updateUser({ password: values.password });
-    setSubmitting(false);
-
-    if (error) {
+    try {
+      await updatePassword(values.password);
+      toast.success("Password impostata con successo!");
+      navigate("/", { replace: true });
+    } catch (error: any) {
       toast.error(error.message);
-      return;
+    } finally {
+      setSubmitting(false);
     }
-
-    toast.success("Password impostata con successo!");
-    navigate("/", { replace: true });
   };
 
   if (checking) {
@@ -131,18 +128,12 @@ const UpdatePassword = () => {
                       <FormItem>
                         <FormLabel>Nuova Password</FormLabel>
                         <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="••••••••"
-                            disabled={submitting}
-                            {...field}
-                          />
+                          <Input type="password" placeholder="••••••••" disabled={submitting} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="confirmPassword"
@@ -150,18 +141,12 @@ const UpdatePassword = () => {
                       <FormItem>
                         <FormLabel>Conferma Password</FormLabel>
                         <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="••••••••"
-                            disabled={submitting}
-                            {...field}
-                          />
+                          <Input type="password" placeholder="••••••••" disabled={submitting} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-
                   <Button type="submit" className="w-full h-11 text-base font-heading" disabled={submitting}>
                     {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Imposta Password e Accedi"}
                   </Button>

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Plus, Trash2, Pencil, Package, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,32 +15,14 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-interface Product {
-  id: string;
-  name: string;
-  type: string;
-  description: string | null;
-  is_active: boolean;
-  created_at: string;
-}
-
-const useProducts = () =>
-  useQuery({
-    queryKey: ["products"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as Product[];
-    },
-  });
+import { fetchProducts, createProduct, updateProduct, deactivateProduct, type Product } from "@/services/productService";
 
 const ProductsCatalog = () => {
   const qc = useQueryClient();
-  const { data: products, isLoading } = useProducts();
+  const { data: products, isLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: fetchProducts,
+  });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -69,19 +50,17 @@ const ProductsCatalog = () => {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (editProduct) {
-        const { error } = await supabase.from("products").update({
-          name: name.trim(),
-          type: type.trim(),
-          description: description.trim() || null,
-        }).eq("id", editProduct.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("products").insert({
+        await updateProduct(editProduct.id, {
           name: name.trim(),
           type: type.trim(),
           description: description.trim() || null,
         });
-        if (error) throw error;
+      } else {
+        await createProduct({
+          name: name.trim(),
+          type: type.trim(),
+          description: description.trim() || null,
+        });
       }
     },
     onSuccess: () => {
@@ -93,10 +72,7 @@ const ProductsCatalog = () => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("products").update({ is_active: false }).eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: deactivateProduct,
     onSuccess: () => {
       toast.success("Prodotto disattivato");
       setDeleteId(null);
@@ -167,7 +143,6 @@ const ProductsCatalog = () => {
         </CardContent>
       </Card>
 
-      {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -205,7 +180,6 @@ const ProductsCatalog = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirm */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
