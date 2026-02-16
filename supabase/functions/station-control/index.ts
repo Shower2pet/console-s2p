@@ -124,8 +124,6 @@ Deno.serve(async (req) => {
   const mqttUser = Deno.env.get("MQTT_USER")!;
   const mqttPass = Deno.env.get("MQTT_PASSWORD")!;
 
-  console.log("[STATION-CONTROL] Connecting to", mqttHost);
-
   try {
     const published = await publishMqtt(mqttHost, mqttUser, mqttPass, topic, payload);
     if (!published) {

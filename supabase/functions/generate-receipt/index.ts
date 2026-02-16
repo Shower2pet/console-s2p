@@ -133,8 +133,6 @@ Deno.serve(async (req) => {
       ],
     };
 
-    console.log("[GENERATE-RECEIPT] Sending to A-Cube:", JSON.stringify(receiptPayload));
-
     const receiptRes = await fetch("https://api-sandbox.acubeapi.com/receipts", {
       method: "POST",
       headers: {
