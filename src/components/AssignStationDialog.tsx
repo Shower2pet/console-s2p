@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { fetchFreeStations, assignStationToPartner } from "@/services/stationService";
 
 interface AssignStationDialogProps {
   partnerId: string;
@@ -27,26 +27,13 @@ const AssignStationDialog = ({ partnerId, partnerName, prominent = false }: Assi
   const { data: freeStations, isLoading } = useQuery({
     queryKey: ["free-stations-for-assign"],
     enabled: open,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stations")
-        .select("id, type")
-        .is("owner_id", null)
-        .is("structure_id", null)
-        .order("id");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: fetchFreeStations,
   });
 
   const handleAssign = async (stationId: string) => {
     setAssigning(stationId);
     try {
-      const { error } = await supabase
-        .from("stations")
-        .update({ owner_id: partnerId })
-        .eq("id", stationId);
-      if (error) throw error;
+      await assignStationToPartner(stationId, partnerId);
       toast.success(`Stazione ${stationId} assegnata a ${partnerName}`);
       qc.invalidateQueries({ queryKey: ["free-stations-for-assign"] });
       qc.invalidateQueries({ queryKey: ["client-stations-all"] });

@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchFreeStations, type FreeStation } from "@/services/stationService";
+import { inviteUser } from "@/services/userService";
 
 const inviteSchema = z.object({
   firstName: z.string().trim().min(1, "Nome obbligatorio").max(50),
@@ -19,11 +20,6 @@ const inviteSchema = z.object({
 });
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
-
-interface FreeStation {
-  id: string;
-  type: string;
-}
 
 interface InviteUserDialogProps {
   open: boolean;
@@ -48,19 +44,13 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
     defaultValues: { firstName: "", lastName: "", email: "" },
   });
 
-  // Load free stations when dialog opens for partner role
   useEffect(() => {
     if (open && role === "partner") {
       setLoadingStations(true);
-      supabase
-        .from("stations")
-        .select("id, type, structure_id, owner_id")
-        .is("structure_id", null)
-        .is("owner_id", null)
-        .then(({ data }) => {
-          setFreeStations((data ?? []) as FreeStation[]);
-          setLoadingStations(false);
-        });
+      fetchFreeStations()
+        .then((data) => setFreeStations(data))
+        .catch(() => toast.error("Errore caricamento stazioni"))
+        .finally(() => setLoadingStations(false));
     }
     if (!open) {
       setSelectedStationIds([]);
@@ -77,28 +67,15 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
   const onSubmit = async (values: InviteFormValues) => {
     setIsSubmitting(true);
     try {
-      const body: Record<string, any> = {
+      const result = await inviteUser({
         email: values.email,
         firstName: values.firstName,
         lastName: values.lastName,
         role,
-      };
-      if (role === "manager" && structureId) {
-        body.structureId = structureId;
-      }
-      if (role === "partner" && selectedStationIds.length > 0) {
-        body.stationIds = selectedStationIds;
-      }
-
-      const { data, error } = await supabase.functions.invoke("invite-user", { body });
-
-      if (error) {
-        const msg = data?.error || error.message || "Errore sconosciuto";
-        throw new Error(msg);
-      }
-      if (data?.error) throw new Error(data.error);
-
-      setCreatedUser({ email: values.email, password: data.tempPassword });
+        structureId: role === "manager" ? structureId : undefined,
+        stationIds: role === "partner" && selectedStationIds.length > 0 ? selectedStationIds : undefined,
+      });
+      setCreatedUser({ email: values.email, password: result.tempPassword });
       reset();
       onSuccess?.();
     } catch (err: any) {
