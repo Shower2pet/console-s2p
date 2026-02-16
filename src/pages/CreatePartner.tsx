@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const inviteSchema = z.object({
@@ -125,7 +125,7 @@ const CreatePartner = () => {
       setCreatedUser({ email: values.email, password: data.tempPassword });
       reset();
     } catch (err: any) {
-      toast({ title: "Errore", description: err.message ?? "Impossibile creare l'utente", variant: "destructive" });
+      toast.error(err.message ?? "Impossibile creare l'utente");
     } finally {
       setIsSubmitting(false);
     }

@@ -10,12 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const Packages = () => {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { toast } = useToast();
 
   const { data: packages, isLoading } = useQuery({
     queryKey: ["my_credit_packages", user?.id],
@@ -75,29 +74,29 @@ const Packages = () => {
     const price = parseFloat(form.price_eur);
     const credits = parseInt(form.credits_value);
     if (isNaN(price) || isNaN(credits) || price <= 0 || credits <= 0) {
-      toast({ title: "Errore", description: "Prezzo e crediti devono essere valori positivi", variant: "destructive" });
+      toast.error("Prezzo e crediti devono essere valori positivi");
       return;
     }
     try {
       if (editing) {
         await updatePkg.mutateAsync({ id: editing.id, name: form.name || null, price_eur: price, credits_value: credits, is_active: form.is_active });
-        toast({ title: "Pacchetto aggiornato" });
+        toast.success("Pacchetto aggiornato");
       } else {
         await createPkg.mutateAsync({ name: form.name || null, price_eur: price, credits_value: credits, is_active: form.is_active });
-        toast({ title: "Pacchetto creato" });
+        toast.success("Pacchetto creato");
       }
       setDialogOpen(false);
     } catch {
-      toast({ title: "Errore nel salvataggio", variant: "destructive" });
+      toast.error("Errore nel salvataggio");
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await deletePkg.mutateAsync(id);
-      toast({ title: "Pacchetto eliminato" });
+      toast.success("Pacchetto eliminato");
     } catch {
-      toast({ title: "Errore nell'eliminazione", variant: "destructive" });
+      toast.error("Errore nell'eliminazione");
     }
   };
 
@@ -161,7 +160,9 @@ const Packages = () => {
                   </TableCell>
                   <TableCell className="text-right space-x-1">
                     <Button size="icon" variant="ghost" onClick={() => openEdit(pkg)}><Pencil className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => handleDelete(pkg.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => handleDelete(pkg.id)} disabled={deletePkg.isPending}>
+                      {deletePkg.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-destructive" />}
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
