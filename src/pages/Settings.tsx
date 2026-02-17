@@ -28,6 +28,7 @@ const Settings = () => {
   const [zipCode, setZipCode] = useState("");
   const [city, setCity] = useState("");
   const [province, setProvince] = useState("");
+  const [fiskalySystemId, setFiskalySystemId] = useState("");
 
   useEffect(() => {
     if (profile) {
@@ -39,6 +40,7 @@ const Settings = () => {
       setZipCode((profile as any).zip_code ?? "");
       setCity((profile as any).city ?? "");
       setProvince((profile as any).province ?? "");
+      setFiskalySystemId(profile.fiskaly_system_id ?? "");
     }
   }, [profile]);
 
@@ -50,6 +52,7 @@ const Settings = () => {
         legal_name: legalName.trim() || null,
         vat_number: vatNumber.trim() || null,
         fiscal_code: effectiveFiscalCode || null,
+        fiskaly_system_id: fiskalySystemId.trim() || null,
         address_street: addressStreet.trim() || null,
         address_number: addressNumber.trim() || null,
         zip_code: zipCode.trim() || null,
@@ -125,10 +128,11 @@ const Settings = () => {
               </div>
             </div>
 
-            {role === "admin" && (
+            {(role === "admin" || role === "partner") && (
               <div className="border-t border-border pt-4">
-                <Label>Fiskaly System ID (solo admin)</Label>
-                <Input value={profile?.fiskaly_system_id ?? ""} disabled className="mt-1.5 opacity-60" />
+                <Label>Fiskaly System ID</Label>
+                <Input value={fiskalySystemId} onChange={(e) => setFiskalySystemId(e.target.value)} className="mt-1.5 font-mono text-sm" placeholder="ID sistema Fiskaly" />
+                <p className="text-xs text-muted-foreground mt-1">Necessario per l'invio dei corrispettivi elettronici</p>
               </div>
             )}
 

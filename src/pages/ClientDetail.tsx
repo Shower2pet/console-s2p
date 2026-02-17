@@ -161,6 +161,7 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
   const [legalName, setLegalName] = useState(profile.legal_name ?? "");
   const [vatNumber, setVatNumber] = useState(profile.vat_number ?? "");
   const [fiscalCode, setFiscalCode] = useState(profile.fiscal_code ?? "");
+  const [fiskalySystemId, setFiskalySystemId] = useState(profile.fiskaly_system_id ?? "");
   const [addressStreet, setAddressStreet] = useState(profile.address_street ?? "");
   const [addressNumber, setAddressNumber] = useState(profile.address_number ?? "");
   const [zipCode, setZipCode] = useState(profile.zip_code ?? "");
@@ -175,6 +176,7 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
         legal_name: legalName.trim() || null,
         vat_number: vatNumber.trim() || null,
         fiscal_code: effectiveFiscalCode || null,
+        fiskaly_system_id: fiskalySystemId.trim() || null,
         address_street: addressStreet.trim() || null,
         address_number: addressNumber.trim() || null,
         zip_code: zipCode.trim() || null,
@@ -201,13 +203,14 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
             <Mail className="h-4 w-4 text-muted-foreground" />
             <span className="text-foreground">{profile.email ?? "—"}</span>
           </div>
-          <div className="text-sm">
-            <span className="text-muted-foreground">Fiskaly ID: </span>
-            <span className="text-foreground font-mono text-xs">{profile.fiskaly_system_id ?? "—"}</span>
-          </div>
         </div>
 
         <div className="border-t border-border pt-4 space-y-4">
+          <div>
+            <Label>Fiskaly System ID</Label>
+            <Input value={fiskalySystemId} onChange={(e) => setFiskalySystemId(e.target.value)} className="mt-1.5 font-mono text-sm" placeholder="ID sistema Fiskaly" />
+            <p className="text-xs text-muted-foreground mt-1">Necessario per l'invio dei corrispettivi elettronici</p>
+          </div>
           <div>
             <Label>Ragione Sociale *</Label>
             <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} className="mt-1.5" />
