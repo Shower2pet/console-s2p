@@ -102,6 +102,8 @@ const CreatePartner = () => {
         firstName: values.legalName,
         lastName: "",
         role: "partner",
+        legalName: values.legalName,
+        vatNumber: values.vatNumber,
         stationIds: selectedStationIds.length > 0 ? selectedStationIds : undefined,
       });
       setCreatedUser({ email: values.email, password: result.tempPassword });

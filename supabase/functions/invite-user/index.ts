@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, firstName, lastName, role, structureId, stationIds } = await req.json();
+    const { email, firstName, lastName, role, structureId, stationIds, legalName, vatNumber } = await req.json();
 
     if (!email || !firstName || !lastName || !role) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -90,10 +90,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update profile with role and must_change_password flag
+    // Update profile with role and partner data
+    const profileUpdate: Record<string, any> = {
+      role,
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      must_change_password: true,
+    };
+    if (legalName) profileUpdate.legal_name = legalName;
+    if (vatNumber) {
+      profileUpdate.vat_number = vatNumber;
+      profileUpdate.fiscal_code = vatNumber; // default fiscal_code = vat_number
+    }
+
     const { error: profileError } = await adminClient
       .from("profiles")
-      .update({ role, first_name: firstName, last_name: lastName, email, must_change_password: true })
+      .update(profileUpdate)
       .eq("id", newUser.user.id);
 
     if (profileError) {
