@@ -7,6 +7,8 @@ export interface InviteUserPayload {
   role: "partner" | "manager";
   structureId?: string;
   stationIds?: string[];
+  legalName?: string;
+  vatNumber?: string;
 }
 
 export interface InviteUserResult {
@@ -20,6 +22,8 @@ export const inviteUser = async (payload: InviteUserPayload): Promise<InviteUser
     lastName: payload.lastName,
     role: payload.role,
   };
+  if (payload.legalName) body.legalName = payload.legalName;
+  if (payload.vatNumber) body.vatNumber = payload.vatNumber;
   if (payload.role === "manager" && payload.structureId) {
     body.structureId = payload.structureId;
   }
