@@ -48,6 +48,7 @@ export const updatePartnerData = async (
     legal_name?: string | null;
     vat_number?: string | null;
     fiscal_code?: string | null;
+    fiskaly_system_id?: string | null;
     address_street?: string | null;
     address_number?: string | null;
     zip_code?: string | null;
