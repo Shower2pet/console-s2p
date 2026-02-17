@@ -99,7 +99,7 @@ const StructuresList = () => {
                       <SelectContent>
                         {(partners ?? []).map(p => (
                           <SelectItem key={p.id} value={p.id}>
-                            {[p.first_name, p.last_name].filter(Boolean).join(" ") || p.email || p.id}
+                            {p.legal_name || [p.first_name, p.last_name].filter(Boolean).join(" ") || p.email || p.id}
                           </SelectItem>
                         ))}
                       </SelectContent>

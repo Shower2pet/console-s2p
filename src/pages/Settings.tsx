@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { updateProfile, updateFiscalData } from "@/services/profileService";
+import { updatePartnerData } from "@/services/profileService";
 import {
   fetchSubscriptionPlans,
   createSubscriptionPlan,
@@ -19,53 +19,45 @@ const Settings = () => {
   const { user, role, profile } = useAuth();
   const qc = useQueryClient();
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-
-  useEffect(() => {
-    if (profile) {
-      setFirstName(profile.first_name ?? "");
-      setLastName(profile.last_name ?? "");
-      setPhone(profile.phone ?? "");
-    }
-  }, [profile]);
-
-  const updateProfileMutation = useMutation({
-    mutationFn: () =>
-      updateProfile(user!.id, {
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        phone: phone.trim() || null,
-      }),
-    onSuccess: () => {
-      toast.success("Profilo aggiornato");
-      qc.invalidateQueries({ queryKey: ["profile"] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
+  // Partner fields
   const [legalName, setLegalName] = useState("");
-  const [profileVat, setProfileVat] = useState("");
+  const [vatNumber, setVatNumber] = useState("");
   const [fiscalCode, setFiscalCode] = useState("");
+  const [addressStreet, setAddressStreet] = useState("");
+  const [addressNumber, setAddressNumber] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [city, setCity] = useState("");
+  const [province, setProvince] = useState("");
 
   useEffect(() => {
     if (profile) {
       setLegalName(profile.legal_name ?? "");
-      setProfileVat(profile.vat_number ?? "");
+      setVatNumber(profile.vat_number ?? "");
       setFiscalCode(profile.fiscal_code ?? "");
+      setAddressStreet((profile as any).address_street ?? "");
+      setAddressNumber((profile as any).address_number ?? "");
+      setZipCode((profile as any).zip_code ?? "");
+      setCity((profile as any).city ?? "");
+      setProvince((profile as any).province ?? "");
     }
   }, [profile]);
 
-  const updateFiscalMutation = useMutation({
+  const effectiveFiscalCode = fiscalCode.trim() || vatNumber.trim();
+
+  const updateMutation = useMutation({
     mutationFn: () =>
-      updateFiscalData(user!.id, {
+      updatePartnerData(user!.id, {
         legal_name: legalName.trim() || null,
-        vat_number: profileVat.trim() || null,
-        fiscal_code: fiscalCode.trim() || null,
+        vat_number: vatNumber.trim() || null,
+        fiscal_code: effectiveFiscalCode || null,
+        address_street: addressStreet.trim() || null,
+        address_number: addressNumber.trim() || null,
+        zip_code: zipCode.trim() || null,
+        city: city.trim() || null,
+        province: province.trim().toUpperCase() || null,
       }),
     onSuccess: () => {
-      toast.success("Dati fiscali salvati");
+      toast.success("Dati aziendali salvati");
       qc.invalidateQueries({ queryKey: ["profile"] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -76,74 +68,77 @@ const Settings = () => {
       <div>
         <h1 className="text-2xl font-heading font-bold text-foreground">
           <FileText className="inline mr-2 h-6 w-6 text-primary" />
-          {role === "partner" ? "Profilo Fiscale" : "Impostazioni"}
+          {role === "partner" ? "Profilo Aziendale" : "Impostazioni"}
         </h1>
-        <p className="text-muted-foreground">Gestisci il tuo profilo e i dati aziendali</p>
+        <p className="text-muted-foreground">Gestisci i dati aziendali e fiscali</p>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-heading">Profilo Utente</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <Label>Nome</Label>
-              <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="mt-1.5" />
-            </div>
-            <div>
-              <Label>Cognome</Label>
-              <Input value={lastName} onChange={(e) => setLastName(e.target.value)} className="mt-1.5" />
-            </div>
-          </div>
-          <div>
-            <Label>Telefono</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5" />
-          </div>
-          <div>
-            <Label>Email</Label>
-            <Input value={profile?.email ?? ""} disabled className="mt-1.5 opacity-60" />
-          </div>
-          <Button onClick={() => updateProfileMutation.mutate()} disabled={updateProfileMutation.isPending} className="gap-2">
-            {updateProfileMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            <Save className="h-4 w-4" /> Salva Profilo
-          </Button>
-        </CardContent>
-      </Card>
 
       {(role === "partner" || role === "admin") && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-heading">Dati Fiscali (Corrispettivi Telematici)</CardTitle>
+            <CardTitle className="text-lg font-heading">Dati Aziendali</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <Label>Ragione Sociale *</Label>
               <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} className="mt-1.5" placeholder="Obbligatorio" />
-              {!legalName.trim() && <p className="text-xs text-destructive mt-1">Campo obbligatorio per attivare le stazioni</p>}
+              {!legalName.trim() && <p className="text-xs text-destructive mt-1">Campo obbligatorio</p>}
             </div>
-            <div>
-              <Label>Partita IVA *</Label>
-              <Input value={profileVat} onChange={(e) => setProfileVat(e.target.value)} className="mt-1.5" placeholder="Obbligatorio" />
-              {!profileVat.trim() && <p className="text-xs text-destructive mt-1">Campo obbligatorio per attivare le stazioni</p>}
-            </div>
-            <div>
-              <Label>Codice Fiscale</Label>
-              <Input value={fiscalCode} onChange={(e) => setFiscalCode(e.target.value)} className="mt-1.5" />
-            </div>
-            {role === "admin" && (
+            <div className="grid sm:grid-cols-2 gap-4">
               <div>
+                <Label>Partita IVA *</Label>
+                <Input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} className="mt-1.5" placeholder="Obbligatorio" />
+                {!vatNumber.trim() && <p className="text-xs text-destructive mt-1">Campo obbligatorio</p>}
+              </div>
+              <div>
+                <Label>Codice Fiscale</Label>
+                <Input value={fiscalCode} onChange={(e) => setFiscalCode(e.target.value)} className="mt-1.5" placeholder={vatNumber.trim() || "Uguale alla P.IVA se vuoto"} />
+                <p className="text-xs text-muted-foreground mt-1">Se vuoto, verrà usata la Partita IVA</p>
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <p className="text-sm font-medium text-foreground mb-3">Sede Legale</p>
+              <div className="grid sm:grid-cols-[1fr_auto] gap-4">
+                <div>
+                  <Label>Via / Indirizzo *</Label>
+                  <Input value={addressStreet} onChange={(e) => setAddressStreet(e.target.value)} className="mt-1.5" placeholder="Via Roma" />
+                </div>
+                <div>
+                  <Label>N. Civico</Label>
+                  <Input value={addressNumber} onChange={(e) => setAddressNumber(e.target.value)} className="mt-1.5 w-24" placeholder="12/A" />
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-4 mt-4">
+                <div>
+                  <Label>CAP *</Label>
+                  <Input value={zipCode} onChange={(e) => setZipCode(e.target.value)} className="mt-1.5" placeholder="00100" maxLength={5} />
+                </div>
+                <div>
+                  <Label>Città *</Label>
+                  <Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1.5" placeholder="Roma" />
+                </div>
+                <div>
+                  <Label>Provincia *</Label>
+                  <Input value={province} onChange={(e) => setProvince(e.target.value.toUpperCase())} className="mt-1.5" placeholder="RM" maxLength={2} />
+                </div>
+              </div>
+            </div>
+
+            {role === "admin" && (
+              <div className="border-t border-border pt-4">
                 <Label>Fiskaly System ID (solo admin)</Label>
                 <Input value={profile?.fiskaly_system_id ?? ""} disabled className="mt-1.5 opacity-60" />
               </div>
             )}
+
             <Button
-              onClick={() => updateFiscalMutation.mutate()}
-              disabled={updateFiscalMutation.isPending || !legalName.trim() || !profileVat.trim()}
+              onClick={() => updateMutation.mutate()}
+              disabled={updateMutation.isPending || !legalName.trim() || !vatNumber.trim()}
               className="gap-2"
             >
-              {updateFiscalMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              <Save className="h-4 w-4" /> Salva Dati Fiscali
+              {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Save className="h-4 w-4" /> Salva
             </Button>
           </CardContent>
         </Card>

@@ -28,9 +28,9 @@ const ClientsList = () => {
   }, {});
 
   const filtered = (profiles ?? []).filter((p) => {
-    const name = [p.first_name, p.last_name].filter(Boolean).join(" ").toLowerCase();
+    const name = (p.legal_name ?? [p.first_name, p.last_name].filter(Boolean).join(" ")).toLowerCase();
     const q = search.toLowerCase();
-    return name.includes(q) || (p.email ?? "").toLowerCase().includes(q);
+    return name.includes(q) || (p.email ?? "").toLowerCase().includes(q) || (p.vat_number ?? "").includes(q);
   });
 
   if (isLoading) {
@@ -71,7 +71,7 @@ const ClientsList = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="p-4 font-medium">Nome</th>
+                  <th className="p-4 font-medium">Ragione Sociale</th>
                   <th className="p-4 font-medium">Email</th>
                   <th className="p-4 font-medium">Ruolo</th>
                   <th className="p-4 font-medium">Strutture</th>
@@ -79,7 +79,7 @@ const ClientsList = () => {
               </thead>
               <tbody className="divide-y">
                 {filtered.map((p) => {
-                  const displayName = [p.first_name, p.last_name].filter(Boolean).join(" ") || "—";
+                  const displayName = p.legal_name || [p.first_name, p.last_name].filter(Boolean).join(" ") || "—";
                   const initials = displayName.charAt(0).toUpperCase();
                   return (
                     <tr key={p.id} className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate(`/clients/${p.id}`)}>

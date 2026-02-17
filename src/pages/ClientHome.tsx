@@ -17,7 +17,7 @@ type Period = "today" | "7d" | "month";
 
 const ClientHome = () => {
   const { profile, role, structureIds } = useAuth();
-  const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Partner";
+  const displayName = profile?.legal_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Partner";
   const [period, setPeriod] = useState<Period>("month");
 
   const structureId = role === "manager" && structureIds.length === 1 ? structureIds[0] : undefined;

@@ -259,6 +259,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address_number: string | null
+          address_street: string | null
+          city: string | null
           created_at: string | null
           email: string | null
           first_name: string | null
@@ -269,11 +272,16 @@ export type Database = {
           legal_name: string | null
           must_change_password: boolean | null
           phone: string | null
+          province: string | null
           role: Database["public"]["Enums"]["user_role"] | null
           stripe_customer_id: string | null
           vat_number: string | null
+          zip_code: string | null
         }
         Insert: {
+          address_number?: string | null
+          address_street?: string | null
+          city?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
@@ -284,11 +292,16 @@ export type Database = {
           legal_name?: string | null
           must_change_password?: boolean | null
           phone?: string | null
+          province?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
           stripe_customer_id?: string | null
           vat_number?: string | null
+          zip_code?: string | null
         }
         Update: {
+          address_number?: string | null
+          address_street?: string | null
+          city?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
@@ -299,9 +312,11 @@ export type Database = {
           legal_name?: string | null
           must_change_password?: boolean | null
           phone?: string | null
+          province?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
           stripe_customer_id?: string | null
           vat_number?: string | null
+          zip_code?: string | null
         }
         Relationships: []
       }

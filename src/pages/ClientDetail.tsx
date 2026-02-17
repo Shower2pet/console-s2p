@@ -1,24 +1,28 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Building2, Monitor, Loader2, Mail, Phone, User, Trash2, MapPin } from "lucide-react";
+import { ArrowLeft, Building2, Monitor, Loader2, Mail, Trash2, MapPin, Briefcase } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import DeletePartnerDialog from "@/components/DeletePartnerDialog";
 import StaticMapPreview from "@/components/StaticMapPreview";
 import AssignStationDialog from "@/components/AssignStationDialog";
-import { fetchProfileById } from "@/services/profileService";
+import { fetchProfileById, updatePartnerData } from "@/services/profileService";
 import { fetchStructuresByOwner } from "@/services/structureService";
 import { fetchStationsByOwner } from "@/services/stationService";
 import { deleteUser } from "@/services/userService";
+import { Save, Loader2 as Loader2Icon } from "lucide-react";
 
 const ClientDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -49,7 +53,7 @@ const ClientDetail = () => {
 
   if (!profile) return <div className="p-6 text-muted-foreground">Cliente non trovato.</div>;
 
-  const displayName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "—";
+  const displayName = profile.legal_name || profile.email || "—";
 
   const handleDeletePartner = async () => {
     try {
@@ -85,29 +89,8 @@ const ClientDetail = () => {
         onConfirm={handleDeletePartner}
       />
 
-      {/* Profile info */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-heading flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" /> Informazioni Cliente
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid sm:grid-cols-3 gap-4">
-          <div className="flex items-center gap-2 text-sm">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            <span className="text-foreground">{profile.email ?? "—"}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            <span className="text-foreground">{profile.phone ?? "—"}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="capitalize rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-              {profile.role ?? "user"}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Partner business info - editable by admin */}
+      <PartnerInfoCard profileId={id!} profile={profile} />
 
       {/* Structures */}
       <div>
@@ -169,6 +152,110 @@ const ClientDetail = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+/** Editable partner info card for admin */
+const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: any }) => {
+  const qc = useQueryClient();
+  const [legalName, setLegalName] = useState(profile.legal_name ?? "");
+  const [vatNumber, setVatNumber] = useState(profile.vat_number ?? "");
+  const [fiscalCode, setFiscalCode] = useState(profile.fiscal_code ?? "");
+  const [addressStreet, setAddressStreet] = useState(profile.address_street ?? "");
+  const [addressNumber, setAddressNumber] = useState(profile.address_number ?? "");
+  const [zipCode, setZipCode] = useState(profile.zip_code ?? "");
+  const [city, setCity] = useState(profile.city ?? "");
+  const [province, setProvince] = useState(profile.province ?? "");
+
+  const effectiveFiscalCode = fiscalCode.trim() || vatNumber.trim();
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      updatePartnerData(profileId, {
+        legal_name: legalName.trim() || null,
+        vat_number: vatNumber.trim() || null,
+        fiscal_code: effectiveFiscalCode || null,
+        address_street: addressStreet.trim() || null,
+        address_number: addressNumber.trim() || null,
+        zip_code: zipCode.trim() || null,
+        city: city.trim() || null,
+        province: province.trim().toUpperCase() || null,
+      }),
+    onSuccess: () => {
+      toast.success("Dati partner salvati");
+      qc.invalidateQueries({ queryKey: ["client-profile", profileId] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-heading flex items-center gap-2">
+          <Briefcase className="h-5 w-5 text-primary" /> Informazioni Aziendali
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="flex items-center gap-2 text-sm">
+            <Mail className="h-4 w-4 text-muted-foreground" />
+            <span className="text-foreground">{profile.email ?? "—"}</span>
+          </div>
+          <div className="text-sm">
+            <span className="text-muted-foreground">Fiskaly ID: </span>
+            <span className="text-foreground font-mono text-xs">{profile.fiskaly_system_id ?? "—"}</span>
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-4 space-y-4">
+          <div>
+            <Label>Ragione Sociale *</Label>
+            <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} className="mt-1.5" />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <Label>Partita IVA *</Label>
+              <Input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} className="mt-1.5" />
+            </div>
+            <div>
+              <Label>Codice Fiscale</Label>
+              <Input value={fiscalCode} onChange={(e) => setFiscalCode(e.target.value)} className="mt-1.5" placeholder={vatNumber.trim() || "Uguale alla P.IVA"} />
+            </div>
+          </div>
+
+          <p className="text-sm font-medium text-foreground">Sede Legale</p>
+          <div className="grid sm:grid-cols-[1fr_auto] gap-4">
+            <div>
+              <Label>Via / Indirizzo</Label>
+              <Input value={addressStreet} onChange={(e) => setAddressStreet(e.target.value)} className="mt-1.5" />
+            </div>
+            <div>
+              <Label>N. Civico</Label>
+              <Input value={addressNumber} onChange={(e) => setAddressNumber(e.target.value)} className="mt-1.5 w-24" />
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div>
+              <Label>CAP</Label>
+              <Input value={zipCode} onChange={(e) => setZipCode(e.target.value)} className="mt-1.5" maxLength={5} />
+            </div>
+            <div>
+              <Label>Città</Label>
+              <Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1.5" />
+            </div>
+            <div>
+              <Label>Provincia</Label>
+              <Input value={province} onChange={(e) => setProvince(e.target.value.toUpperCase())} className="mt-1.5" maxLength={2} />
+            </div>
+          </div>
+        </div>
+
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !legalName.trim() || !vatNumber.trim()} className="gap-2">
+          {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+          <Save className="h-4 w-4" /> Salva Dati Partner
+        </Button>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -24,9 +24,9 @@ export const fetchPartnerProfiles = async (): Promise<Profile[]> => {
 export const fetchPartnersList = async () => {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name, email")
+    .select("id, first_name, last_name, email, legal_name")
     .eq("role", "partner")
-    .order("last_name");
+    .order("legal_name");
   if (error) throw error;
   return data;
 };
@@ -42,9 +42,18 @@ export const updateProfile = async (
   if (error) throw error;
 };
 
-export const updateFiscalData = async (
+export const updatePartnerData = async (
   userId: string,
-  updates: { legal_name?: string | null; vat_number?: string | null; fiscal_code?: string | null }
+  updates: {
+    legal_name?: string | null;
+    vat_number?: string | null;
+    fiscal_code?: string | null;
+    address_street?: string | null;
+    address_number?: string | null;
+    zip_code?: string | null;
+    city?: string | null;
+    province?: string | null;
+  }
 ) => {
   const { error } = await supabase
     .from("profiles")
