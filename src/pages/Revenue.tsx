@@ -55,7 +55,7 @@ const Revenue = () => {
       .map(([ownerId, revenue]) => ({
         ownerId,
         revenue,
-        name: profileMap[ownerId] ? [profileMap[ownerId].first_name, profileMap[ownerId].last_name].filter(Boolean).join(" ") || profileMap[ownerId].email : ownerId,
+        name: profileMap[ownerId] ? profileMap[ownerId].legal_name || [profileMap[ownerId].first_name, profileMap[ownerId].last_name].filter(Boolean).join(" ") || profileMap[ownerId].email : ownerId,
       }))
       .sort((a, b) => b.revenue - a.revenue);
   }, [transactions, structures, profiles]);

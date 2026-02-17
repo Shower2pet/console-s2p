@@ -18,8 +18,8 @@ import { fetchFreeStations, type FreeStation } from "@/services/stationService";
 import { inviteUser } from "@/services/userService";
 
 const inviteSchema = z.object({
-  firstName: z.string().trim().min(1, "Nome obbligatorio").max(50),
-  lastName: z.string().trim().min(1, "Cognome obbligatorio").max(50),
+  legalName: z.string().trim().min(1, "Ragione Sociale obbligatoria").max(100),
+  vatNumber: z.string().trim().min(1, "Partita IVA obbligatoria").max(20),
   email: z.string().trim().email("Email non valida").max(255),
 });
 
@@ -45,7 +45,7 @@ const CreatePartner = () => {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),
-    defaultValues: { firstName: "", lastName: "", email: "" },
+    defaultValues: { legalName: "", vatNumber: "", email: "" },
   });
 
   useEffect(() => {
@@ -99,8 +99,8 @@ const CreatePartner = () => {
     try {
       const result = await inviteUser({
         email: values.email,
-        firstName: values.firstName,
-        lastName: values.lastName,
+        firstName: values.legalName,
+        lastName: "",
         role: "partner",
         stationIds: selectedStationIds.length > 0 ? selectedStationIds : undefined,
       });
@@ -195,14 +195,14 @@ const CreatePartner = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">Nome *</Label>
-                  <Input id="firstName" placeholder="Mario" {...register("firstName")} />
-                  {errors.firstName && <p className="text-xs text-destructive">{errors.firstName.message}</p>}
+                  <Label htmlFor="legalName">Ragione Sociale *</Label>
+                  <Input id="legalName" placeholder="Azienda Srl" {...register("legalName")} />
+                  {errors.legalName && <p className="text-xs text-destructive">{errors.legalName.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Cognome *</Label>
-                  <Input id="lastName" placeholder="Rossi" {...register("lastName")} />
-                  {errors.lastName && <p className="text-xs text-destructive">{errors.lastName.message}</p>}
+                  <Label htmlFor="vatNumber">Partita IVA *</Label>
+                  <Input id="vatNumber" placeholder="01234567890" {...register("vatNumber")} />
+                  {errors.vatNumber && <p className="text-xs text-destructive">{errors.vatNumber.message}</p>}
                 </div>
               </div>
               <div className="space-y-2">
