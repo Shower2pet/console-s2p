@@ -61,9 +61,9 @@ export type Database = {
       }
       daily_corrispettivi_logs: {
         Row: {
-          acube_transaction_id: string | null
           created_at: string
           error_details: string | null
+          fiskaly_record_id: string | null
           id: string
           partner_id: string
           reference_date: string
@@ -73,9 +73,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          acube_transaction_id?: string | null
           created_at?: string
           error_details?: string | null
+          fiskaly_record_id?: string | null
           id?: string
           partner_id: string
           reference_date: string
@@ -85,9 +85,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          acube_transaction_id?: string | null
           created_at?: string
           error_details?: string | null
+          fiskaly_record_id?: string | null
           id?: string
           partner_id?: string
           reference_date?: string
@@ -259,11 +259,11 @@ export type Database = {
       }
       profiles: {
         Row: {
-          acube_company_id: string | null
           created_at: string | null
           email: string | null
           first_name: string | null
           fiscal_code: string | null
+          fiskaly_system_id: string | null
           id: string
           last_name: string | null
           legal_name: string | null
@@ -274,11 +274,11 @@ export type Database = {
           vat_number: string | null
         }
         Insert: {
-          acube_company_id?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
           fiscal_code?: string | null
+          fiskaly_system_id?: string | null
           id: string
           last_name?: string | null
           legal_name?: string | null
@@ -289,11 +289,11 @@ export type Database = {
           vat_number?: string | null
         }
         Update: {
-          acube_company_id?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
           fiscal_code?: string | null
+          fiskaly_system_id?: string | null
           id?: string
           last_name?: string | null
           legal_name?: string | null
@@ -585,10 +585,10 @@ export type Database = {
       }
       transaction_receipts: {
         Row: {
-          acube_transaction_id: string | null
           amount: number
           created_at: string
           error_details: string | null
+          fiskaly_record_id: string | null
           id: string
           partner_id: string
           session_id: string | null
@@ -597,10 +597,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          acube_transaction_id?: string | null
           amount: number
           created_at?: string
           error_details?: string | null
+          fiskaly_record_id?: string | null
           id?: string
           partner_id: string
           session_id?: string | null
@@ -609,10 +609,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          acube_transaction_id?: string | null
           amount?: number
           created_at?: string
           error_details?: string | null
+          fiskaly_record_id?: string | null
           id?: string
           partner_id?: string
           session_id?: string | null

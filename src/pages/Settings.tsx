@@ -133,8 +133,8 @@ const Settings = () => {
             </div>
             {role === "admin" && (
               <div>
-                <Label>ACube Company ID (solo admin)</Label>
-                <Input value={profile?.acube_company_id ?? ""} disabled className="mt-1.5 opacity-60" />
+                <Label>Fiskaly System ID (solo admin)</Label>
+                <Input value={profile?.fiskaly_system_id ?? ""} disabled className="mt-1.5 opacity-60" />
               </div>
             )}
             <Button
