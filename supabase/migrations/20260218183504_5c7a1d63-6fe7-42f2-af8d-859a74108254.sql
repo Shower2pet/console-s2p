@@ -1,0 +1,1 @@
+UPDATE profiles SET fiskaly_unit_id = NULL, fiskaly_entity_id = NULL, fiskaly_system_id = NULL WHERE id = '37e53f47-631f-4f5c-b688-7e93d61f96d7';
