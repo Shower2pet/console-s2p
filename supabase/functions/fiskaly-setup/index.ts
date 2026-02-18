@@ -19,39 +19,13 @@ function jsonOk(data: Record<string, unknown>) {
   });
 }
 
-/**
- * Ottieni un bearer token Fiskaly.
- * Se scopeId è fornito, aggiunge X-Scope-Identifier per ottenere un token scoped alla UNIT.
- */
-async function getToken(baseUrl: string, key: string, secret: string, scopeId?: string): Promise<string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "X-Api-Version": FISKALY_API_VERSION,
-    "X-Idempotency-Key": crypto.randomUUID(),
-  };
-  if (scopeId) headers["X-Scope-Identifier"] = scopeId;
-
-  const res = await fetch(`${baseUrl}/tokens`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ content: { type: "API_KEY", key, secret } }),
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Fiskaly auth failed (${res.status}): ${t.slice(0, 200)}`);
-  }
-  const data = await res.json();
-  const bearer = data?.content?.authentication?.bearer;
-  if (!bearer) throw new Error("No bearer received from Fiskaly");
-  return bearer;
-}
-
 /** Chiamata generica all'API Fiskaly. */
 async function fCall(
   method: string,
   url: string,
   bearer: string,
   body?: unknown,
+  scopeId?: string,
 ) {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${bearer}`,
@@ -60,6 +34,9 @@ async function fCall(
   };
   if (method === "POST" || method === "PATCH") {
     headers["X-Idempotency-Key"] = crypto.randomUUID();
+  }
+  if (scopeId) {
+    headers["X-Scope-Identifier"] = scopeId;
   }
   const res = await fetch(url, {
     method,
@@ -70,6 +47,30 @@ async function fCall(
   let data: any = null;
   try { data = JSON.parse(text); } catch { /* ok */ }
   return { status: res.status, data, text };
+}
+
+/**
+ * Ottieni un bearer token Fiskaly.
+ * key/secret possono essere le credenziali master o quelle di un Subject.
+ */
+async function getToken(baseUrl: string, key: string, secret: string): Promise<string> {
+  const res = await fetch(`${baseUrl}/tokens`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Api-Version": FISKALY_API_VERSION,
+      "X-Idempotency-Key": crypto.randomUUID(),
+    },
+    body: JSON.stringify({ content: { type: "API_KEY", key, secret } }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Fiskaly auth failed (${res.status}): ${t.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const bearer = data?.content?.authentication?.bearer;
+  if (!bearer) throw new Error("No bearer received from Fiskaly");
+  return bearer;
 }
 
 Deno.serve(async (req) => {
@@ -136,23 +137,24 @@ Deno.serve(async (req) => {
     console.log("Step 0: OK");
 
     // ── STEP 1: Trova o crea UNIT asset ──────────────────────────────────────
-    // Cerca prima per partner_id nei metadata, poi per fiskaly_unit_id già salvato nel DB.
-    let unitAssetId: string | null = partner.fiskaly_unit_id ?? null;
+    // content.id = ID della UNIT (da usare come scope)
+    // content.asset.id = asset fisico sottostante (non usare come scope!)
+    let unitId: string | null = partner.fiskaly_unit_id ?? null;
 
-    if (!unitAssetId || force) {
-      console.log("Step 1: ricerca UNIT esistente per partner...");
+    if (!unitId || force) {
+      console.log("Step 1: ricerca UNIT esistente per partner_id...");
       const listR = await fCall("GET", `${BASE}/assets?limit=100`, tenantBearer);
       const existingUnit = (listR.data?.results ?? []).find(
         (a: any) => a.content?.type === "UNIT" && a.metadata?.partner_id === partner_id,
       );
       if (existingUnit) {
-        unitAssetId = existingUnit.content?.id ?? null;
-        console.log("Step 1: UNIT esistente trovata:", unitAssetId);
-        await supabase.from("profiles").update({ fiskaly_unit_id: unitAssetId }).eq("id", partner_id);
+        unitId = existingUnit.content?.id ?? null;
+        console.log("Step 1: UNIT esistente trovata:", unitId);
+        await supabase.from("profiles").update({ fiskaly_unit_id: unitId }).eq("id", partner_id);
       }
     }
 
-    if (!unitAssetId) {
+    if (!unitId) {
       console.log("Step 1: creazione nuova UNIT...");
       const r = await fCall("POST", `${BASE}/assets`, tenantBearer, {
         content: { type: "UNIT", name: partner.legal_name.trim() },
@@ -160,34 +162,87 @@ Deno.serve(async (req) => {
       });
       console.log(`Step 1: UNIT → ${r.status} ${r.text.slice(0, 200)}`);
       if (r.status === 200 || r.status === 201 || r.status === 409) {
-        // La risposta POST /assets ha: content.asset.id (ID reale asset) e content.id (ID assegnazione)
-        // Dobbiamo usare content.asset.id come scope identifier per il token scoped
-        unitAssetId = r.data?.content?.asset?.id ?? r.data?.content?.id ?? null;
-        console.log(`Step 1: asset.id=${r.data?.content?.asset?.id} content.id=${r.data?.content?.id} → uso=${unitAssetId}`);
+        // content.id è l'ID della UNIT (l'identificatore da usare come scope)
+        unitId = r.data?.content?.id ?? null;
+        console.log(`Step 1: unitId=${unitId} (asset.id=${r.data?.content?.asset?.id})`);
       }
-      if (!unitAssetId) return jsonErr(`Errore creazione UNIT (${r.status})`, { details: r.data?.content?.message ?? r.text.slice(0, 200) });
-      await supabase.from("profiles").update({ fiskaly_unit_id: unitAssetId }).eq("id", partner_id);
-      console.log("Step 1: UNIT pronta:", unitAssetId);
+      if (!unitId) return jsonErr(`Errore creazione UNIT (${r.status})`, { details: r.text.slice(0, 200) });
+      await supabase.from("profiles").update({ fiskaly_unit_id: unitId }).eq("id", partner_id);
+      console.log("Step 1: UNIT pronta:", unitId);
     }
 
-    // ── STEP 2: Ottieni token scoped alla UNIT ────────────────────────────────
-    // Strategia: usa direttamente master key + X-Scope-Identifier sull'endpoint /tokens.
-    // Questo è il metodo più affidabile e non crea Subject duplicati.
-    console.log("Step 2: token scoped alla UNIT...");
+    // ── STEP 2: Trova o crea Subject (API Key) per la UNIT ───────────────────
+    // Secondo la doc Fiskaly SIGN IT: bisogna creare un Subject di tipo API_KEY
+    // usando il token master con X-Scope-Identifier = unitId
+    // Poi usare le credenziali del Subject per autenticarsi e operare sulla UNIT
+    let subjectKey: string | null = null;
+    let subjectSecret: string | null = null;
+    let subjectId: string | null = null;
+
+    // Cerca un Subject esistente per questa UNIT
+    console.log("Step 2: ricerca Subject esistente per UNIT...");
+    const subjListR = await fCall("GET", `${BASE}/subjects?limit=100`, tenantBearer, undefined, unitId);
+    const existingSubject = (subjListR.data?.results ?? []).find(
+      (s: any) => s.metadata?.partner_id === partner_id,
+    );
+
+    if (existingSubject && !force) {
+      // Un Subject esiste ma non possiamo recuperare il secret → ricrearlo
+      // I Subject sono monouso per il secret: dopo la creazione il secret non è più visibile
+      // Se force=false e il subject esiste, non possiamo procedere senza il secret
+      // Soluzione: cerchiamo se il partner ha credenziali salvate nel DB
+      // (oppure forziamo la ri-creazione del Subject se force=true)
+      console.log("Step 2: Subject trovato ma secret non recuperabile — ricreo Subject");
+      subjectId = existingSubject.content?.id ?? null;
+    }
+
+    if (!subjectKey || !subjectSecret) {
+      console.log("Step 2: creazione nuovo Subject per UNIT:", unitId);
+      const subjectBody = {
+        content: {
+          type: "API_KEY",
+          name: `s2p-${partner.legal_name.trim().toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30)}-${Date.now()}`,
+        },
+        metadata: { partner_id, unit_id: unitId },
+      };
+      const sr = await fCall("POST", `${BASE}/subjects`, tenantBearer, subjectBody, unitId);
+      console.log(`Step 2: Subject → ${sr.status} ${sr.text.slice(0, 300)}`);
+
+      if (sr.status === 200 || sr.status === 201) {
+        // La risposta ha: content.credentials.key e content.credentials.secret
+        subjectKey    = sr.data?.content?.credentials?.key ?? null;
+        subjectSecret = sr.data?.content?.credentials?.secret ?? null;
+        subjectId     = sr.data?.content?.id ?? null;
+        console.log(`Step 2: Subject creato: id=${subjectId} key=${subjectKey ? "OK" : "MISSING"} secret=${subjectSecret ? "OK" : "MISSING"}`);
+      } else if (sr.status === 409) {
+        // Conflict: Subject già esiste — non possiamo recuperare il secret
+        // Dobbiamo usare force per ricrearlo, oppure usiamo il token master come fallback
+        console.warn("Step 2: Subject 409 conflict — non posso recuperare il secret");
+        // Continua con token master come fallback (potrebbe dare 405 sulle entity)
+      } else {
+        return jsonErr(`Errore creazione Subject (${sr.status})`, { details: sr.data?.content?.message ?? sr.text.slice(0, 200) });
+      }
+    }
+
+    // ── STEP 3: Token operativo per la UNIT ──────────────────────────────────
+    // Se abbiamo le credenziali del Subject, usiamole per un token "vero" per la UNIT
     let unitBearer: string;
-    try {
-      unitBearer = await getToken(BASE, MASTER_KEY, MASTER_SECRET, unitAssetId);
-      console.log("Step 2: token scoped OK ✓");
-    } catch (e) {
-      console.warn("Step 2: token scoped fallito:", (e as Error).message, "— uso token master come fallback");
+    if (subjectKey && subjectSecret) {
+      console.log("Step 3: token con credenziali Subject...");
+      unitBearer = await getToken(BASE, subjectKey, subjectSecret);
+      console.log("Step 3: token Subject OK ✓");
+    } else {
+      console.warn("Step 3: nessuna credenziale Subject disponibile — uso token master con scope");
+      // Ultimo fallback: master token + X-Scope-Identifier
+      // (può dare 405 in ambienti con UNIT reali, ma meglio che niente)
       unitBearer = tenantBearer;
     }
 
-    // ── STEP 3: Trova o crea Entity ───────────────────────────────────────────
+    // ── STEP 4: Trova o crea Entity ───────────────────────────────────────────
     let entityId: string | null = force ? null : (partner.fiskaly_entity_id ?? null);
 
     if (!entityId) {
-      console.log("Step 3: creazione Entity con token scoped...");
+      console.log("Step 4: creazione Entity...");
       const entityBody = {
         content: {
           type: "COMPANY",
@@ -209,13 +264,12 @@ Deno.serve(async (req) => {
         metadata: { partner_id, vat_number: partner.vat_number?.trim() ?? "" },
       };
       const er = await fCall("POST", `${BASE}/entities`, unitBearer, entityBody);
-      console.log(`Step 3: Entity → ${er.status} ${er.text.slice(0, 300)}`);
+      console.log(`Step 4: Entity → ${er.status} ${er.text.slice(0, 300)}`);
 
       if (er.status === 200 || er.status === 201) {
         entityId = er.data?.content?.id ?? null;
-        console.log("Step 3: Entity creata:", entityId);
+        console.log("Step 4: Entity creata:", entityId);
       } else if (er.status === 409) {
-        // Conflict: entity esiste già — cerca per partner_id nei metadata
         entityId = er.data?.content?.id ?? null;
         if (!entityId) {
           const lr = await fCall("GET", `${BASE}/entities?limit=100`, unitBearer);
@@ -224,13 +278,12 @@ Deno.serve(async (req) => {
           );
           entityId = found?.content?.id ?? null;
         }
-        if (!entityId) return jsonErr("Entity conflict (409): ID non trovato. Usa 'Azzera IDs Fiskaly nel DB' nel pannello admin e riprova.", { unit_id: unitAssetId });
-        console.log("Step 3: Entity conflict — uso esistente:", entityId);
+        if (!entityId) return jsonErr("Entity conflict (409): ID non trovato. Usa 'Azzera IDs Fiskaly' nel pannello admin e riprova.", { unit_id: unitId });
+        console.log("Step 4: Entity conflict — uso esistente:", entityId);
       } else if (er.status === 405) {
-        // 405 = il token non è scoped correttamente alla UNIT
         return jsonErr(
-          "Errore 405: il token non è scoped alla UNIT. Premi 'Azzera IDs Fiskaly nel DB' nel pannello admin e riconfigura.",
-          { unit_id: unitAssetId, details: er.data?.content?.message },
+          "Errore 405: il token operativo non è valido per questa UNIT. Premi 'Azzera IDs Fiskaly nel DB' nel pannello admin e riconfigura.",
+          { unit_id: unitId, details: er.data?.content?.message },
         );
       } else {
         return jsonErr(`Errore entity (${er.status})`, { details: er.data?.content?.message ?? er.text.slice(0, 200) });
@@ -239,13 +292,13 @@ Deno.serve(async (req) => {
       if (!entityId) return jsonErr("Entity ID non ricevuto da Fiskaly");
       await supabase.from("profiles").update({ fiskaly_entity_id: entityId }).eq("id", partner_id);
     } else {
-      console.log("Step 3: uso entity_id esistente:", entityId);
+      console.log("Step 4: uso entity_id esistente:", entityId);
     }
 
-    // ── STEP 4: Commissioning Entity ─────────────────────────────────────────
-    console.log("Step 4: commissioning entity", entityId);
+    // ── STEP 5: Commissioning Entity ─────────────────────────────────────────
+    console.log("Step 5: commissioning entity", entityId);
     const cr = await fCall("PATCH", `${BASE}/entities/${entityId}`, unitBearer, { content: { state: "COMMISSIONED" } });
-    console.log(`Step 4: Commission → ${cr.status} ${cr.text.slice(0, 200)}`);
+    console.log(`Step 5: Commission → ${cr.status} ${cr.text.slice(0, 200)}`);
     if (!cr.status.toString().startsWith("2")) {
       const code = cr.data?.content?.code ?? "";
       const msg  = (cr.data?.content?.message ?? "").toLowerCase();
@@ -253,13 +306,12 @@ Deno.serve(async (req) => {
       if (!alreadyDone) {
         return jsonErr(`Errore commissioning entity (${cr.status})`, {
           details: cr.data?.content?.message,
-          hint: cr.status === 405 ? "Token non scoped. Azzera gli IDs nel DB e riconfigura." : undefined,
         });
       }
-      console.log("Step 4: già commissionata — OK");
+      console.log("Step 5: già commissionata — OK");
     }
 
-    // ── STEP 5: Trova o crea System ───────────────────────────────────────────
+    // ── STEP 6: Trova o crea System ───────────────────────────────────────────
     if (partner.fiskaly_system_id && !force) {
       return jsonOk({
         success: true,
@@ -269,7 +321,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log("Step 5: creazione System per entity", entityId);
+    console.log("Step 6: creazione System per entity", entityId);
     const syr = await fCall("POST", `${BASE}/systems`, unitBearer, {
       content: {
         type: "FISCAL_DEVICE",
@@ -287,7 +339,7 @@ Deno.serve(async (req) => {
       },
       metadata: { partner_id },
     });
-    console.log(`Step 5: System → ${syr.status} ${syr.text.slice(0, 400)}`);
+    console.log(`Step 6: System → ${syr.status} ${syr.text.slice(0, 400)}`);
 
     let systemId: string | null = null;
     if (syr.status === 200 || syr.status === 201) {
@@ -295,14 +347,14 @@ Deno.serve(async (req) => {
     } else if (syr.status === 409) {
       systemId = syr.data?.content?.id ?? null;
       if (!systemId) {
-        const slr = await fCall("GET", `${BASE}/systems?limit=100`, tenantBearer);
+        const slr = await fCall("GET", `${BASE}/systems?limit=100`, unitBearer);
         const found = (slr.data?.results ?? []).find(
           (s: any) => s.content?.entity?.id === entityId || s.metadata?.partner_id === partner_id,
         );
         systemId = found?.content?.id ?? null;
       }
       if (!systemId) return jsonErr("System conflict (409): ID non trovato. Usa 'Salva System ID manuale' nell'admin.", { entity_id: entityId });
-      console.log("Step 5: System conflict — uso esistente:", systemId);
+      console.log("Step 6: System conflict — uso esistente:", systemId);
     } else {
       return jsonErr(`Errore system (${syr.status})`, {
         details: syr.data?.content?.message ?? syr.text.slice(0, 200),
@@ -311,33 +363,33 @@ Deno.serve(async (req) => {
     }
     if (!systemId) return jsonErr("System ID non ricevuto da Fiskaly");
 
-    // ── STEP 6: Commissioning System ─────────────────────────────────────────
-    console.log("Step 6: commissioning system", systemId);
+    // ── STEP 7: Commissioning System ─────────────────────────────────────────
+    console.log("Step 7: commissioning system", systemId);
     const scr = await fCall("PATCH", `${BASE}/systems/${systemId}`, unitBearer, { content: { state: "COMMISSIONED" } });
-    console.log(`Step 6: System commission → ${scr.status} ${scr.text.slice(0, 200)}`);
+    console.log(`Step 7: System commission → ${scr.status} ${scr.text.slice(0, 200)}`);
     if (!scr.status.toString().startsWith("2")) {
       const code = scr.data?.content?.code ?? "";
       const msg  = (scr.data?.content?.message ?? "").toLowerCase();
       const alreadyDone = code === "E_CONFLICT" || code === "E_INVALID_STATE_TRANSITION" || msg.includes("already") || msg.includes("commissioned");
       if (!alreadyDone) {
-        console.warn("Step 6: system commissioning warning:", scr.data?.content?.message, "— proseguo comunque");
+        console.warn("Step 7: system commissioning warning:", scr.data?.content?.message, "— proseguo comunque");
       } else {
-        console.log("Step 6: già commissionato — OK");
+        console.log("Step 7: già commissionato — OK");
       }
     }
 
     // Salva sul DB
     await supabase
       .from("profiles")
-      .update({ fiskaly_system_id: systemId, fiskaly_entity_id: entityId, fiskaly_unit_id: unitAssetId })
+      .update({ fiskaly_system_id: systemId, fiskaly_entity_id: entityId, fiskaly_unit_id: unitId })
       .eq("id", partner_id);
 
-    console.log("✅ Completato → system_id:", systemId, "entity_id:", entityId, "unit_id:", unitAssetId);
+    console.log("✅ Completato → system_id:", systemId, "entity_id:", entityId, "unit_id:", unitId);
     return jsonOk({
       success: true,
       system_id: systemId,
       entity_id: entityId,
-      unit_id: unitAssetId,
+      unit_id: unitId,
       env: ENV,
       message: "Configurazione Fiskaly completata con successo ✓",
     });
