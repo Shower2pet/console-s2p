@@ -266,7 +266,9 @@ export type Database = {
           email: string | null
           first_name: string | null
           fiscal_code: string | null
+          fiskaly_entity_id: string | null
           fiskaly_system_id: string | null
+          fiskaly_unit_id: string | null
           id: string
           last_name: string | null
           legal_name: string | null
@@ -286,7 +288,9 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           fiscal_code?: string | null
+          fiskaly_entity_id?: string | null
           fiskaly_system_id?: string | null
+          fiskaly_unit_id?: string | null
           id: string
           last_name?: string | null
           legal_name?: string | null
@@ -306,7 +310,9 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           fiscal_code?: string | null
+          fiskaly_entity_id?: string | null
           fiskaly_system_id?: string | null
+          fiskaly_unit_id?: string | null
           id?: string
           last_name?: string | null
           legal_name?: string | null
