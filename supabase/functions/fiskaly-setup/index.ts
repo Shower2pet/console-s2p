@@ -8,10 +8,54 @@ const corsHeaders = {
 
 const FISKALY_API_VERSION = "2025-08-12";
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+// ── Auth helper ────────────────────────────────────────────────────────────────
+async function getFiskalyToken(
+  baseUrl: string,
+  apiKey: string,
+  apiSecret: string,
+  scopeId?: string
+): Promise<string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Api-Version": FISKALY_API_VERSION,
+    "X-Idempotency-Key": crypto.randomUUID(),
+  };
+  if (scopeId) headers["X-Scope-Identifier"] = scopeId;
+
+  const res = await fetch(`${baseUrl}/tokens`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      content: { type: "API_KEY", key: apiKey, secret: apiSecret },
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Fiskaly auth failed (${res.status}): ${body}`);
   }
+  const data = await res.json();
+  const bearer = data?.content?.authentication?.bearer;
+  if (!bearer) throw new Error("Fiskaly: bearer token non ricevuto nella risposta");
+  return bearer;
+}
+
+// ── JSON error ────────────────────────────────────────────────────────────────
+function jsonErr(msg: string, extras: Record<string, unknown> = {}, status = 502) {
+  return new Response(JSON.stringify({ error: msg, ...extras }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+function jsonOk(data: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const {
@@ -21,160 +65,152 @@ Deno.serve(async (req) => {
       system_id: providedSystemId = null,
     } = await req.json();
 
-    if (!partner_id) {
-      return new Response(
-        JSON.stringify({ error: "partner_id è obbligatorio" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    if (!partner_id) return jsonErr("partner_id è obbligatorio", {}, 400);
 
-    // Init Supabase with service role
+    // ── Supabase service role ─────────────────────────────────────────────────
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Fetch partner profile
     const { data: partner, error: profileError } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", partner_id)
       .maybeSingle();
 
-    if (profileError || !partner) {
-      return new Response(
-        JSON.stringify({ error: "Partner non trovato" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    if (profileError || !partner) return jsonErr("Partner non trovato", {}, 404);
 
-    // ── SHORTCUT: Save system_id directly if provided ───────────────────────
+    // ── SHORTCUT: salva system_id manuale ─────────────────────────────────────
     if (providedSystemId) {
-      console.log("Shortcut: saving provided system_id directly:", providedSystemId);
-      const { error: updateError } = await supabase
+      console.log("Shortcut: saving system_id:", providedSystemId);
+      const { error } = await supabase
         .from("profiles")
         .update({ fiskaly_system_id: providedSystemId })
         .eq("id", partner_id);
-
-      if (updateError) {
-        return new Response(
-          JSON.stringify({ error: "Errore nel salvataggio del System ID", db_error: updateError.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          system_id: providedSystemId,
-          message: "System ID salvato manualmente con successo",
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (error) return jsonErr("Errore salvataggio System ID", { db_error: error.message }, 500);
+      return jsonOk({ success: true, system_id: providedSystemId, message: "System ID salvato manualmente" });
     }
 
-    // Check if already configured (idempotent)
+    // ── Già configurato (idempotente) ────────────────────────────────────────
     if (partner.fiskaly_system_id && !force && !providedEntityId) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          already_configured: true,
-          system_id: partner.fiskaly_system_id,
-          message: "Fiskaly già configurato. Usa force=true per riconfigurare.",
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      return jsonOk({
+        success: true,
+        already_configured: true,
+        system_id: partner.fiskaly_system_id,
+        message: "Fiskaly già configurato. Usa force=true per riconfigurare.",
+      });
+    }
+
+    // ── Validazione campi obbligatori ─────────────────────────────────────────
+    const missing: string[] = [];
+    if (!partner.legal_name?.trim())    missing.push("Ragione Sociale (legal_name)");
+    if (!partner.vat_number?.trim())    missing.push("Partita IVA (vat_number)");
+    if (!partner.address_street?.trim()) missing.push("Via/Indirizzo (address_street)");
+    if (!partner.zip_code?.trim())      missing.push("CAP (zip_code)");
+    if (!partner.city?.trim())          missing.push("Città (city)");
+    if (!partner.province?.trim())      missing.push("Provincia (province)");
+    if (missing.length > 0) {
+      return jsonErr(
+        `Dati obbligatori mancanti: ${missing.join(", ")}`,
+        { missing_fields: missing },
+        422
       );
     }
 
-    // Validate required fields
-    const missingFields: string[] = [];
-    if (!partner.legal_name?.trim()) missingFields.push("Ragione Sociale (legal_name)");
-    if (!partner.vat_number?.trim()) missingFields.push("Partita IVA (vat_number)");
-    if (!partner.address_street?.trim()) missingFields.push("Via/Indirizzo (address_street)");
-    if (!partner.zip_code?.trim()) missingFields.push("CAP (zip_code)");
-    if (!partner.city?.trim()) missingFields.push("Città (city)");
-    if (!partner.province?.trim()) missingFields.push("Provincia (province)");
-
-    if (missingFields.length > 0) {
-      return new Response(
-        JSON.stringify({
-          error: `Dati obbligatori mancanti nel profilo del partner: ${missingFields.join(", ")}`,
-          missing_fields: missingFields,
-        }),
-        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Fiskaly credentials
-    const API_KEY = Deno.env.get("FISKALY_API_KEY");
+    // ── Credenziali Fiskaly ───────────────────────────────────────────────────
+    const API_KEY    = Deno.env.get("FISKALY_API_KEY");
     const API_SECRET = Deno.env.get("FISKALY_API_SECRET");
-    const ENV = (Deno.env.get("FISKALY_ENV") ?? "TEST").toUpperCase();
+    const ENV        = (Deno.env.get("FISKALY_ENV") ?? "TEST").toUpperCase();
 
-    if (!API_KEY || !API_SECRET) {
-      return new Response(
-        JSON.stringify({ error: "Credenziali Fiskaly non configurate" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    if (!API_KEY || !API_SECRET) return jsonErr("Credenziali Fiskaly non configurate", {}, 500);
 
-    const BASE_URL =
-      ENV === "LIVE"
-        ? "https://live.api.fiskaly.com"
-        : "https://test.api.fiskaly.com";
+    const BASE_URL = ENV === "LIVE"
+      ? "https://live.api.fiskaly.com"
+      : "https://test.api.fiskaly.com";
 
-    // ── Step 0: Authenticate with Fiskaly (OAuth2 JWT) ─────────────────────
+    // ── Step 0: Autenticazione (token TENANT-level) ──────────────────────────
     console.log("Step 0: Authenticating with Fiskaly...");
-    const tokenRes = await fetch(`${BASE_URL}/tokens`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Api-Version": FISKALY_API_VERSION,
-        "X-Idempotency-Key": crypto.randomUUID(),
-      },
-      body: JSON.stringify({
-        content: {
-          type: "API_KEY",
-          key: API_KEY,
-          secret: API_SECRET,
-        },
-      }),
-    });
+    const tenantBearer = await getFiskalyToken(BASE_URL, API_KEY, API_SECRET);
+    console.log("Step 0: Auth OK");
 
-    if (!tokenRes.ok) {
-      const tokenBody = await tokenRes.text();
-      console.error("Token error:", tokenRes.status, tokenBody);
-      return new Response(
-        JSON.stringify({
-          error: `Fiskaly: autenticazione fallita (${tokenRes.status})`,
-          details: tokenBody,
-        }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const tokenData = await tokenRes.json();
-    const jwtBearer = tokenData?.content?.authentication?.bearer;
-
-    if (!jwtBearer) {
-      console.error("Token response missing bearer:", JSON.stringify(tokenData));
-      return new Response(
-        JSON.stringify({ error: "Fiskaly: token JWT non ricevuto", details: tokenData }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log("Step 0: Auth successful, got bearer token");
-
-    const authHeaders = {
-      "Authorization": `Bearer ${jwtBearer}`,
+    const baseHeaders = {
+      "Authorization": `Bearer ${tenantBearer}`,
       "Content-Type": "application/json",
       "X-Api-Version": FISKALY_API_VERSION,
     };
 
     let entityId: string | null = providedEntityId;
 
-    // ── Step 1: POST /entities (skip if entity_id provided) ────────────────
     if (!entityId) {
+      // ── Step 1: Crea asset UNIT per il partner ──────────────────────────────
+      // La struttura Fiskaly è: TENANT (account root) → UNIT (merchant) → Entity
+      // Dobbiamo creare un UNIT per ogni partner prima di creare la sua Entity.
+      // Usiamo il partner_id come metadata per idempotenza.
+      const unitName = partner.legal_name.trim();
+      console.log(`Step 1: Creating UNIT asset for "${unitName}"...`);
+
+      const assetRes = await fetch(`${BASE_URL}/assets`, {
+        method: "POST",
+        headers: { ...baseHeaders, "X-Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({
+          content: { type: "UNIT", name: unitName },
+          metadata: { partner_id, vat_number: partner.vat_number?.trim() ?? "" },
+        }),
+      });
+
+      const assetText = await assetRes.text();
+      console.log(`Asset response: ${assetRes.status} ${assetText}`);
+
+      let unitAssetId: string | null = null;
+
+      if (assetRes.status === 200 || assetRes.status === 201) {
+        const assetData = JSON.parse(assetText);
+        unitAssetId = assetData?.content?.id ?? null;
+        console.log("UNIT asset created:", unitAssetId);
+      } else if (assetRes.status === 405) {
+        // 405 su POST /assets = account TENANT non supporta creazione UNIT via API
+        // (profilo Fiskaly in modalità single-tenant)
+        // Proviamo comunque a creare l'entity senza scope (usa TENANT di default)
+        console.warn("POST /assets returned 405 — proceeding without explicit UNIT scope");
+        unitAssetId = null;
+      } else if (assetRes.status === 409) {
+        // Asset già esistente — estraiamo l'id dalla risposta se presente
+        try {
+          const conflict = JSON.parse(assetText);
+          unitAssetId = conflict?.content?.id ?? null;
+          console.log("UNIT asset already exists:", unitAssetId);
+        } catch { /* ignore */ }
+      } else {
+        let parsed: any = null;
+        try { parsed = JSON.parse(assetText); } catch { /* ignore */ }
+        return jsonErr(
+          `Fiskaly: errore creazione asset UNIT (${assetRes.status})`,
+          { details: parsed?.content?.message ?? assetText }
+        );
+      }
+
+      // ── Step 2: Crea Entity sotto l'asset UNIT ─────────────────────────────
+      // Se abbiamo un UNIT, otteniamo un token scoped al UNIT per la creazione entity.
+      // Il token UNIT-scoped permette di creare entity nel contesto corretto.
+      let entityBearerToken = tenantBearer;
+      if (unitAssetId) {
+        try {
+          console.log("Getting UNIT-scoped token for entity creation...");
+          entityBearerToken = await getFiskalyToken(BASE_URL, API_KEY, API_SECRET, unitAssetId);
+          console.log("UNIT-scoped token obtained");
+        } catch (e) {
+          console.warn("Failed to get UNIT-scoped token, using tenant token:", e);
+        }
+      }
+
+      const entityHeaders: Record<string, string> = {
+        "Authorization": `Bearer ${entityBearerToken}`,
+        "Content-Type": "application/json",
+        "X-Api-Version": FISKALY_API_VERSION,
+        "X-Idempotency-Key": crypto.randomUUID(),
+      };
+
       const entityBody = {
         content: {
           type: "COMPANY",
@@ -193,177 +229,135 @@ Deno.serve(async (req) => {
             country: "IT",
           },
         },
+        metadata: { partner_id },
       };
 
-      console.log("Step 1: Creating entity...", JSON.stringify(entityBody));
+      console.log("Step 2: Creating entity...", JSON.stringify({ ...entityBody, unit_asset_id: unitAssetId }));
       const entityRes = await fetch(`${BASE_URL}/entities`, {
         method: "POST",
-        headers: {
-          ...authHeaders,
-          "X-Idempotency-Key": crypto.randomUUID(),
-        },
+        headers: entityHeaders,
         body: JSON.stringify(entityBody),
       });
 
       const entityText = await entityRes.text();
-      console.log("Entity response:", entityRes.status, entityText);
+      console.log(`Entity response: ${entityRes.status} ${entityText}`);
 
-      if (entityRes.status === 201 || entityRes.status === 200) {
+      if (entityRes.status === 200 || entityRes.status === 201) {
         const entityData = JSON.parse(entityText);
-        entityId = entityData?.content?.id;
+        entityId = entityData?.content?.id ?? null;
+        console.log("Entity created:", entityId);
       } else if (entityRes.status === 405) {
-        // Entity "fantasma" bloccante — UUID non valido su Fiskaly, impossibile procedere
-        // L'admin deve usare la sezione "Gestione Fiskaly" in AdminSettings per sbloccare
-        const errorContent = (() => {
-          try { return JSON.parse(entityText)?.content; } catch { return null; }
-        })();
-        console.error("Entity 405 — asset non-unit bloccante:", entityText);
-        return new Response(
-          JSON.stringify({
-            error: "Fiskaly: entity bloccata (asset non-unit)",
-            details: errorContent?.message ?? entityText,
-            instructions: [
-              "Su Fiskaly esiste già un asset con un ID non compatibile (UUID v4) che blocca la creazione automatica.",
-              "Per sbloccare WashDog, usa la sezione 'Gestione Fiskaly' in Impostazioni Sistema:",
-              "• Opzione A: inserisci il System ID corretto (se già esiste un System su Fiskaly) e clicca 'Salva System ID'",
-              "• Opzione B: inserisci un Entity ID valido (UUID v7) e clicca 'Configura da Entity esistente' — la funzione eseguirà solo il commissioning e la creazione del System",
-              "• Opzione C: azzera e riprova dopo aver eliminato l'asset corrotto su Fiskaly tramite API diretta",
-            ],
-          }),
-          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        // Ancora bloccato — l'account non supporta la struttura richiesta
+        let parsed: any = null;
+        try { parsed = JSON.parse(entityText); } catch { /* ignore */ }
+        return jsonErr(
+          "Fiskaly: impossibile creare Entity — account non configurato correttamente",
+          {
+            details: parsed?.content?.message ?? entityText,
+            code: parsed?.content?.code,
+            hint: "Verifica che il tuo account Fiskaly supporti la creazione di Entity via API. " +
+                  "Potrebbe essere necessario contattare il supporto Fiskaly per abilitare questa funzionalità " +
+                  "o usare il portale Fiskaly Dashboard per creare manualmente l'Entity, poi inserire l'Entity ID qui.",
+          },
+          409
         );
       } else {
-        return new Response(
-          JSON.stringify({
-            error: `Fiskaly: errore creazione entity (${entityRes.status})`,
-            details: entityText,
-          }),
-          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        let parsed: any = null;
+        try { parsed = JSON.parse(entityText); } catch { /* ignore */ }
+        return jsonErr(
+          `Fiskaly: errore creazione entity (${entityRes.status})`,
+          { details: parsed?.content?.message ?? entityText, code: parsed?.content?.code }
         );
       }
 
-      if (!entityId) {
-        return new Response(
-          JSON.stringify({ error: "Fiskaly: entity ID non ricevuto", details: entityText }),
-          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      if (!entityId) return jsonErr("Fiskaly: entity ID non ricevuto dopo la creazione");
     } else {
-      console.log("Step 1: Skipped — using provided entity_id:", entityId);
+      console.log("Step 2: Skipped — using provided entity_id:", entityId);
     }
 
-    // ── Step 2: PATCH /entities/:id → COMMISSIONED ─────────────────────────
-    console.log("Step 2: Commissioning entity", entityId);
-    const commissionRes = await fetch(`${BASE_URL}/entities/${entityId}`, {
+    // ── Step 3: PATCH /entities/:id → COMMISSIONED ───────────────────────────
+    console.log("Step 3: Commissioning entity", entityId);
+    const commRes = await fetch(`${BASE_URL}/entities/${entityId}`, {
       method: "PATCH",
-      headers: {
-        ...authHeaders,
-        "X-Idempotency-Key": crypto.randomUUID(),
-      },
+      headers: { ...baseHeaders, "X-Idempotency-Key": crypto.randomUUID() },
       body: JSON.stringify({ content: { state: "COMMISSIONED" } }),
     });
 
-    const commissionText = await commissionRes.text();
-    console.log("Commission response:", commissionRes.status, commissionText);
+    const commText = await commRes.text();
+    console.log(`Commission response: ${commRes.status} ${commText}`);
 
-    if (!commissionRes.ok) {
-      const commissionContent = (() => {
-        try { return JSON.parse(commissionText)?.content; } catch { return null; }
-      })();
-      return new Response(
-        JSON.stringify({
-          error: `Fiskaly: errore commissioning entity (${commissionRes.status})`,
-          details: commissionContent?.message ?? commissionText,
-        }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!commRes.ok) {
+      let parsed: any = null;
+      try { parsed = JSON.parse(commText); } catch { /* ignore */ }
+      const msg = parsed?.content?.message ?? commText;
+      // Se già COMMISSIONED va bene
+      const alreadyDone = msg?.toLowerCase().includes("already") ||
+                          parsed?.content?.code === "E_CONFLICT" ||
+                          parsed?.content?.code === "E_INVALID_STATE_TRANSITION";
+      if (!alreadyDone) {
+        return jsonErr(`Fiskaly: errore commissioning entity (${commRes.status})`, { details: msg });
+      }
+      console.log("Entity already commissioned — continuing");
     }
 
-    // ── Step 3: POST /systems ───────────────────────────────────────────────
-    const systemBody = {
-      content: {
-        type: "FISCAL_DEVICE",
-        entity: { id: entityId },
-        software: {
-          name: "Shower2Pet",
-          version: "1.0",
-        },
-        producer: {
-          number: "S2P-CLOUD-001",
-        },
-      },
-    };
-
-    console.log("Step 3: Creating system...", JSON.stringify(systemBody));
-    const systemRes = await fetch(`${BASE_URL}/systems`, {
+    // ── Step 4: POST /systems ─────────────────────────────────────────────────
+    console.log("Step 4: Creating system for entity", entityId);
+    const sysRes = await fetch(`${BASE_URL}/systems`, {
       method: "POST",
-      headers: {
-        ...authHeaders,
-        "X-Idempotency-Key": crypto.randomUUID(),
-      },
-      body: JSON.stringify(systemBody),
+      headers: { ...baseHeaders, "X-Idempotency-Key": crypto.randomUUID() },
+      body: JSON.stringify({
+        content: {
+          type: "FISCAL_DEVICE",
+          entity: { id: entityId },
+          software: { name: "Shower2Pet", version: "1.0" },
+          producer: { number: "S2P-CLOUD-001" },
+        },
+        metadata: { partner_id },
+      }),
     });
 
-    const systemText = await systemRes.text();
-    console.log("System response:", systemRes.status, systemText);
+    const sysText = await sysRes.text();
+    console.log(`System response: ${sysRes.status} ${sysText}`);
 
-    if (!systemRes.ok) {
-      const systemContent = (() => {
-        try { return JSON.parse(systemText)?.content; } catch { return null; }
-      })();
-      return new Response(
-        JSON.stringify({
-          error: `Fiskaly: errore creazione system (${systemRes.status})`,
-          details: systemContent?.message ?? systemText,
-        }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    if (!sysRes.ok) {
+      let parsed: any = null;
+      try { parsed = JSON.parse(sysText); } catch { /* ignore */ }
+      return jsonErr(
+        `Fiskaly: errore creazione system (${sysRes.status})`,
+        { details: parsed?.content?.message ?? sysText, entity_id: entityId }
       );
     }
 
-    const systemData = JSON.parse(systemText);
-    const systemId = systemData?.content?.id;
+    const sysData = JSON.parse(sysText);
+    const systemId = sysData?.content?.id;
+    if (!systemId) return jsonErr("Fiskaly: system ID non ricevuto", { details: sysData });
 
-    if (!systemId) {
-      return new Response(
-        JSON.stringify({ error: "Fiskaly: system ID non ricevuto", details: systemData }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // ── Step 4: Save system_id to profiles ─────────────────────────────────
+    // ── Step 5: Salva system_id nel profilo ──────────────────────────────────
     const { error: updateError } = await supabase
       .from("profiles")
       .update({ fiskaly_system_id: systemId })
       .eq("id", partner_id);
 
     if (updateError) {
-      return new Response(
-        JSON.stringify({
-          error: "System creato su Fiskaly ma errore nel salvataggio del system_id nel profilo",
-          system_id: systemId,
-          entity_id: entityId,
-          db_error: updateError.message,
-        }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      return jsonErr(
+        "System creato su Fiskaly ma errore nel salvataggio del system_id",
+        { system_id: systemId, entity_id: entityId, db_error: updateError.message },
+        500
       );
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        system_id: systemId,
-        entity_id: entityId,
-        message: providedEntityId
-          ? "Configurazione Fiskaly completata da Entity esistente"
-          : "Configurazione Fiskaly completata con successo",
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.log("Setup complete. system_id:", systemId, "entity_id:", entityId);
+
+    return jsonOk({
+      success: true,
+      system_id: systemId,
+      entity_id: entityId,
+      message: providedEntityId
+        ? "Configurazione Fiskaly completata da Entity esistente"
+        : "Configurazione Fiskaly completata con successo",
+    });
   } catch (err: any) {
-    console.error("fiskaly-setup error:", err);
-    return new Response(
-      JSON.stringify({ error: err.message ?? "Errore interno" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("fiskaly-setup unhandled error:", err);
+    return jsonErr(err.message ?? "Errore interno", {}, 500);
   }
 });
