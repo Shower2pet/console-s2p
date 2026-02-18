@@ -165,27 +165,6 @@ Deno.serve(async (req) => {
       return jsonResp({ status: decommRes.status, ok: decommRes.ok, data: decommData, env: ENV });
     }
 
-    // ── ACTION: disable_unit ────────────────────────────────────────────────
-    // Disables a UNIT asset (sets state DISABLED) using master token.
-    if (action === "disable_unit" && resource_id) {
-      console.log(`disable_unit: asset=${resource_id}`);
-      const patchRes = await fetch(`${BASE_URL}/assets/${resource_id}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${masterBearer}`,
-          "Content-Type": "application/json",
-          "X-Api-Version": FISKALY_API_VERSION,
-          "X-Idempotency-Key": crypto.randomUUID(),
-        },
-        body: JSON.stringify({ content: { state: "DISABLED" } }),
-      });
-      const patchText = await patchRes.text();
-      console.log(`disable_unit: ${patchRes.status} ${patchText.slice(0, 300)}`);
-      let patchData: unknown;
-      try { patchData = JSON.parse(patchText); } catch { patchData = { raw: patchText }; }
-      return jsonResp({ status: patchRes.status, ok: patchRes.ok, data: patchData, env: ENV });
-    }
-
     // ── Standard CRUD actions ────────────────────────────────────────────────
     const allowedResources = ["assets", "entities", "systems", "subjects"];
     if (!allowedResources.includes(resource)) {
