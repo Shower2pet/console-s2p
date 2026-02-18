@@ -69,7 +69,27 @@ export const FiskalySetupCard = ({
         body: { partner_id: partnerId, force },
       });
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        // Try to extract the real error message from the response body
+        let msg = error.message ?? "Errore imprevisto";
+        try {
+          const ctx = (error as any).context;
+          if (ctx) {
+            const bodyText = typeof ctx === "string" ? ctx : await ctx.text?.();
+            const parsed = JSON.parse(bodyText ?? "{}");
+            if (parsed?.error) msg = parsed.error;
+            if (parsed?.details) {
+              try {
+                const details = typeof parsed.details === "string" ? JSON.parse(parsed.details) : parsed.details;
+                if (details?.content?.message) msg += ` — ${details.content.message}`;
+              } catch { /* ignore */ }
+            }
+          }
+        } catch { /* ignore */ }
+        setErrorMsg(msg);
+        toast.error("Errore configurazione Fiskaly");
+        return;
+      }
 
       if (data?.error) {
         setErrorMsg(data.error);
@@ -84,7 +104,6 @@ export const FiskalySetupCard = ({
             ? "Fiskaly già configurato"
             : "Fiskaly configurato con successo!"
         );
-        // Invalidate relevant queries
         invalidateKeys.forEach((key) => qc.invalidateQueries({ queryKey: key }));
       }
     } catch (err: any) {
