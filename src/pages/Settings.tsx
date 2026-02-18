@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { FileText, Save, Loader2, Plus, Trash2, CreditCard } from "lucide-react";
+import { FiskalySetupCard } from "@/components/FiskalySetupCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -146,6 +147,20 @@ const Settings = () => {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {(role === "partner" || role === "admin") && user && (
+        <FiskalySetupCard
+          partnerId={user.id}
+          fiskalySystemId={profile?.fiskaly_system_id}
+          legalName={legalName}
+          vatNumber={vatNumber}
+          addressStreet={addressStreet}
+          zipCode={zipCode}
+          city={city}
+          province={province}
+          invalidateKeys={[["profile"]]}
+        />
       )}
 
       {role === "partner" && <SubscriptionPlansSection userId={user!.id} />}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Building2, Monitor, Loader2, Mail, Trash2, MapPin, Briefcase } from "lucide-react";
+import { ArrowLeft, Building2, Monitor, Loader2, Mail, Trash2, MapPin, Briefcase, Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import { fetchProfileById, updatePartnerData } from "@/services/profileService";
 import { fetchStructuresByOwner } from "@/services/structureService";
 import { fetchStationsByOwner } from "@/services/stationService";
 import { deleteUser } from "@/services/userService";
-import { Save, Loader2 as Loader2Icon } from "lucide-react";
+import { FiskalySetupCard } from "@/components/FiskalySetupCard";
 
 const ClientDetail = () => {
   const { id } = useParams();
@@ -91,6 +91,19 @@ const ClientDetail = () => {
 
       {/* Partner business info - editable by admin */}
       <PartnerInfoCard profileId={id!} profile={profile} />
+
+      {/* Fiskaly configuration */}
+      <FiskalySetupCard
+        partnerId={id!}
+        fiskalySystemId={profile.fiskaly_system_id}
+        legalName={profile.legal_name}
+        vatNumber={profile.vat_number}
+        addressStreet={profile.address_street}
+        zipCode={profile.zip_code}
+        city={profile.city}
+        province={profile.province}
+        invalidateKeys={[["client-profile", id!]]}
+      />
 
       {/* Structures */}
       <div>
