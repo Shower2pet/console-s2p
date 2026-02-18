@@ -1,64 +1,93 @@
 
-## Automazione configurazione Fiskaly per partner
+## Sezione Admin "Gestione Fiskaly" — Piano di Implementazione
 
-### Obiettivo
-Creare un flusso guidato nell'App Console che, partendo dai dati fiscali già inseriti del partner (ragione sociale, P.IVA, indirizzo), crei automaticamente via API la struttura Fiskaly necessaria (Entity + System) e salvi il `fiskaly_system_id` nel profilo del partner senza necessità di usare dashboard esterne.
+### Analisi del Problema Attuale
 
-### Flusso API Fiskaly (3 passi)
+Dai log della edge function emergono due problemi distinti:
 
-```text
-1. POST /entities      → crea l'ente fiscale (COMPANY) con i dati del partner
-2. PATCH /entities/:id → commissions l'entity (state: COMMISSIONED)
-3. POST /systems       → crea il System (FISCAL_DEVICE) collegato all'entity
-                         └─ system.id → salvato come fiskaly_system_id sul partner
-```
+**Problema 1 — Entity "fantasma" bloccante (WashDog):**
+- Nei tentativi precedenti, Fiskaly ha creato parzialmente un asset con UUID `928af8e9-...` (UUID v4, non v7)
+- Questo UUID non rispetta il pattern UUID v7 richiesto da Fiskaly per le entity (`^[0-9a-f]{8}-?[0-9a-f]{4}-?7[0-9a-f]{3}-?...`)
+- La `POST /entities` restituisce 405 "cannot create new legal entity for non-unit asset" perché esiste già un asset
+- Il `PATCH /entities/{uuid-v4}` restituisce 400 perché l'ID non rispetta la regex UUID v7
+- Risultato: loop infinito di errori, impossibile configurare WashDog
 
-### Cosa viene creato
+**Problema 2 — Mancanza di strumenti di gestione:**
+- Non esiste nell'admin nessun modo per vedere lo stato delle entity/system Fiskaly
+- Non esiste un modo per resettare manualmente il `fiskaly_system_id` di un partner
+- Non esiste un modo per inserire manualmente un System ID già esistente su Fiskaly
 
-**1. Edge Function: `fiskaly-setup`**
-- Riceve `partner_id`
-- Legge i dati del partner da `profiles` (legal_name, vat_number, fiscal_code, address_*, zip_code, city, province)
-- Si autentica su Fiskaly con API_KEY + API_SECRET (già nei secrets)
-- Step 1: `POST /entities` con tipo `COMPANY`, dati italiani (country: `IT`), P.IVA e codice fiscale
-- Step 2: `PATCH /entities/{entity_id}` per portare lo stato a `COMMISSIONED`
-- Step 3: `POST /systems` con tipo `FISCAL_DEVICE` collegato all'entity, con software name/version Shower2Pet
-- Salva il `system.id` ottenuto nel campo `fiskaly_system_id` della tabella `profiles`
-- Restituisce `{ success: true, system_id, entity_id }` oppure errore dettagliato
+### Soluzione: 2 interventi paralleli
 
-**Attenzione:** Se il partner manca di dati obbligatori (ragione sociale, P.IVA, indirizzo completo) la funzione risponde con un errore chiaro che elenca i campi mancanti.
+---
 
-**2. UI: Sezione "Configurazione Fiskaly" in `ClientDetail.tsx` (vista admin)**
-- Mostra lo stato attuale: se `fiskaly_system_id` è presente → badge verde "Configurato", altrimenti badge arancione "Non configurato"
-- Pulsante **"Configura automaticamente su Fiskaly"** → chiama la edge function
-- Durante l'esecuzione: spinner + testo "Registrazione in corso su Fiskaly..."
-- In caso di successo: aggiorna la UI, mostra il system_id ottenuto
-- In caso di errore: mostra il messaggio di errore dettagliato (es. "P.IVA mancante nel profilo")
+### Intervento 1 — Fix Edge Function `fiskaly-setup`
 
-**3. UI: Stessa sezione in `Settings.tsx` (vista partner)**
-- Identica ma riferita al proprio account
-- Il partner può avviare la propria configurazione autonomamente se i dati fiscali sono completi
+Il caso 405 "non-unit asset" non può essere risolto automaticamente (l'asset è corrotto lato Fiskaly). Invece di tentare di recuperare un UUID non valido, la funzione deve:
 
-### Prerequisiti per il funzionamento
-La configurazione Fiskaly richiede che il profilo del partner abbia tutti questi campi compilati:
-- `legal_name` (ragione sociale)
-- `vat_number` (P.IVA)
-- `address_street`, `zip_code`, `city`, `province`
+1. **Quando riceve 405**: invece di estrarre l'UUID dal messaggio di errore e tentare operazioni che falliranno, restituire un errore chiaro con istruzioni su come sbloccare il partner manualmente (impostando il `fiskaly_system_id` a mano oppure usando il campo di reset nell'admin)
+2. **Aggiungere un parametro `entity_id` opzionale**: se passato, saltare lo Step 1 e usare direttamente quell'ID per il commissioning e la creazione del System — questo permette all'admin di fornire un entity ID valido nel caso in cui l'entity esista già su Fiskaly in stato corretto
+3. **Aggiungere un parametro `system_id` opzionale**: se passato, saltare gli Step 1-3 e salvare direttamente quel System ID nel profilo — per registrazione manuale di un sistema già esistente
 
-Se mancano, la UI mostra un avviso con i campi mancanti prima di permettere l'avvio.
+---
 
-### File da creare/modificare
+### Intervento 2 — Sezione "Gestione Fiskaly" in `AdminSettings.tsx`
+
+Aggiungere una sezione dedicata nella pagina **Impostazioni Sistema** (`/admin-settings`) che permette all'admin di:
+
+**A. Pannello di diagnostica per partner**
+- Dropdown/ricerca per selezionare un partner
+- Mostra: Ragione Sociale, P.IVA, `fiskaly_system_id` attuale, stato campi obbligatori
+- Pulsante "Configura automaticamente" (chiama `fiskaly-setup` con `force: true`)
+
+**B. Override manuale System ID**
+- Campo input per inserire un System ID Fiskaly valido
+- Pulsante "Salva System ID" → aggiorna direttamente il profilo tramite `updatePartnerData`
+- Utile quando il System esiste già su Fiskaly ma non è salvato nel DB
+
+**C. Override con Entity ID esistente**
+- Campo input per un Entity ID Fiskaly valido (UUID v7)
+- Pulsante "Configura da Entity esistente" → chiama `fiskaly-setup` con `entity_id` fornito, esegue solo Step 2 (commissioning) + Step 3 (crea System), salva il System ID
+- Risolve il caso WashDog: invece di creare una nuova entity, si usa quella già esistente fornendo il suo ID corretto
+
+**D. Reset**
+- Pulsante "Azzera System ID" → imposta `fiskaly_system_id = null` nel profilo, permettendo una riconfigurazione completa da zero
+
+---
+
+### File da Creare/Modificare
 
 | File | Azione |
-|------|--------|
-| `supabase/functions/fiskaly-setup/index.ts` | Nuovo - edge function |
-| `supabase/config.toml` | Aggiunta entry `[functions.fiskaly-setup]` con `verify_jwt = false` |
-| `src/pages/ClientDetail.tsx` | Aggiunta sezione "Configurazione Fiskaly" con pulsante e stato |
-| `src/pages/Settings.tsx` | Aggiunta stessa sezione per partner |
+|---|---|
+| `supabase/functions/fiskaly-setup/index.ts` | Modifica: aggiungere parametri `entity_id` e `system_id` opzionali, migliorare gestione errore 405 |
+| `src/pages/AdminSettings.tsx` | Modifica: aggiungere sezione "Gestione Fiskaly" con i 4 pannelli sopra descritti |
+| `src/services/profileService.ts` | Già presente `updatePartnerData` — nessuna modifica necessaria |
 
-### Considerazioni tecniche
+---
 
-- I secrets `FISKALY_API_KEY`, `FISKALY_API_SECRET`, `FISKALY_ENV` sono già configurati
-- La edge function usa `SUPABASE_SERVICE_ROLE_KEY` per aggiornare il profilo (già disponibile)
-- L'endpoint base è già gestito dalla logica esistente (`test.api.fiskaly.com` vs `live.api.fiskaly.com`)
-- La funzione è **idempotente**: se viene chiamata più volte, controlla se un `fiskaly_system_id` esiste già e in quel caso salta la creazione (oppure può essere forzata con un flag `force: true`)
-- Il `producer.number` per il `System` è un MPN (Model Part Number) richiesto da Fiskaly per identificare il software — verrà usato un valore convenuto tipo `S2P-CLOUD-001` con software name `Shower2Pet` e versione `1.0`
+### Flusso Operativo per WashDog (Caso Concreto)
+
+```text
+OPZIONE A — Se l'entity WashDog è "recuperabile" su Fiskaly:
+  1. Admin cerca WashDog in AdminSettings > Gestione Fiskaly
+  2. Admin inserisce l'Entity ID corretto di WashDog (UUID v7) nel campo apposito
+  3. Clicca "Configura da Entity esistente"
+  4. La edge function esegue solo Step 2 (commissioning) + Step 3 (crea System)
+  5. System ID salvato automaticamente nel profilo
+
+OPZIONE B — Se l'entity è irrecuperabile:
+  1. Admin azzera il System ID (pulsante Reset)
+  2. Admin crea manualmente una nuova entity su Fiskaly via API o altra interfaccia
+  3. Admin inserisce il System ID ottenuto nel campo manuale
+  4. Salva → partner operativo
+
+OPZIONE C — Riconfigura da zero (se entity precedente è eliminabile):
+  1. Admin clicca "Riconfigura (force)" nella FiskalySetupCard del partner
+  2. La funzione crea una nuova entity e un nuovo System
+```
+
+---
+
+### Nota Tecnica sulla FiskalySetupCard in ClientDetail
+
+Il campo "Fiskaly System ID" nella `PartnerInfoCard` è già presente e funzionante — permette già l'override manuale. Quindi la sezione in `AdminSettings` aggiunge il flusso "usa entity esistente" e la diagnostica centralizzata, che mancano completamente.
