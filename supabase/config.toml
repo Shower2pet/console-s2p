@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.fiskaly-setup]
 verify_jwt = false
+
+[functions.fiskaly-explorer]
+verify_jwt = false
