@@ -88,8 +88,54 @@ Deno.serve(async (req) => {
       "X-Api-Version": FISKALY_API_VERSION,
     };
 
+    // Special action: decommission an entity using a unit-scoped token
+    // This requires the UNIT's asset ID to obtain a scoped bearer
+    if (action === "decommission_entity" && resource_id) {
+      const { unit_asset_id } = body;
+      if (!unit_asset_id) {
+        return new Response(JSON.stringify({ error: "unit_asset_id obbligatorio per decommission_entity" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Get a unit-scoped token
+      const scopedRes = await fetch(`${BASE_URL}/tokens`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Api-Version": FISKALY_API_VERSION,
+          "X-Idempotency-Key": crypto.randomUUID(),
+          "X-Scope-Identifier": unit_asset_id,
+        },
+        body: JSON.stringify({ content: { type: "API_KEY", key: API_KEY, secret: API_SECRET } }),
+      });
+      let scopedBearer = bearer;
+      if (scopedRes.ok) {
+        const td = await scopedRes.json();
+        scopedBearer = td?.content?.authentication?.bearer ?? bearer;
+      }
+      const decommUrl = `${BASE_URL}/entities/${resource_id}`;
+      const decommRes = await fetch(decommUrl, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${scopedBearer}`,
+          "Content-Type": "application/json",
+          "X-Api-Version": FISKALY_API_VERSION,
+          "X-Idempotency-Key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({ content: { state: "DECOMMISSIONED" } }),
+      });
+      const decommText = await decommRes.text();
+      let decommData: unknown;
+      try { decommData = JSON.parse(decommText); } catch { decommData = { raw: decommText }; }
+      return new Response(
+        JSON.stringify({ status: decommRes.status, ok: decommRes.ok, data: decommData, env: ENV }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Allowed resources
-    const allowedResources = ["assets", "entities", "systems", "tokens"];
+    const allowedResources = ["assets", "entities", "systems", "subjects", "tokens"];
     if (!allowedResources.includes(resource)) {
       return new Response(JSON.stringify({ error: `Resource non valida: ${resource}` }), {
         status: 400,
@@ -100,6 +146,10 @@ Deno.serve(async (req) => {
     let url = `${BASE_URL}/${resource}`;
     let method = "GET";
     let reqBody: string | undefined;
+
+    // Support optional X-Scope-Identifier for scoped listing (e.g. subjects of a unit)
+    const scopeId = body.scope_id as string | undefined;
+    if (scopeId) authHeaders["X-Scope-Identifier"] = scopeId;
 
     if (action === "list") {
       url = `${BASE_URL}/${resource}?limit=100`;
@@ -118,7 +168,7 @@ Deno.serve(async (req) => {
       reqBody = JSON.stringify(payload ?? {});
       authHeaders["X-Idempotency-Key"] = crypto.randomUUID();
     } else {
-      return new Response(JSON.stringify({ error: "Azione non valida. Valori accettati: list, get, patch, post" }), {
+      return new Response(JSON.stringify({ error: "Azione non valida. Valori accettati: list, get, patch, post, decommission_entity" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
