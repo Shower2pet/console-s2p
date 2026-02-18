@@ -378,11 +378,47 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Salva sul DB
+    // Salva sul DB (profiles + Subject credentials in partners_fiscal_data)
     await supabase
       .from("profiles")
       .update({ fiskaly_system_id: systemId, fiskaly_entity_id: entityId, fiskaly_unit_id: unitId })
       .eq("id", partner_id);
+
+    // Salva/aggiorna le credenziali del Subject in partners_fiscal_data
+    // così generate-receipt può usare il token corretto per questa UNIT
+    if (subjectKey && subjectSecret) {
+      const fiscalCredentials = {
+        api_key: subjectKey,
+        api_secret: subjectSecret,
+        env: ENV.toLowerCase(),
+        unit_id: unitId,
+        updated_at: new Date().toISOString(),
+      };
+      const { data: existing } = await supabase
+        .from("partners_fiscal_data")
+        .select("profile_id")
+        .eq("profile_id", partner_id)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from("partners_fiscal_data")
+          .update({ fiscal_api_credentials: fiscalCredentials })
+          .eq("profile_id", partner_id);
+      } else {
+        await supabase
+          .from("partners_fiscal_data")
+          .insert({
+            profile_id: partner_id,
+            business_name: partner.legal_name?.trim() ?? "",
+            vat_number: partner.vat_number?.trim() ?? "",
+            fiscal_api_credentials: fiscalCredentials,
+          });
+      }
+      console.log("✅ Subject credentials salvate in partners_fiscal_data");
+    } else {
+      console.warn("⚠️ Subject credentials non disponibili — generate-receipt userà il master key");
+    }
 
     console.log("✅ Completato → system_id:", systemId, "entity_id:", entityId, "unit_id:", unitId);
     return jsonOk({
