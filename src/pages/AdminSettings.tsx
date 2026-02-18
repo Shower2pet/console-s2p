@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Settings, Search, CheckCircle, XCircle, AlertTriangle, RefreshCw, Save,
   Zap, Trash2, Building2, Globe, ChevronDown, ChevronRight, Eye, PenLine,
+  Ban,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,12 @@ const FiskalyExplorer = () => {
   const [patchResult, setPatchResult] = useState<unknown | null>(null);
   const [patchLoading, setPatchLoading] = useState(false);
 
+  // Decommission state
+  const [decommEntityId, setDecommEntityId] = useState("");
+  const [decommUnitId, setDecommUnitId] = useState("");
+  const [decommLoading, setDecommLoading] = useState(false);
+  const [decommResult, setDecommResult] = useState<unknown | null>(null);
+
   const call = async (resource: "assets" | "entities" | "systems", action: "list") => {
     setLoading(resource);
     setResults(null);
@@ -133,12 +140,38 @@ const FiskalyExplorer = () => {
     }
   };
 
+  const handleDecommission = async () => {
+    if (!decommEntityId.trim() || !decommUnitId.trim()) return;
+    setDecommLoading(true);
+    setDecommResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("fiskaly-explorer", {
+        body: {
+          action: "decommission_entity",
+          resource: "entities",
+          resource_id: decommEntityId.trim(),
+          unit_asset_id: decommUnitId.trim(),
+        },
+      });
+      if (error || data?.error) {
+        toast.error(data?.error ?? error?.message);
+      } else {
+        setDecommResult(data);
+        const ok = data.ok || data.status === 200;
+        if (ok) toast.success("Entity decommissionata con successo");
+        else toast.warning(`Risposta Fiskaly: ${data.status} — vedi risultato`);
+      }
+    } finally {
+      setDecommLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <p className="text-sm text-muted-foreground">
-          Interfaccia diretta con le API Fiskaly. Nota: Fiskaly è un sistema fiscale immutabile — non esistono endpoint DELETE.
-          Puoi listare le risorse, visualizzarne i dettagli e aggiornarne lo stato (es. disabilitare un asset).
+          Interfaccia diretta con le API Fiskaly. Fiskaly è un sistema fiscale immutabile — non esistono endpoint DELETE.
+          Puoi listare le risorse, aggiornarne lo stato e decommissionare entità obsolete.
         </p>
       </div>
 
@@ -161,12 +194,81 @@ const FiskalyExplorer = () => {
               <Badge variant="outline" className="text-xs">{results.env}</Badge>
             </div>
             <JsonRow label={`Risultati (${(results.data as any)?.results?.length ?? "?"} items)`} data={results.data} />
-            {/* Show each item individually */}
-            {Array.isArray((results.data as any)?.results) && (results.data as any).results.map((item: any, i: number) => (
-              <JsonRow key={i} label={`#${i + 1} — id: ${item?.content?.id ?? "?"} | state: ${item?.content?.state ?? "?"}`} data={item} />
-            ))}
+            {Array.isArray((results.data as any)?.results) && (results.data as any).results.map((item: any, i: number) => {
+              const entityId = item?.content?.id ?? "?";
+              const state = item?.content?.state ?? "?";
+              const city = item?.content?.address?.city ?? "";
+              const unitId = item?.content?.asset?.id ?? "";
+              return (
+                <div key={i} className="space-y-1">
+                  <JsonRow
+                    label={`#${i + 1} — ${item?.content?.name?.legal ?? entityId} | state: ${state}${city ? ` | città: ${city}` : " | ⚠ no address"}`}
+                    data={item}
+                  />
+                  {results.resource === "entities" && state !== "DECOMMISSIONED" && unitId && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-xs text-muted-foreground h-7 gap-1.5 ml-2"
+                      onClick={() => { setDecommEntityId(entityId); setDecommUnitId(unitId); }}
+                    >
+                      <Ban className="h-3.5 w-3.5" />
+                      Usa per decommission →
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
+      </div>
+
+      <Separator />
+
+      {/* DECOMMISSION ENTITY ─────────────────────────────── */}
+      <div className="space-y-3">
+        <div>
+          <h3 className="font-medium text-sm text-foreground flex items-center gap-2">
+            <Ban className="h-4 w-4 text-destructive" /> Decommissiona Entity obsoleta
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Le entity non si possono eliminare per legge, ma puoi decommissionarle per renderle inutilizzabili.
+            Usa "Lista Risorse → GET /entities" e clicca <strong>"Usa per decommission →"</strong> per precompilare i campi.
+          </p>
+        </div>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs">Entity ID (UUID v7)</Label>
+              <Input
+                placeholder="019c71df-013e-737c-..."
+                value={decommEntityId}
+                onChange={(e) => setDecommEntityId(e.target.value)}
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs">UNIT Asset ID (UUID v4)</Label>
+              <Input
+                placeholder="725b55cb-d431-4df5-..."
+                value={decommUnitId}
+                onChange={(e) => setDecommUnitId(e.target.value)}
+                className="font-mono text-xs"
+              />
+            </div>
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="w-fit gap-2"
+            onClick={handleDecommission}
+            disabled={decommLoading || !decommEntityId.trim() || !decommUnitId.trim()}
+          >
+            <Ban className={`h-4 w-4 ${decommLoading ? "animate-spin" : ""}`} />
+            {decommLoading ? "Decommissionando..." : "Decommissiona Entity"}
+          </Button>
+          {decommResult && <JsonRow label="Risultato Decommission" data={decommResult} />}
+        </div>
       </div>
 
       <Separator />
@@ -230,10 +332,10 @@ const FiskalyExplorer = () => {
       <div className="rounded-md bg-muted/40 border p-3 text-xs text-muted-foreground space-y-1">
         <p className="font-medium text-foreground">Note API Fiskaly (SIGN IT 2025-08-12):</p>
         <ul className="list-disc list-inside space-y-0.5">
-          <li><strong>Assets</strong>: struttura organizzativa (TENANT → GROUP → UNIT). PATCH per disabilitare.</li>
-          <li><strong>Entities</strong>: dati fiscali del partner. Stati: ACQUIRED → COMMISSIONED. Non eliminabili.</li>
-          <li><strong>Systems</strong>: dispositivi fiscali collegati a un'entity. Non eliminabili per legge.</li>
-          <li>Non esistono endpoint DELETE — il sistema è fiscalmente immutabile per compliance italiana.</li>
+          <li><strong>Assets</strong>: struttura organizzativa (TENANT → UNIT). PATCH per disabilitare.</li>
+          <li><strong>Entities</strong>: dati fiscali del partner. Non eliminabili — puoi decommissionarle.</li>
+          <li><strong>Systems</strong>: dispositivi fiscali. Non eliminabili per legge fiscale italiana.</li>
+          <li>Fiskaly non espone endpoint DELETE — compliance fiscale richiede immutabilità dei record.</li>
         </ul>
       </div>
     </div>
