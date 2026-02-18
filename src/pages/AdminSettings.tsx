@@ -109,7 +109,6 @@ const FiskalyExplorer = () => {
   const [unitResults, setUnitResults] = useState<FiskalyUnitResult[] | null>(null);
   const [loadingUnits, setLoadingUnits] = useState(false);
   const [decommLoading, setDecommLoading] = useState<string | null>(null); // entityId being decommissioned
-  const [disableUnitLoading, setDisableUnitLoading] = useState<string | null>(null);
   const [patchResourceId, setPatchResourceId] = useState("");
   const [patchResource, setPatchResource] = useState<"assets" | "entities" | "systems">("assets");
   const [patchPayload, setPatchPayload] = useState('{"content": {"state": "DISABLED"}}');
@@ -164,26 +163,6 @@ const FiskalyExplorer = () => {
     }
   };
 
-  const handleDisableUnit = async (unitId: string) => {
-    setDisableUnitLoading(unitId);
-    try {
-      const { data, error } = await supabase.functions.invoke("fiskaly-explorer", {
-        body: { action: "disable_unit", resource_id: unitId },
-      });
-      if (error || data?.error) {
-        toast.error(data?.error ?? error?.message ?? "Errore disable unit");
-      } else if (data?.ok || data?.status === 200) {
-        toast.success("UNIT disabilitata ✓");
-        setUnitResults((prev) =>
-          prev?.map((u) => u.unit_id === unitId ? { ...u, unit_state: "DISABLED" } : u) ?? prev
-        );
-      } else {
-        toast.warning(`Fiskaly risposta ${data?.status}`);
-      }
-    } finally {
-      setDisableUnitLoading(null);
-    }
-  };
 
   const handlePatch = async () => {
     if (!patchResourceId.trim()) return;
@@ -245,18 +224,6 @@ const FiskalyExplorer = () => {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="font-mono text-xs text-muted-foreground">{unit.unit_id}</span>
-                  {!isUnitDisabled && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-xs gap-1 text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDisableUnit(unit.unit_id)}
-                      disabled={disableUnitLoading === unit.unit_id}
-                    >
-                      <Ban className={`h-3.5 w-3.5 ${disableUnitLoading === unit.unit_id ? "animate-spin" : ""}`} />
-                      Disabilita UNIT
-                    </Button>
-                  )}
                 </div>
               </div>
 
@@ -326,8 +293,7 @@ const FiskalyExplorer = () => {
             <PenLine className="h-4 w-4" /> Aggiorna Risorsa (PATCH manuale)
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Per operazioni avanzate: modifica lo stato di asset con token master.
-            Es: <code className="bg-muted px-1 rounded">{"state: DISABLED"}</code> su assets.
+            Per operazioni avanzate su entities e systems. Nota: gli asset UNIT non supportano il campo <code className="bg-muted px-1 rounded">state</code> via PATCH (risposta 400 da Fiskaly).
           </p>
         </div>
         <div className="grid gap-3">
@@ -373,8 +339,8 @@ const FiskalyExplorer = () => {
       <div className="rounded-md bg-muted/40 border p-3 text-xs text-muted-foreground space-y-1">
         <p className="font-medium text-foreground">Note API Fiskaly (SIGN IT 2025-08-12):</p>
         <ul className="list-disc list-inside space-y-0.5">
-          <li><strong>UNIT Assets</strong>: contenitori organizzativi. Puoi disabilitarli con token master.</li>
-          <li><strong>Entities</strong>: dati fiscali del partner, visibili solo con token scoped alla UNIT. Non eliminabili — solo decommissionabili.</li>
+          <li><strong>UNIT Assets</strong>: contenitori organizzativi. <span className="text-destructive">Non supportano il campo state via PATCH</span> — non disabilitabili via API.</li>
+          <li><strong>Entities</strong>: dati fiscali del partner, visibili solo con token scoped alla UNIT. Non eliminabili — solo decommissionabili (pulsante nella lista).</li>
           <li><strong>Systems</strong>: dispositivi fiscali. Non eliminabili per legge fiscale italiana.</li>
         </ul>
       </div>
