@@ -300,15 +300,19 @@ Deno.serve(async (req) => {
     const cr = await fCall("PATCH", `${BASE}/entities/${entityId}`, unitBearer, { content: { state: "COMMISSIONED" } });
     console.log(`Step 5: Commission → ${cr.status} ${cr.text.slice(0, 200)}`);
     if (!cr.status.toString().startsWith("2")) {
-      const code = cr.data?.content?.code ?? "";
-      const msg  = (cr.data?.content?.message ?? "").toLowerCase();
-      const alreadyDone = code === "E_CONFLICT" || code === "E_INVALID_STATE_TRANSITION" || msg.includes("already") || msg.includes("commissioned");
-      if (!alreadyDone) {
-        return jsonErr(`Errore commissioning entity (${cr.status})`, {
+      // Non fidarsi del messaggio d'errore: verificare lo stato reale via GET
+      const checkEr = await fCall("GET", `${BASE}/entities/${entityId}`, unitBearer);
+      const entityState = checkEr.data?.content?.state ?? "";
+      console.log(`Step 5: stato reale entity = ${entityState}`);
+      if (entityState === "COMMISSIONED" || entityState === "OPERATIVE") {
+        console.log("Step 5: già commissionata (confermato via GET) — OK");
+      } else {
+        // Entity non commissionata: errore reale, mostra il motivo
+        return jsonErr(`Errore commissioning entity (${cr.status}): entity in stato '${entityState}'`, {
           details: cr.data?.content?.message,
+          entity_state: entityState,
         });
       }
-      console.log("Step 5: già commissionata — OK");
     }
 
     // ── STEP 6: Trova o crea System ───────────────────────────────────────────
@@ -368,13 +372,19 @@ Deno.serve(async (req) => {
     const scr = await fCall("PATCH", `${BASE}/systems/${systemId}`, unitBearer, { content: { state: "COMMISSIONED" } });
     console.log(`Step 7: System commission → ${scr.status} ${scr.text.slice(0, 200)}`);
     if (!scr.status.toString().startsWith("2")) {
-      const code = scr.data?.content?.code ?? "";
-      const msg  = (scr.data?.content?.message ?? "").toLowerCase();
-      const alreadyDone = code === "E_CONFLICT" || code === "E_INVALID_STATE_TRANSITION" || msg.includes("already") || msg.includes("commissioned");
-      if (!alreadyDone) {
-        console.warn("Step 7: system commissioning warning:", scr.data?.content?.message, "— proseguo comunque");
+      // Verifica stato reale via GET invece di fare pattern matching sul messaggio
+      const checkSr = await fCall("GET", `${BASE}/systems/${systemId}`, unitBearer);
+      const systemState = checkSr.data?.content?.state ?? "";
+      console.log(`Step 7: stato reale system = ${systemState}`);
+      if (systemState === "COMMISSIONED" || systemState === "OPERATIVE") {
+        console.log("Step 7: già commissionato (confermato via GET) — OK");
       } else {
-        console.log("Step 7: già commissionato — OK");
+        // System non commissionato: errore reale, blocca e mostra il motivo
+        return jsonErr(`Errore commissioning system (${scr.status}): system in stato '${systemState}'`, {
+          details: scr.data?.content?.message,
+          system_state: systemState,
+          entity_id: entityId,
+        });
       }
     }
 
