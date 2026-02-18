@@ -127,6 +127,9 @@ Deno.serve(async (req) => {
       await adminClient.from("structures").delete().in("id", structureIds);
     }
 
+    // Delete gate_commands linked to this user (FK constraint on auth.users)
+    await adminClient.from("gate_commands").delete().eq("user_id", userId);
+
     // Delete remaining references to this user_id
     await adminClient.from("structure_managers").delete().eq("user_id", userId);
     await adminClient.from("credit_packages").delete().eq("owner_id", userId);
