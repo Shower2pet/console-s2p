@@ -1,8 +1,7 @@
 import { useState } from "react";
 import {
   Settings, Search, CheckCircle, XCircle, AlertTriangle, RefreshCw, Save,
-  Zap, Trash2, Building2, Globe, ChevronDown, ChevronRight, Eye, PenLine,
-  Ban,
+  Zap, Trash2, Building2, Globe, ChevronDown, ChevronRight, PenLine, Ban,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -85,36 +84,104 @@ const JsonRow = ({ label, data }: { label: string; data: unknown }) => {
   );
 };
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface FiskalyEntity {
+  content: {
+    id: string;
+    state: string;
+    type: string;
+    name?: { legal?: string; trade?: string };
+    address?: { code?: string; city?: string };
+  };
+  metadata?: Record<string, string>;
+}
+interface FiskalyUnitResult {
+  unit_id: string;
+  unit_name: string;
+  unit_state?: string;
+  unit_metadata?: Record<string, string>;
+  entities: FiskalyEntity[];
+  error?: string;
+}
+
 // ─── Fiskaly Explorer Tab ────────────────────────────────────────────────────
 const FiskalyExplorer = () => {
-  const [results, setResults] = useState<{ resource: string; data: unknown; env: string } | null>(null);
-  const [loading, setLoading] = useState<string | null>(null);
+  const [unitResults, setUnitResults] = useState<FiskalyUnitResult[] | null>(null);
+  const [loadingUnits, setLoadingUnits] = useState(false);
+  const [decommLoading, setDecommLoading] = useState<string | null>(null); // entityId being decommissioned
+  const [disableUnitLoading, setDisableUnitLoading] = useState<string | null>(null);
   const [patchResourceId, setPatchResourceId] = useState("");
   const [patchResource, setPatchResource] = useState<"assets" | "entities" | "systems">("assets");
   const [patchPayload, setPatchPayload] = useState('{"content": {"state": "DISABLED"}}');
   const [patchResult, setPatchResult] = useState<unknown | null>(null);
   const [patchLoading, setPatchLoading] = useState(false);
 
-  // Decommission state
-  const [decommEntityId, setDecommEntityId] = useState("");
-  const [decommUnitId, setDecommUnitId] = useState("");
-  const [decommLoading, setDecommLoading] = useState(false);
-  const [decommResult, setDecommResult] = useState<unknown | null>(null);
-
-  const call = async (resource: "assets" | "entities" | "systems", action: "list") => {
-    setLoading(resource);
-    setResults(null);
+  const handleLoadUnits = async () => {
+    setLoadingUnits(true);
+    setUnitResults(null);
     try {
       const { data, error } = await supabase.functions.invoke("fiskaly-explorer", {
-        body: { action, resource },
+        body: { action: "list_unit_entities" },
       });
       if (error || data?.error) {
         toast.error(data?.error ?? error?.message);
       } else {
-        setResults({ resource, data: data.data, env: data.env });
+        setUnitResults(data.results ?? []);
       }
     } finally {
-      setLoading(null);
+      setLoadingUnits(false);
+    }
+  };
+
+  const handleDecommission = async (entityId: string, unitAssetId: string) => {
+    setDecommLoading(entityId);
+    try {
+      const { data, error } = await supabase.functions.invoke("fiskaly-explorer", {
+        body: { action: "decommission_entity", resource: "entities", resource_id: entityId, unit_asset_id: unitAssetId },
+      });
+      if (error || data?.error) {
+        toast.error(data?.error ?? error?.message ?? "Errore decommission");
+      } else if (data?.ok || data?.status === 200) {
+        toast.success("Entity decommissionata ✓");
+        // Optimistic update: mark entity as DECOMMISSIONED in state
+        setUnitResults((prev) =>
+          prev?.map((u) =>
+            u.unit_id === unitAssetId
+              ? {
+                  ...u,
+                  entities: u.entities.map((e) =>
+                    e.content.id === entityId ? { ...e, content: { ...e.content, state: "DECOMMISSIONED" } } : e
+                  ),
+                }
+              : u
+          ) ?? prev
+        );
+      } else {
+        toast.warning(`Fiskaly risposta ${data?.status} — potrebbe non essere riuscito`);
+      }
+    } finally {
+      setDecommLoading(null);
+    }
+  };
+
+  const handleDisableUnit = async (unitId: string) => {
+    setDisableUnitLoading(unitId);
+    try {
+      const { data, error } = await supabase.functions.invoke("fiskaly-explorer", {
+        body: { action: "disable_unit", resource_id: unitId },
+      });
+      if (error || data?.error) {
+        toast.error(data?.error ?? error?.message ?? "Errore disable unit");
+      } else if (data?.ok || data?.status === 200) {
+        toast.success("UNIT disabilitata ✓");
+        setUnitResults((prev) =>
+          prev?.map((u) => u.unit_id === unitId ? { ...u, unit_state: "DISABLED" } : u) ?? prev
+        );
+      } else {
+        toast.warning(`Fiskaly risposta ${data?.status}`);
+      }
+    } finally {
+      setDisableUnitLoading(null);
     }
   };
 
@@ -125,7 +192,6 @@ const FiskalyExplorer = () => {
     try {
       let parsedPayload: unknown;
       try { parsedPayload = JSON.parse(patchPayload); } catch { toast.error("JSON payload non valido"); return; }
-
       const { data, error } = await supabase.functions.invoke("fiskaly-explorer", {
         body: { action: "patch", resource: patchResource, resource_id: patchResourceId.trim(), payload: parsedPayload },
       });
@@ -140,151 +206,130 @@ const FiskalyExplorer = () => {
     }
   };
 
-  const handleDecommission = async () => {
-    if (!decommEntityId.trim() || !decommUnitId.trim()) return;
-    setDecommLoading(true);
-    setDecommResult(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("fiskaly-explorer", {
-        body: {
-          action: "decommission_entity",
-          resource: "entities",
-          resource_id: decommEntityId.trim(),
-          unit_asset_id: decommUnitId.trim(),
-        },
-      });
-      if (error || data?.error) {
-        toast.error(data?.error ?? error?.message);
-      } else {
-        setDecommResult(data);
-        const ok = data.ok || data.status === 200;
-        if (ok) toast.success("Entity decommissionata con successo");
-        else toast.warning(`Risposta Fiskaly: ${data.status} — vedi risultato`);
-      }
-    } finally {
-      setDecommLoading(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm text-muted-foreground">
-          Interfaccia diretta con le API Fiskaly. Fiskaly è un sistema fiscale immutabile — non esistono endpoint DELETE.
-          Puoi listare le risorse, aggiornarne lo stato e decommissionare entità obsolete.
-        </p>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Interfaccia diretta con le API Fiskaly. Fiskaly è fiscalmente immutabile — non esistono endpoint DELETE.
+        Le entità e i sistemi sono visibili solo tramite token scoped alla UNIT di appartenenza.
+      </p>
 
-      {/* LIST ─────────────────────────────────────────────── */}
+      {/* ── LISTA UNIT + ENTITÀ ────────────────────────────────────────── */}
       <div className="space-y-3">
-        <h3 className="font-medium text-sm text-foreground">Lista Risorse</h3>
-        <div className="flex flex-wrap gap-2">
-          {(["assets", "entities", "systems"] as const).map((r) => (
-            <Button key={r} variant="outline" size="sm" disabled={loading === r} onClick={() => call(r, "list")}>
-              <Eye className={`h-4 w-4 mr-2 ${loading === r ? "animate-spin" : ""}`} />
-              {loading === r ? "Caricamento..." : `GET /${r}`}
-            </Button>
-          ))}
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium text-sm text-foreground">UNIT Assets e loro Entità</h3>
+          <Button size="sm" variant="outline" onClick={handleLoadUnits} disabled={loadingUnits} className="gap-2">
+            <RefreshCw className={`h-4 w-4 ${loadingUnits ? "animate-spin" : ""}`} />
+            {loadingUnits ? "Caricamento..." : "Carica UNIT e Entità"}
+          </Button>
         </div>
 
-        {results && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="font-mono text-xs">/{results.resource}</Badge>
-              <Badge variant="outline" className="text-xs">{results.env}</Badge>
-            </div>
-            <JsonRow label={`Risultati (${(results.data as any)?.results?.length ?? "?"} items)`} data={results.data} />
-            {Array.isArray((results.data as any)?.results) && (results.data as any).results.map((item: any, i: number) => {
-              const entityId = item?.content?.id ?? "?";
-              const state = item?.content?.state ?? "?";
-              const city = item?.content?.address?.city ?? "";
-              const unitId = item?.content?.asset?.id ?? "";
-              return (
-                <div key={i} className="space-y-1">
-                  <JsonRow
-                    label={`#${i + 1} — ${item?.content?.name?.legal ?? entityId} | state: ${state}${city ? ` | città: ${city}` : " | ⚠ no address"}`}
-                    data={item}
-                  />
-                  {results.resource === "entities" && state !== "DECOMMISSIONED" && unitId && (
+        {unitResults !== null && unitResults.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nessuna UNIT trovata.</p>
+        )}
+
+        {unitResults && unitResults.map((unit) => {
+          const isUnitDisabled = unit.unit_state === "DISABLED";
+          return (
+            <div key={unit.unit_id} className={`border rounded-lg overflow-hidden ${isUnitDisabled ? "opacity-60" : ""}`}>
+              {/* UNIT header */}
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-muted/40 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Building2 className="h-4 w-4 text-primary shrink-0" />
+                  <span className="font-medium text-sm">{unit.unit_name}</span>
+                  <Badge variant={isUnitDisabled ? "secondary" : "outline"} className="text-xs font-mono shrink-0">
+                    {unit.unit_state ?? "ENABLED"}
+                  </Badge>
+                  {unit.unit_metadata?.partner_id && (
+                    <span className="text-xs text-muted-foreground truncate">partner: {unit.unit_metadata.partner_id.slice(0, 8)}…</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-mono text-xs text-muted-foreground">{unit.unit_id}</span>
+                  {!isUnitDisabled && (
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-xs text-muted-foreground h-7 gap-1.5 ml-2"
-                      onClick={() => { setDecommEntityId(entityId); setDecommUnitId(unitId); }}
+                      className="h-7 text-xs gap-1 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDisableUnit(unit.unit_id)}
+                      disabled={disableUnitLoading === unit.unit_id}
                     >
-                      <Ban className="h-3.5 w-3.5" />
-                      Usa per decommission →
+                      <Ban className={`h-3.5 w-3.5 ${disableUnitLoading === unit.unit_id ? "animate-spin" : ""}`} />
+                      Disabilita UNIT
                     </Button>
                   )}
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+
+              {/* Entity list */}
+              {unit.error && (
+                <div className="px-4 py-2 text-xs text-destructive">{unit.error}</div>
+              )}
+              {unit.entities.length === 0 && !unit.error && (
+                <div className="px-4 py-2.5 text-xs text-muted-foreground">Nessuna entity in questa UNIT.</div>
+              )}
+              {unit.entities.map((entity) => {
+                const eid = entity.content.id;
+                const estate = entity.content.state;
+                const ename = entity.content.name?.legal ?? eid;
+                const ecity = entity.content.address?.city;
+                const ecode = entity.content.address?.code;
+                const isDecomm = estate === "DECOMMISSIONED";
+                const isLoading = decommLoading === eid;
+
+                return (
+                  <div
+                    key={eid}
+                    className={`flex items-center justify-between gap-3 px-4 py-2.5 border-t text-sm flex-wrap ${isDecomm ? "opacity-50" : ""}`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium truncate">{ename}</span>
+                          <Badge
+                            variant={isDecomm ? "secondary" : estate === "COMMISSIONED" ? "default" : "outline"}
+                            className="text-xs shrink-0"
+                          >
+                            {estate}
+                          </Badge>
+                          {ecity && <span className="text-xs text-muted-foreground">{ecity}{ecode ? `, ${ecode}` : ""}</span>}
+                          {!ecity && <span className="text-xs text-destructive">⚠ no address</span>}
+                        </div>
+                        <span className="font-mono text-xs text-muted-foreground">{eid}</span>
+                      </div>
+                    </div>
+                    {!isDecomm && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-7 text-xs gap-1.5 shrink-0"
+                        onClick={() => handleDecommission(eid, unit.unit_id)}
+                        disabled={isLoading}
+                      >
+                        <Ban className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                        {isLoading ? "..." : "Decommissiona"}
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
 
       <Separator />
 
-      {/* DECOMMISSION ENTITY ─────────────────────────────── */}
+      {/* ── PATCH MANUALE ─────────────────────────────────────────────── */}
       <div className="space-y-3">
         <div>
           <h3 className="font-medium text-sm text-foreground flex items-center gap-2">
-            <Ban className="h-4 w-4 text-destructive" /> Decommissiona Entity obsoleta
+            <PenLine className="h-4 w-4" /> Aggiorna Risorsa (PATCH manuale)
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Le entity non si possono eliminare per legge, ma puoi decommissionarle per renderle inutilizzabili.
-            Usa "Lista Risorse → GET /entities" e clicca <strong>"Usa per decommission →"</strong> per precompilare i campi.
+            Per operazioni avanzate: modifica lo stato di asset con token master.
+            Es: <code className="bg-muted px-1 rounded">{"state: DISABLED"}</code> su assets.
           </p>
         </div>
-        <div className="grid gap-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs">Entity ID (UUID v7)</Label>
-              <Input
-                placeholder="019c71df-013e-737c-..."
-                value={decommEntityId}
-                onChange={(e) => setDecommEntityId(e.target.value)}
-                className="font-mono text-xs"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs">UNIT Asset ID (UUID v4)</Label>
-              <Input
-                placeholder="725b55cb-d431-4df5-..."
-                value={decommUnitId}
-                onChange={(e) => setDecommUnitId(e.target.value)}
-                className="font-mono text-xs"
-              />
-            </div>
-          </div>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="w-fit gap-2"
-            onClick={handleDecommission}
-            disabled={decommLoading || !decommEntityId.trim() || !decommUnitId.trim()}
-          >
-            <Ban className={`h-4 w-4 ${decommLoading ? "animate-spin" : ""}`} />
-            {decommLoading ? "Decommissionando..." : "Decommissiona Entity"}
-          </Button>
-          {decommResult && <JsonRow label="Risultato Decommission" data={decommResult} />}
-        </div>
-      </div>
-
-      <Separator />
-
-      {/* PATCH ─────────────────────────────────────────────── */}
-      <div className="space-y-3">
-        <div>
-          <h3 className="font-medium text-sm text-foreground flex items-center gap-2">
-            <PenLine className="h-4 w-4" /> Aggiorna Risorsa (PATCH)
-          </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Modifica stato di asset/entity/system. Esempi: disabilita asset con <code className="bg-muted px-1 rounded">{"state: DISABLED"}</code>,
-            commissiona entity con <code className="bg-muted px-1 rounded">{"state: COMMISSIONED"}</code>.
-          </p>
-        </div>
-
         <div className="grid gap-3">
           <div className="flex gap-2">
             <div className="flex flex-col gap-1.5 min-w-[140px]">
@@ -302,14 +347,13 @@ const FiskalyExplorer = () => {
             <div className="flex flex-col gap-1.5 flex-1">
               <Label className="text-xs">Resource ID (UUID)</Label>
               <Input
-                placeholder="es. 928af8e9-9b66-4734-aee8-0a746cfc9189"
+                placeholder="es. 928af8e9-9b66-4734-..."
                 value={patchResourceId}
                 onChange={(e) => setPatchResourceId(e.target.value)}
                 className="font-mono text-sm"
               />
             </div>
           </div>
-
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs">Payload JSON</Label>
             <textarea
@@ -318,24 +362,20 @@ const FiskalyExplorer = () => {
               onChange={(e) => setPatchPayload(e.target.value)}
             />
           </div>
-
           <Button variant="outline" onClick={handlePatch} disabled={patchLoading || !patchResourceId.trim()} className="w-fit">
             <PenLine className={`h-4 w-4 mr-2 ${patchLoading ? "animate-spin" : ""}`} />
             {patchLoading ? "Invio..." : `PATCH /${patchResource}/:id`}
           </Button>
-
           {patchResult && <JsonRow label="Risposta PATCH" data={patchResult} />}
         </div>
       </div>
 
-      {/* Note API ───────────────────────────────────────────── */}
       <div className="rounded-md bg-muted/40 border p-3 text-xs text-muted-foreground space-y-1">
         <p className="font-medium text-foreground">Note API Fiskaly (SIGN IT 2025-08-12):</p>
         <ul className="list-disc list-inside space-y-0.5">
-          <li><strong>Assets</strong>: struttura organizzativa (TENANT → UNIT). PATCH per disabilitare.</li>
-          <li><strong>Entities</strong>: dati fiscali del partner. Non eliminabili — puoi decommissionarle.</li>
+          <li><strong>UNIT Assets</strong>: contenitori organizzativi. Puoi disabilitarli con token master.</li>
+          <li><strong>Entities</strong>: dati fiscali del partner, visibili solo con token scoped alla UNIT. Non eliminabili — solo decommissionabili.</li>
           <li><strong>Systems</strong>: dispositivi fiscali. Non eliminabili per legge fiscale italiana.</li>
-          <li>Fiskaly non espone endpoint DELETE — compliance fiscale richiede immutabilità dei record.</li>
         </ul>
       </div>
     </div>

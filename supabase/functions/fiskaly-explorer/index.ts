@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const FISKALY_API_VERSION = "2025-08-12";
 
-async function getFiskalyToken(baseUrl: string, apiKey: string, apiSecret: string): Promise<string> {
+async function getMasterToken(baseUrl: string, apiKey: string, apiSecret: string): Promise<string> {
   const res = await fetch(`${baseUrl}/tokens`, {
     method: "POST",
     headers: {
@@ -25,9 +25,29 @@ async function getFiskalyToken(baseUrl: string, apiKey: string, apiSecret: strin
   return bearer;
 }
 
+/** Get a token scoped to a specific UNIT asset via X-Scope-Identifier */
+async function getScopedToken(baseUrl: string, apiKey: string, apiSecret: string, unitAssetId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${baseUrl}/tokens`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Api-Version": FISKALY_API_VERSION,
+        "X-Idempotency-Key": crypto.randomUUID(),
+        "X-Scope-Identifier": unitAssetId,
+      },
+      body: JSON.stringify({ content: { type: "API_KEY", key: apiKey, secret: apiSecret } }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.content?.authentication?.bearer ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function verifyAdmin(authHeader: string | null): Promise<{ ok: boolean; error?: string }> {
   if (!authHeader?.startsWith("Bearer ")) return { ok: false, error: "Unauthorized" };
-
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -37,33 +57,31 @@ async function verifyAdmin(authHeader: string | null): Promise<{ ok: boolean; er
     Deno.env.get("SUPABASE_ANON_KEY")!,
     { global: { headers: { Authorization: authHeader } } }
   );
-
   const { data: { user } } = await userSupabase.auth.getUser();
   if (!user) return { ok: false, error: "Unauthorized" };
-
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
   if (profile?.role !== "admin") return { ok: false, error: "Forbidden: admin only" };
-
   return { ok: true };
+}
+
+function jsonResp(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Validate admin via Supabase JWT (if Authorization header present)
     const authHeader = req.headers.get("Authorization");
     if (authHeader) {
       const adminCheck = await verifyAdmin(authHeader);
       if (!adminCheck.ok) {
-        return new Response(JSON.stringify({ error: adminCheck.error }), {
-          status: adminCheck.error === "Forbidden: admin only" ? 403 : 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResp({ error: adminCheck.error }, adminCheck.error === "Forbidden: admin only" ? 403 : 401);
       }
     }
-    // Note: if no auth header, we still proceed (called from server-side with service key)
-    // In production you'd want to enforce this — for now the Fiskaly credentials are the gate
 
     const body = await req.json();
     const { action, resource, resource_id, payload } = body;
@@ -72,50 +90,65 @@ Deno.serve(async (req) => {
     const API_SECRET = Deno.env.get("FISKALY_API_SECRET");
     const ENV = (Deno.env.get("FISKALY_ENV") ?? "TEST").toUpperCase();
 
-    if (!API_KEY || !API_SECRET) {
-      return new Response(JSON.stringify({ error: "Credenziali Fiskaly non configurate" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!API_KEY || !API_SECRET) return jsonResp({ error: "Credenziali Fiskaly non configurate" }, 500);
 
     const BASE_URL = ENV === "LIVE" ? "https://live.api.fiskaly.com" : "https://test.api.fiskaly.com";
-    const bearer = await getFiskalyToken(BASE_URL, API_KEY, API_SECRET);
+    const masterBearer = await getMasterToken(BASE_URL, API_KEY, API_SECRET);
 
-    const authHeaders: Record<string, string> = {
-      "Authorization": `Bearer ${bearer}`,
-      "Content-Type": "application/json",
-      "X-Api-Version": FISKALY_API_VERSION,
-    };
+    // ── ACTION: list_unit_entities ──────────────────────────────────────────
+    // Lists all UNIT assets, then for each UNIT gets a scoped token and lists its entities.
+    // This is the correct way since entities are not visible with a master token.
+    if (action === "list_unit_entities") {
+      console.log("list_unit_entities: fetching UNIT assets...");
+      const assetsRes = await fetch(`${BASE_URL}/assets?limit=100`, {
+        headers: {
+          Authorization: `Bearer ${masterBearer}`,
+          "X-Api-Version": FISKALY_API_VERSION,
+        },
+      });
+      const assetsData = await assetsRes.json();
+      const units: any[] = (assetsData?.results ?? []).filter((a: any) => a?.content?.type === "UNIT");
+      console.log(`list_unit_entities: found ${units.length} UNIT assets`);
 
-    // Special action: decommission an entity using a unit-scoped token
-    // This requires the UNIT's asset ID to obtain a scoped bearer
+      const results: any[] = [];
+      for (const unit of units) {
+        const unitId = unit?.content?.id;
+        if (!unitId) continue;
+        const unitName = unit?.content?.name ?? unitId;
+        const unitMeta = unit?.metadata ?? {};
+
+        const scopedBearer = await getScopedToken(BASE_URL, API_KEY, API_SECRET, unitId);
+        if (!scopedBearer) {
+          results.push({ unit_id: unitId, unit_name: unitName, unit_metadata: unitMeta, entities: [], error: "Token scoped non ottenuto" });
+          continue;
+        }
+
+        const entRes = await fetch(`${BASE_URL}/entities?limit=100`, {
+          headers: {
+            Authorization: `Bearer ${scopedBearer}`,
+            "X-Api-Version": FISKALY_API_VERSION,
+          },
+        });
+        const entData = await entRes.json();
+        const entities = entData?.results ?? [];
+        console.log(`list_unit_entities: unit ${unitId} → ${entities.length} entities`);
+        results.push({ unit_id: unitId, unit_name: unitName, unit_metadata: unitMeta, unit_state: unit?.content?.state, entities });
+      }
+
+      return jsonResp({ ok: true, results, env: ENV, total_units: units.length });
+    }
+
+    // ── ACTION: decommission_entity ─────────────────────────────────────────
+    // Decommissions an entity using a scoped token for its UNIT.
     if (action === "decommission_entity" && resource_id) {
       const { unit_asset_id } = body;
-      if (!unit_asset_id) {
-        return new Response(JSON.stringify({ error: "unit_asset_id obbligatorio per decommission_entity" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      // Get a unit-scoped token
-      const scopedRes = await fetch(`${BASE_URL}/tokens`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Api-Version": FISKALY_API_VERSION,
-          "X-Idempotency-Key": crypto.randomUUID(),
-          "X-Scope-Identifier": unit_asset_id,
-        },
-        body: JSON.stringify({ content: { type: "API_KEY", key: API_KEY, secret: API_SECRET } }),
-      });
-      let scopedBearer = bearer;
-      if (scopedRes.ok) {
-        const td = await scopedRes.json();
-        scopedBearer = td?.content?.authentication?.bearer ?? bearer;
-      }
-      const decommUrl = `${BASE_URL}/entities/${resource_id}`;
-      const decommRes = await fetch(decommUrl, {
+      if (!unit_asset_id) return jsonResp({ error: "unit_asset_id obbligatorio per decommission_entity" }, 400);
+
+      console.log(`decommission_entity: entity=${resource_id} unit=${unit_asset_id}`);
+      const scopedBearer = await getScopedToken(BASE_URL, API_KEY, API_SECRET, unit_asset_id);
+      if (!scopedBearer) return jsonResp({ error: "Impossibile ottenere token scoped per questa UNIT" }, 502);
+
+      const decommRes = await fetch(`${BASE_URL}/entities/${resource_id}`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${scopedBearer}`,
@@ -126,30 +159,52 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ content: { state: "DECOMMISSIONED" } }),
       });
       const decommText = await decommRes.text();
+      console.log(`decommission_entity: ${decommRes.status} ${decommText.slice(0, 300)}`);
       let decommData: unknown;
       try { decommData = JSON.parse(decommText); } catch { decommData = { raw: decommText }; }
-      return new Response(
-        JSON.stringify({ status: decommRes.status, ok: decommRes.ok, data: decommData, env: ENV }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResp({ status: decommRes.status, ok: decommRes.ok, data: decommData, env: ENV });
     }
 
-    // Allowed resources
-    const allowedResources = ["assets", "entities", "systems", "subjects", "tokens"];
-    if (!allowedResources.includes(resource)) {
-      return new Response(JSON.stringify({ error: `Resource non valida: ${resource}` }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // ── ACTION: disable_unit ────────────────────────────────────────────────
+    // Disables a UNIT asset (sets state DISABLED) using master token.
+    if (action === "disable_unit" && resource_id) {
+      console.log(`disable_unit: asset=${resource_id}`);
+      const patchRes = await fetch(`${BASE_URL}/assets/${resource_id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${masterBearer}`,
+          "Content-Type": "application/json",
+          "X-Api-Version": FISKALY_API_VERSION,
+          "X-Idempotency-Key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({ content: { state: "DISABLED" } }),
       });
+      const patchText = await patchRes.text();
+      console.log(`disable_unit: ${patchRes.status} ${patchText.slice(0, 300)}`);
+      let patchData: unknown;
+      try { patchData = JSON.parse(patchText); } catch { patchData = { raw: patchText }; }
+      return jsonResp({ status: patchRes.status, ok: patchRes.ok, data: patchData, env: ENV });
     }
+
+    // ── Standard CRUD actions ────────────────────────────────────────────────
+    const allowedResources = ["assets", "entities", "systems", "subjects"];
+    if (!allowedResources.includes(resource)) {
+      return jsonResp({ error: `Resource non valida: ${resource}` }, 400);
+    }
+
+    const authHeaders: Record<string, string> = {
+      "Authorization": `Bearer ${masterBearer}`,
+      "Content-Type": "application/json",
+      "X-Api-Version": FISKALY_API_VERSION,
+    };
+
+    // Optional scope override
+    const scopeId = body.scope_id as string | undefined;
+    if (scopeId) authHeaders["X-Scope-Identifier"] = scopeId;
 
     let url = `${BASE_URL}/${resource}`;
     let method = "GET";
     let reqBody: string | undefined;
-
-    // Support optional X-Scope-Identifier for scoped listing (e.g. subjects of a unit)
-    const scopeId = body.scope_id as string | undefined;
-    if (scopeId) authHeaders["X-Scope-Identifier"] = scopeId;
 
     if (action === "list") {
       url = `${BASE_URL}/${resource}?limit=100`;
@@ -168,30 +223,20 @@ Deno.serve(async (req) => {
       reqBody = JSON.stringify(payload ?? {});
       authHeaders["X-Idempotency-Key"] = crypto.randomUUID();
     } else {
-      return new Response(JSON.stringify({ error: "Azione non valida. Valori accettati: list, get, patch, post, decommission_entity" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResp({ error: "Azione non valida. Usa: list_unit_entities, decommission_entity, disable_unit, list, get, patch, post" }, 400);
     }
 
     console.log(`Fiskaly Explorer: ${method} ${url}`);
     const fiskalyRes = await fetch(url, { method, headers: authHeaders, body: reqBody });
-
     const resText = await fiskalyRes.text();
-    console.log(`Response: ${fiskalyRes.status} ${resText.slice(0, 1000)}`);
-
+    console.log(`Response: ${fiskalyRes.status} ${resText.slice(0, 500)}`);
     let resData: unknown;
     try { resData = JSON.parse(resText); } catch { resData = { raw: resText }; }
 
-    return new Response(
-      JSON.stringify({ status: fiskalyRes.status, ok: fiskalyRes.ok, data: resData, env: ENV }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResp({ status: fiskalyRes.status, ok: fiskalyRes.ok, data: resData, env: ENV });
+
   } catch (err: any) {
     console.error("fiskaly-explorer error:", err);
-    return new Response(JSON.stringify({ error: err.message ?? "Errore interno" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResp({ error: err.message ?? "Errore interno" }, 500);
   }
 });
