@@ -158,9 +158,12 @@ Deno.serve(async (req) => {
         content: { type: "UNIT", name: partner.legal_name.trim() },
         metadata: { partner_id },
       });
-      console.log(`Step 1: UNIT → ${r.status} ${r.text.slice(0, 100)}`);
+      console.log(`Step 1: UNIT → ${r.status} ${r.text.slice(0, 200)}`);
       if (r.status === 200 || r.status === 201 || r.status === 409) {
-        unitAssetId = r.data?.content?.id ?? null;
+        // La risposta POST /assets ha: content.asset.id (ID reale asset) e content.id (ID assegnazione)
+        // Dobbiamo usare content.asset.id come scope identifier per il token scoped
+        unitAssetId = r.data?.content?.asset?.id ?? r.data?.content?.id ?? null;
+        console.log(`Step 1: asset.id=${r.data?.content?.asset?.id} content.id=${r.data?.content?.id} → uso=${unitAssetId}`);
       }
       if (!unitAssetId) return jsonErr(`Errore creazione UNIT (${r.status})`, { details: r.data?.content?.message ?? r.text.slice(0, 200) });
       await supabase.from("profiles").update({ fiskaly_unit_id: unitAssetId }).eq("id", partner_id);
