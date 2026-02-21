@@ -83,7 +83,6 @@ Deno.serve(async (req) => {
       system_id: providedSystemId = null,
       fisconline_password = null,
       fisconline_pin = null,
-      legal_rep_fiscal_code = null,
     } = await req.json();
 
     if (!partner_id) return jsonErr("partner_id è obbligatorio", {}, 400);
@@ -119,7 +118,7 @@ Deno.serve(async (req) => {
     const missing: string[] = [];
     if (!partner.legal_name?.trim())     missing.push("Ragione Sociale");
     if (!partner.vat_number?.trim())     missing.push("Partita IVA");
-    if (!legal_rep_fiscal_code?.trim())  missing.push("CF Rappresentante Legale (16 caratteri)");
+    if (!partner.legal_rep_fiscal_code?.trim()) missing.push("CF Rappresentante Legale (16 caratteri)");
     if (!partner.address_street?.trim()) missing.push("Via/Indirizzo");
     if (!partner.zip_code?.trim())       missing.push("CAP");
     if (!partner.city?.trim())           missing.push("Città");
@@ -272,7 +271,7 @@ Deno.serve(async (req) => {
             vat_id_number: partner.vat_number.trim(),
             credentials: {
               type: "FISCONLINE",
-              tax_id_number: legal_rep_fiscal_code.trim(),
+              tax_id_number: partner.legal_rep_fiscal_code!.trim(),
               password: fisconline_password,
               pin: fisconline_pin,
             },

@@ -98,7 +98,7 @@ const ClientDetail = () => {
         fiskalySystemId={profile.fiskaly_system_id}
         legalName={profile.legal_name}
         vatNumber={profile.vat_number}
-        
+        legalRepFiscalCode={(profile as any).legal_rep_fiscal_code}
         addressStreet={profile.address_street}
         zipCode={profile.zip_code}
         city={profile.city}
@@ -175,6 +175,7 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
   const [legalName, setLegalName] = useState(profile.legal_name ?? "");
   const [vatNumber, setVatNumber] = useState(profile.vat_number ?? "");
   const [fiscalCode, setFiscalCode] = useState(profile.fiscal_code ?? "");
+  const [legalRepFiscalCode, setLegalRepFiscalCode] = useState((profile as any).legal_rep_fiscal_code ?? "");
   const [fiskalySystemId, setFiskalySystemId] = useState(profile.fiskaly_system_id ?? "");
   const [addressStreet, setAddressStreet] = useState(profile.address_street ?? "");
   const [addressNumber, setAddressNumber] = useState(profile.address_number ?? "");
@@ -185,9 +186,10 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
   // Validation
   const vatValid = !vatNumber.trim() || /^\d{11}$/.test(vatNumber.trim());
   const fiscalCodeValid = !fiscalCode.trim() || /^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/i.test(fiscalCode.trim()) || /^\d{11}$/.test(fiscalCode.trim());
+  const legalRepFcValid = !legalRepFiscalCode.trim() || /^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/i.test(legalRepFiscalCode.trim());
   const zipValid = !zipCode.trim() || /^\d{5}$/.test(zipCode.trim());
   const provinceValid = !province.trim() || /^[A-Z]{2}$/i.test(province.trim());
-  const formValid = !!legalName.trim() && !!vatNumber.trim() && vatValid && fiscalCodeValid && zipValid && provinceValid;
+  const formValid = !!legalName.trim() && !!vatNumber.trim() && vatValid && fiscalCodeValid && legalRepFcValid && zipValid && provinceValid;
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -195,6 +197,7 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
         legal_name: legalName.trim() || null,
         vat_number: vatNumber.trim() || null,
         fiscal_code: fiscalCode.trim() || null,
+        legal_rep_fiscal_code: legalRepFiscalCode.trim().toUpperCase() || null,
         fiskaly_system_id: fiskalySystemId.trim() || null,
         address_street: addressStreet.trim() || null,
         address_number: addressNumber.trim() || null,
@@ -241,10 +244,16 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
               {vatNumber.trim() && !vatValid && <p className="text-xs text-destructive mt-1">Deve essere di 11 cifre numeriche</p>}
             </div>
             <div>
-              <Label>Codice Fiscale</Label>
+              <Label>Codice Fiscale Aziendale</Label>
               <Input value={fiscalCode} onChange={(e) => setFiscalCode(e.target.value.toUpperCase().slice(0, 16))} className="mt-1.5" placeholder={vatNumber.trim() || "Uguale alla P.IVA"} maxLength={16} />
               {fiscalCode.trim() && !fiscalCodeValid && <p className="text-xs text-destructive mt-1">Formato non valido (16 caratteri o 11 cifre)</p>}
             </div>
+          </div>
+          <div>
+            <Label>CF Rappresentante Legale</Label>
+            <Input value={legalRepFiscalCode} onChange={(e) => setLegalRepFiscalCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16))} className="mt-1.5" placeholder="Es. RSSMRA85M01H501Z" maxLength={16} />
+            {legalRepFiscalCode.trim() && !legalRepFcValid && <p className="text-xs text-destructive mt-1">Deve essere 16 caratteri alfanumerici</p>}
+            <p className="text-xs text-muted-foreground mt-1">CF personale di chi detiene le credenziali Fisconline (obbligatorio per Fiskaly)</p>
           </div>
 
           <p className="text-sm font-medium text-foreground">Sede Legale</p>

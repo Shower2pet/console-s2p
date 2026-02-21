@@ -24,6 +24,7 @@ const Settings = () => {
   const [legalName, setLegalName] = useState("");
   const [vatNumber, setVatNumber] = useState("");
   const [fiscalCode, setFiscalCode] = useState("");
+  const [legalRepFiscalCode, setLegalRepFiscalCode] = useState("");
   const [addressStreet, setAddressStreet] = useState("");
   const [addressNumber, setAddressNumber] = useState("");
   const [zipCode, setZipCode] = useState("");
@@ -33,14 +34,16 @@ const Settings = () => {
   // Validation helpers
   const vatValid = !vatNumber.trim() || /^\d{11}$/.test(vatNumber.trim());
   const fiscalCodeValid = !fiscalCode.trim() || /^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/i.test(fiscalCode.trim()) || /^\d{11}$/.test(fiscalCode.trim());
+  const legalRepFcValid = !legalRepFiscalCode.trim() || /^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/i.test(legalRepFiscalCode.trim());
   const zipValid = !zipCode.trim() || /^\d{5}$/.test(zipCode.trim());
   const provinceValid = !province.trim() || /^[A-Z]{2}$/i.test(province.trim());
-  const formValid = !!legalName.trim() && !!vatNumber.trim() && vatValid && fiscalCodeValid && zipValid && provinceValid;
+  const formValid = !!legalName.trim() && !!vatNumber.trim() && vatValid && fiscalCodeValid && legalRepFcValid && zipValid && provinceValid;
   useEffect(() => {
     if (profile) {
       setLegalName(profile.legal_name ?? "");
       setVatNumber(profile.vat_number ?? "");
       setFiscalCode(profile.fiscal_code ?? "");
+      setLegalRepFiscalCode((profile as any).legal_rep_fiscal_code ?? "");
       setAddressStreet((profile as any).address_street ?? "");
       setAddressNumber((profile as any).address_number ?? "");
       setZipCode((profile as any).zip_code ?? "");
@@ -55,6 +58,7 @@ const Settings = () => {
         legal_name: legalName.trim() || null,
         vat_number: vatNumber.trim() || null,
         fiscal_code: fiscalCode.trim() || null,
+        legal_rep_fiscal_code: legalRepFiscalCode.trim().toUpperCase() || null,
         address_street: addressStreet.trim() || null,
         address_number: addressNumber.trim() || null,
         zip_code: zipCode.trim() || null,
@@ -97,11 +101,17 @@ const Settings = () => {
                 {vatNumber.trim() && !vatValid && <p className="text-xs text-destructive mt-1">Deve essere di 11 cifre numeriche</p>}
               </div>
               <div>
-                <Label>Codice Fiscale</Label>
+                <Label>Codice Fiscale Aziendale</Label>
                 <Input value={fiscalCode} onChange={(e) => setFiscalCode(e.target.value.toUpperCase().slice(0, 16))} className="mt-1.5" placeholder={vatNumber.trim() || "Uguale alla P.IVA se vuoto"} maxLength={16} />
                 {fiscalCode.trim() && !fiscalCodeValid && <p className="text-xs text-destructive mt-1">Formato non valido (16 caratteri alfanumerici o 11 cifre)</p>}
                 {!fiscalCode.trim() && <p className="text-xs text-muted-foreground mt-1">Se vuoto, verrà usata la Partita IVA</p>}
               </div>
+            </div>
+            <div>
+              <Label>CF Rappresentante Legale</Label>
+              <Input value={legalRepFiscalCode} onChange={(e) => setLegalRepFiscalCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16))} className="mt-1.5" placeholder="Es. RSSMRA85M01H501Z" maxLength={16} />
+              {legalRepFiscalCode.trim() && !legalRepFcValid && <p className="text-xs text-destructive mt-1">Deve essere 16 caratteri alfanumerici</p>}
+              <p className="text-xs text-muted-foreground mt-1">CF personale di chi detiene le credenziali Fisconline (obbligatorio per Fiskaly)</p>
             </div>
 
             <div className="border-t border-border pt-4">
@@ -153,6 +163,7 @@ const Settings = () => {
           fiskalySystemId={profile?.fiskaly_system_id}
           legalName={legalName}
           vatNumber={vatNumber}
+          legalRepFiscalCode={legalRepFiscalCode}
           addressStreet={addressStreet}
           zipCode={zipCode}
           city={city}

@@ -272,6 +272,7 @@ export type Database = {
           id: string
           last_name: string | null
           legal_name: string | null
+          legal_rep_fiscal_code: string | null
           must_change_password: boolean | null
           phone: string | null
           province: string | null
@@ -294,6 +295,7 @@ export type Database = {
           id: string
           last_name?: string | null
           legal_name?: string | null
+          legal_rep_fiscal_code?: string | null
           must_change_password?: boolean | null
           phone?: string | null
           province?: string | null
@@ -316,6 +318,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           legal_name?: string | null
+          legal_rep_fiscal_code?: string | null
           must_change_password?: boolean | null
           phone?: string | null
           province?: string | null
