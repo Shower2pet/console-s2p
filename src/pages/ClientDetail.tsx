@@ -98,7 +98,7 @@ const ClientDetail = () => {
         fiskalySystemId={profile.fiskaly_system_id}
         legalName={profile.legal_name}
         vatNumber={profile.vat_number}
-        fiscalCode={profile.fiscal_code || profile.vat_number}
+        fiscalCode={profile.fiscal_code || undefined}
         addressStreet={profile.address_street}
         zipCode={profile.zip_code}
         city={profile.city}
@@ -189,14 +189,12 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
   const provinceValid = !province.trim() || /^[A-Z]{2}$/i.test(province.trim());
   const formValid = !!legalName.trim() && !!vatNumber.trim() && vatValid && fiscalCodeValid && zipValid && provinceValid;
 
-  const effectiveFiscalCode = fiscalCode.trim() || vatNumber.trim();
-
   const saveMutation = useMutation({
     mutationFn: () =>
       updatePartnerData(profileId, {
         legal_name: legalName.trim() || null,
         vat_number: vatNumber.trim() || null,
-        fiscal_code: effectiveFiscalCode || null,
+        fiscal_code: fiscalCode.trim() || null,
         fiskaly_system_id: fiskalySystemId.trim() || null,
         address_street: addressStreet.trim() || null,
         address_number: addressNumber.trim() || null,
