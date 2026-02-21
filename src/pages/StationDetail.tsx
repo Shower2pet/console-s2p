@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, Timer, ShieldAlert
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useStation, useUpdateStation, type WashingOption } from "@/hooks/useStations";
 import { useCreateMaintenanceTicket } from "@/hooks/useMaintenanceLogs";
@@ -135,24 +131,6 @@ const StationDetail = () => {
     await invokeHardware("ON");
   };
 
-  const handleHwReset = async () => {
-    if (!station) return;
-    setHwBusy(true);
-    try {
-      await invokeStationControl(station.id, "OFF");
-      await updateStation.mutateAsync({ id: station.id, status: "AVAILABLE", manual_offline: false } as any);
-      setEditStatus("AVAILABLE");
-      toast.success("Comando hardware inviato");
-    } catch (e: any) {
-      toast.error(e.message ?? "Errore di comunicazione con la stazione");
-    } finally {
-      setHwBusy(false);
-    }
-  };
-
-  const handleHwTest = async () => {
-    await invokeHardware("PULSE", 1);
-  };
 
   const handleRemoveFromClient = async () => {
     if (!station) return;
@@ -284,51 +262,33 @@ const StationDetail = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap gap-3">
-              {/* Avvia Test 1 Min (PULSE) */}
+              {/* Reset — placeholder, da implementare */}
               <Button
                 variant="outline"
-                onClick={handleHwTest}
-                disabled={hwBusy || updateStation.isPending}
+                disabled
                 className="gap-2"
               >
-                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Timer className="h-4 w-4" />} Avvia Test (1 Minuto)
+                <RotateCcw className="h-4 w-4" /> Reset
               </Button>
 
-              {/* Accendi Forzato (ON) — with warning confirmation dialog */}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    disabled={hwBusy || updateStation.isPending || !canActivate}
-                    className="gap-2 border-warning/50 text-warning-foreground hover:bg-warning/10"
-                  >
-                    {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />} Accendi (Forzato)
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-destructive" /> Attenzione
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      L'erogazione forzata non si fermerà in automatico. Vuoi procedere?
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annulla</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleHwOn} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Conferma</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              {/* Attiva Servizio (ON) */}
+              <Button
+                variant="outline"
+                onClick={handleHwOn}
+                disabled={hwBusy || updateStation.isPending || !canActivate}
+                className="gap-2 border-primary/50 text-primary hover:bg-primary/10"
+              >
+                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />} Attiva Servizio
+              </Button>
 
-              {/* Spegni / Reset (OFF + status AVAILABLE) */}
+              {/* Spegni Servizio (OFF) */}
               <Button
                 variant="destructive"
-                onClick={handleHwReset}
+                onClick={() => invokeHardware("OFF")}
                 disabled={hwBusy || updateStation.isPending}
                 className="gap-2"
               >
-                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />} Spegni / Reset
+                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />} Spegni Servizio
               </Button>
             </div>
             {missingReqs && (
