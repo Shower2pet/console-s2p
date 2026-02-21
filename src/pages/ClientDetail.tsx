@@ -104,6 +104,7 @@ const ClientDetail = () => {
         city={profile.city}
         province={profile.province}
         invalidateKeys={[["client-profile", id!]]}
+        isAdmin
       />
 
       {/* Structures */}

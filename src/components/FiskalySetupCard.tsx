@@ -21,6 +21,8 @@ interface FiskalySetupCardProps {
   province?: string | null;
   /** Query keys to invalidate after success */
   invalidateKeys?: string[][];
+  /** Only admins can force-reconfigure */
+  isAdmin?: boolean;
 }
 
 const REQUIRED_FIELDS = [
@@ -44,6 +46,7 @@ export const FiskalySetupCard = ({
   city,
   province,
   invalidateKeys = [],
+  isAdmin = false,
 }: FiskalySetupCardProps) => {
   const qc = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
@@ -153,31 +156,35 @@ export const FiskalySetupCard = ({
               </p>
             </div>
 
-            <FisconlineFields
-              password={fisconlinePassword}
-              pin={fisconlinePin}
-              showPassword={showPassword}
-              showPin={showPin}
-              onPasswordChange={setFisconlinePassword}
-              onPinChange={setFisconlinePin}
-              onTogglePassword={() => setShowPassword(!showPassword)}
-              onTogglePin={() => setShowPin(!showPin)}
-            />
+            {isAdmin && (
+              <>
+                <FisconlineFields
+                  password={fisconlinePassword}
+                  pin={fisconlinePin}
+                  showPassword={showPassword}
+                  showPin={showPin}
+                  onPasswordChange={setFisconlinePassword}
+                  onPinChange={setFisconlinePin}
+                  onTogglePassword={() => setShowPassword(!showPassword)}
+                  onTogglePin={() => setShowPin(!showPin)}
+                />
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleSetup(true)}
-              disabled={isLoading || !hasFisconline}
-              className="gap-2 text-muted-foreground"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-              Riconfigura (force)
-            </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSetup(true)}
+                  disabled={isLoading || !hasFisconline}
+                  className="gap-2 text-muted-foreground"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Riconfigura (force)
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-4">

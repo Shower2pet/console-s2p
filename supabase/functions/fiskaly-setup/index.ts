@@ -247,6 +247,22 @@ Deno.serve(async (req) => {
     let entityId: string | null = force ? null : (partner.fiskaly_entity_id ?? null);
 
     if (!entityId) {
+      // Prima cerca un'entity esistente per questo partner (evita duplicati con force)
+      console.log("Step 4: ricerca Entity esistente...");
+      const existingEntities = await fCall("GET", `${BASE}/entities?limit=100`, unitBearer);
+      const foundEntity = (existingEntities.data?.results ?? []).find(
+        (e: any) => e.metadata?.partner_id === partner_id,
+      );
+      if (foundEntity) {
+        entityId = foundEntity.content?.id ?? null;
+        console.log("Step 4: Entity esistente trovata:", entityId, "state:", foundEntity.content?.state);
+        if (entityId) {
+          await supabase.from("profiles").update({ fiskaly_entity_id: entityId }).eq("id", partner_id);
+        }
+      }
+    }
+
+    if (!entityId) {
       console.log("Step 4: creazione Entity (con type IT)...");
       const entityBody = {
         content: {
@@ -298,10 +314,20 @@ Deno.serve(async (req) => {
         if (!entityId) return jsonErr("Entity conflict (409): ID non trovato. Usa 'Azzera IDs Fiskaly' nel pannello admin e riprova.", { unit_id: unitId });
         console.log("Step 4: Entity conflict — uso esistente:", entityId);
       } else if (er.status === 405) {
-        return jsonErr(
-          "Errore 405: il token operativo non è valido per questa UNIT. Premi 'Azzera IDs Fiskaly nel DB' nel pannello admin e riconfigura.",
-          { unit_id: unitId, details: er.data?.content?.message },
+        // 405 = "cannot create more than 1 legal entity" — cerca l'entity esistente
+        console.log("Step 4: 405 — cerco entity esistente nella UNIT...");
+        const lr = await fCall("GET", `${BASE}/entities?limit=100`, unitBearer);
+        const found = (lr.data?.results ?? []).find(
+          (e: any) => e.metadata?.partner_id === partner_id || e.content?.state,
         );
+        entityId = found?.content?.id ?? null;
+        if (!entityId) {
+          return jsonErr(
+            "Errore 405: esiste già un'entity per questa UNIT ma non è stato possibile recuperarla. Usa 'Azzera IDs Fiskaly' nel pannello admin.",
+            { unit_id: unitId, details: er.data?.content?.message },
+          );
+        }
+        console.log("Step 4: Entity recuperata dopo 405:", entityId);
       } else {
         return jsonErr(`Errore entity (${er.status})`, { details: er.data?.content?.message ?? er.text.slice(0, 200) });
       }
