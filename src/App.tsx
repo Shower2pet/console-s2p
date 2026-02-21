@@ -27,7 +27,7 @@ import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
 import UpdatePassword from "@/pages/auth/UpdatePassword";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({});
 
 const HomePage = () => {
   const { isAdmin, profile } = useAuth();
