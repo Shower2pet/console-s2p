@@ -247,7 +247,7 @@ Deno.serve(async (req) => {
     let entityId: string | null = force ? null : (partner.fiskaly_entity_id ?? null);
 
     if (!entityId) {
-      console.log("Step 4: creazione Entity...");
+      console.log("Step 4: creazione Entity (con type IT)...");
       const entityBody = {
         content: {
           type: "COMPANY",
@@ -266,6 +266,7 @@ Deno.serve(async (req) => {
             country: "IT",
           },
           fiscalization: {
+            type: "IT",
             tax_id_number: partner.fiscal_code.trim(),
             vat_id_number: partner.vat_number.trim(),
             credentials: {
@@ -278,8 +279,9 @@ Deno.serve(async (req) => {
         },
         metadata: { partner_id, vat_number: partner.vat_number?.trim() ?? "" },
       };
+      console.log("Step 4: entityBody.content.fiscalization =", JSON.stringify(entityBody.content.fiscalization));
       const er = await fCall("POST", `${BASE}/entities`, unitBearer, entityBody);
-      console.log(`Step 4: Entity → ${er.status} ${er.text.slice(0, 300)}`);
+      console.log(`Step 4: Entity → ${er.status} ${er.text.slice(0, 500)}`);
 
       if (er.status === 200 || er.status === 201) {
         entityId = er.data?.content?.id ?? null;
