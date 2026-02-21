@@ -144,6 +144,7 @@ const Settings = () => {
           fiskalySystemId={profile?.fiskaly_system_id}
           legalName={legalName}
           vatNumber={vatNumber}
+          fiscalCode={effectiveFiscalCode}
           addressStreet={addressStreet}
           zipCode={zipCode}
           city={city}

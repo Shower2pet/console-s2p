@@ -98,6 +98,7 @@ const ClientDetail = () => {
         fiskalySystemId={profile.fiskaly_system_id}
         legalName={profile.legal_name}
         vatNumber={profile.vat_number}
+        fiscalCode={profile.fiscal_code || profile.vat_number}
         addressStreet={profile.address_street}
         zipCode={profile.zip_code}
         city={profile.city}

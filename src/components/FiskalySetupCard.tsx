@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Loader2, CheckCircle2, AlertCircle, Zap, RefreshCw } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Zap, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,6 +14,7 @@ interface FiskalySetupCardProps {
   fiskalySystemId?: string | null;
   legalName?: string | null;
   vatNumber?: string | null;
+  fiscalCode?: string | null;
   addressStreet?: string | null;
   zipCode?: string | null;
   city?: string | null;
@@ -23,6 +26,7 @@ interface FiskalySetupCardProps {
 const REQUIRED_FIELDS = [
   { key: "legalName", label: "Ragione Sociale" },
   { key: "vatNumber", label: "Partita IVA" },
+  { key: "fiscalCode", label: "Codice Fiscale" },
   { key: "addressStreet", label: "Via/Indirizzo" },
   { key: "zipCode", label: "CAP" },
   { key: "city", label: "Città" },
@@ -34,6 +38,7 @@ export const FiskalySetupCard = ({
   fiskalySystemId,
   legalName,
   vatNumber,
+  fiscalCode,
   addressStreet,
   zipCode,
   city,
@@ -45,20 +50,21 @@ export const FiskalySetupCard = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successSystemId, setSuccessSystemId] = useState<string | null>(null);
 
+  // Fisconline credentials (not saved)
+  const [fisconlinePassword, setFisconlinePassword] = useState("");
+  const [fisconlinePin, setFisconlinePin] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPin, setShowPin] = useState(false);
+
   const currentSystemId = successSystemId ?? fiskalySystemId;
   const isConfigured = !!currentSystemId;
 
-  // Check which required fields are missing
   const fieldValues: Record<string, string | null | undefined> = {
-    legalName,
-    vatNumber,
-    addressStreet,
-    zipCode,
-    city,
-    province,
+    legalName, vatNumber, fiscalCode, addressStreet, zipCode, city, province,
   };
   const missingFields = REQUIRED_FIELDS.filter((f) => !fieldValues[f.key]?.trim());
-  const canConfigure = missingFields.length === 0;
+  const hasFisconline = fisconlinePassword.trim().length > 0 && fisconlinePin.trim().length > 0;
+  const canConfigure = missingFields.length === 0 && hasFisconline;
 
   const handleSetup = async (force = false) => {
     setIsLoading(true);
@@ -66,11 +72,15 @@ export const FiskalySetupCard = ({
 
     try {
       const { data, error } = await supabase.functions.invoke("fiskaly-setup", {
-        body: { partner_id: partnerId, force },
+        body: {
+          partner_id: partnerId,
+          force,
+          fisconline_password: fisconlinePassword,
+          fisconline_pin: fisconlinePin,
+        },
       });
 
       if (error) {
-        // Try to extract the real error message from the response body
         let msg = error.message ?? "Errore imprevisto";
         try {
           const ctx = (error as any).context;
@@ -99,6 +109,9 @@ export const FiskalySetupCard = ({
 
       if (data?.success) {
         setSuccessSystemId(data.system_id);
+        // Clear credentials from state after success
+        setFisconlinePassword("");
+        setFisconlinePin("");
         toast.success(
           data.already_configured
             ? "Fiskaly già configurato"
@@ -121,7 +134,7 @@ export const FiskalySetupCard = ({
           <Zap className="h-5 w-5 text-primary" />
           Configurazione Fiskaly
           {isConfigured ? (
-          <Badge variant="outline" className="ml-2 gap-1 border-primary text-primary">
+            <Badge variant="outline" className="ml-2 gap-1 border-primary text-primary">
               <CheckCircle2 className="h-3 w-3" /> Configurato
             </Badge>
           ) : (
@@ -140,11 +153,24 @@ export const FiskalySetupCard = ({
                 {currentSystemId}
               </p>
             </div>
+
+            {/* Fisconline fields for reconfigure */}
+            <FisconlineFields
+              password={fisconlinePassword}
+              pin={fisconlinePin}
+              showPassword={showPassword}
+              showPin={showPin}
+              onPasswordChange={setFisconlinePassword}
+              onPinChange={setFisconlinePin}
+              onTogglePassword={() => setShowPassword(!showPassword)}
+              onTogglePin={() => setShowPin(!showPin)}
+            />
+
             <Button
               variant="outline"
               size="sm"
               onClick={() => handleSetup(true)}
-              disabled={isLoading}
+              disabled={isLoading || !hasFisconline}
               className="gap-2 text-muted-foreground"
             >
               {isLoading ? (
@@ -156,12 +182,12 @@ export const FiskalySetupCard = ({
             </Button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Crea automaticamente l'Entity e il System su Fiskaly SIGN IT partendo dai dati fiscali del partner.
             </p>
 
-            {!canConfigure && (
+            {missingFields.length > 0 && (
               <div className="rounded-lg bg-muted border border-border px-4 py-3 space-y-1">
                 <p className="text-sm font-medium text-foreground">
                   Dati obbligatori mancanti:
@@ -176,6 +202,18 @@ export const FiskalySetupCard = ({
                 </p>
               </div>
             )}
+
+            {/* Fisconline credentials */}
+            <FisconlineFields
+              password={fisconlinePassword}
+              pin={fisconlinePin}
+              showPassword={showPassword}
+              showPin={showPin}
+              onPasswordChange={setFisconlinePassword}
+              onPinChange={setFisconlinePin}
+              onTogglePassword={() => setShowPassword(!showPassword)}
+              onTogglePin={() => setShowPin(!showPin)}
+            />
 
             <Button
               onClick={() => handleSetup(false)}
@@ -207,3 +245,68 @@ export const FiskalySetupCard = ({
     </Card>
   );
 };
+
+/** Fisconline password + PIN fields */
+function FisconlineFields({
+  password, pin, showPassword, showPin,
+  onPasswordChange, onPinChange, onTogglePassword, onTogglePin,
+}: {
+  password: string; pin: string;
+  showPassword: boolean; showPin: boolean;
+  onPasswordChange: (v: string) => void; onPinChange: (v: string) => void;
+  onTogglePassword: () => void; onTogglePin: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
+      <div>
+        <p className="text-sm font-medium text-foreground mb-1">Credenziali Fisconline (Agenzia delle Entrate)</p>
+        <p className="text-xs text-muted-foreground">
+          Necessarie per l'invio telematico dei corrispettivi. Scadono ogni 60 giorni.
+          Non vengono salvate nel database.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="fisconline-password" className="text-xs">Password Fisconline</Label>
+          <div className="relative">
+            <Input
+              id="fisconline-password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => onPasswordChange(e.target.value)}
+              placeholder="Password"
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={onTogglePassword}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="fisconline-pin" className="text-xs">PIN Fisconline</Label>
+          <div className="relative">
+            <Input
+              id="fisconline-pin"
+              type={showPin ? "text" : "password"}
+              value={pin}
+              onChange={(e) => onPinChange(e.target.value)}
+              placeholder="PIN"
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={onTogglePin}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
