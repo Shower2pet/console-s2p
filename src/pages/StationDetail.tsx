@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, Timer
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, Timer, ShieldAlert
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ const StationDetail = () => {
   const [stationLat, setStationLat] = useState<number | null>(null);
   const [stationLng, setStationLng] = useState<number | null>(null);
   const [hwBusy, setHwBusy] = useState(false);
+  const [editHasAccessGate, setEditHasAccessGate] = useState(false);
 
   // Fetch structures for reassignment – filtered by station owner
   const stationOwnerId = station?.owner_id ?? editOwnerId;
@@ -68,6 +70,7 @@ const StationDetail = () => {
       setEditStructureId(station.structure_id ?? "__none__");
       setEditOwnerId(station.owner_id ?? "__none__");
       setEditVisibility(station.visibility ?? "PUBLIC");
+      setEditHasAccessGate(station.has_access_gate ?? false);
       setEditOwnerId(station.owner_id ?? "__none__");
       const opts = Array.isArray(station.washing_options)
         ? (station.washing_options as unknown as WashingOption[])
@@ -95,9 +98,13 @@ const StationDetail = () => {
       const payload: Record<string, any> = {
         id: station.id,
         status: editStatus,
+        // Gestione manual_offline
+        ...(editStatus === 'OFFLINE' && { manual_offline: true }),
+        ...(editStatus === 'AVAILABLE' && { manual_offline: false }),
         structure_id: editStructureId === "__none__" ? null : editStructureId,
         washing_options: washingOptions as any,
         visibility: editVisibility as any,
+        has_access_gate: editHasAccessGate,
         geo_lat: stationLat,
         geo_lng: stationLng,
       };
@@ -133,7 +140,7 @@ const StationDetail = () => {
     setHwBusy(true);
     try {
       await invokeStationControl(station.id, "OFF");
-      await updateStation.mutateAsync({ id: station.id, status: "AVAILABLE" } as any);
+      await updateStation.mutateAsync({ id: station.id, status: "AVAILABLE", manual_offline: false } as any);
       setEditStatus("AVAILABLE");
       toast.success("Comando hardware inviato");
     } catch (e: any) {
@@ -247,7 +254,14 @@ const StationDetail = () => {
             {station.type}
           </p>
         </div>
-        <StatusBadge status={station.status ?? "OFFLINE"} />
+        <div className="flex items-center gap-2">
+          <StatusBadge status={station.status ?? "OFFLINE"} />
+          {station.manual_offline && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
+              <ShieldAlert className="h-3 w-3" /> Disattivata manualmente
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Commands */}
@@ -411,7 +425,6 @@ const StationDetail = () => {
                 <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="AVAILABLE">Disponibile</SelectItem>
-                  <SelectItem value="BUSY">Occupata</SelectItem>
                   <SelectItem value="OFFLINE">Offline</SelectItem>
                   <SelectItem value="MAINTENANCE">Manutenzione</SelectItem>
                 </SelectContent>
@@ -463,6 +476,15 @@ const StationDetail = () => {
                   <SelectItem value="HIDDEN">Invisibile</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Access Gate toggle */}
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label>Porta d'accesso automatica</Label>
+                <p className="text-xs text-muted-foreground">Se attivo, l'app utente mostrerà il pulsante "Apri Porta"</p>
+              </div>
+              <Switch checked={editHasAccessGate} onCheckedChange={setEditHasAccessGate} />
             </div>
 
             {/* Washing Options Editor */}

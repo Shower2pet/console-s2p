@@ -362,6 +362,7 @@ export type Database = {
           id: string
           image_url: string | null
           last_heartbeat_at: string | null
+          manual_offline: boolean
           owner_id: string | null
           product_id: string | null
           status: Database["public"]["Enums"]["station_status"] | null
@@ -381,6 +382,7 @@ export type Database = {
           id: string
           image_url?: string | null
           last_heartbeat_at?: string | null
+          manual_offline?: boolean
           owner_id?: string | null
           product_id?: string | null
           status?: Database["public"]["Enums"]["station_status"] | null
@@ -400,6 +402,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           last_heartbeat_at?: string | null
+          manual_offline?: boolean
           owner_id?: string | null
           product_id?: string | null
           status?: Database["public"]["Enums"]["station_status"] | null
@@ -864,6 +867,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_offline_expired_heartbeats: { Args: never; Returns: undefined }
       get_public_stations: {
         Args: never
         Returns: {
@@ -881,6 +885,10 @@ export type Database = {
           visibility: string
           washing_options: Json
         }[]
+      }
+      handle_station_heartbeat: {
+        Args: { p_station_id: string }
+        Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
       is_manager_of: { Args: { struct_id: string }; Returns: boolean }
