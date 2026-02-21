@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Monitor, Search, Filter, Loader2 } from "lucide-react";
+import { Monitor, Search, Filter, Loader2, Lock, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useStations } from "@/hooks/useStations";
 import { useAuth } from "@/contexts/AuthContext";
@@ -75,7 +76,29 @@ const StationsList = () => {
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-base font-heading">{s.id}</CardTitle>
-                  <StatusBadge status={s.status ?? "OFFLINE"} />
+                  <div className="flex items-center gap-1.5">
+                    {s.visibility === "RESTRICTED" && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>Solo con QR/codice</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    {s.visibility === "HIDDEN" && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>Nascosta dalla mappa</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    <StatusBadge status={s.status ?? "OFFLINE"} />
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
