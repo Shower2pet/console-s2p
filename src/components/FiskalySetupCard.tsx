@@ -26,7 +26,7 @@ interface FiskalySetupCardProps {
 const REQUIRED_FIELDS = [
   { key: "legalName", label: "Ragione Sociale" },
   { key: "vatNumber", label: "Partita IVA" },
-  { key: "fiscalCode", label: "Codice Fiscale" },
+  { key: "fiscalCode", label: "Codice Fiscale (16 caratteri)" },
   { key: "addressStreet", label: "Via/Indirizzo" },
   { key: "zipCode", label: "CAP" },
   { key: "city", label: "Città" },

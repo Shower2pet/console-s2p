@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
     const missing: string[] = [];
     if (!partner.legal_name?.trim())     missing.push("Ragione Sociale");
     if (!partner.vat_number?.trim())     missing.push("Partita IVA");
-    // fiscal_code è opzionale — se non presente, usiamo la P.IVA come tax_id_number
+    if (!partner.fiscal_code?.trim())    missing.push("Codice Fiscale (obbligatorio per Fiskaly, 16 caratteri)");
     if (!partner.address_street?.trim()) missing.push("Via/Indirizzo");
     if (!partner.zip_code?.trim())       missing.push("CAP");
     if (!partner.city?.trim())           missing.push("Città");
@@ -267,11 +267,11 @@ Deno.serve(async (req) => {
           },
           fiscalization: {
             type: "IT",
-            tax_id_number: (partner.fiscal_code?.trim() || partner.vat_number.trim()),
+            tax_id_number: partner.fiscal_code!.trim(),
             vat_id_number: partner.vat_number.trim(),
             credentials: {
               type: "FISCONLINE",
-              tax_id_number: (partner.fiscal_code?.trim() || partner.vat_number.trim()),
+              tax_id_number: partner.fiscal_code!.trim(),
               password: fisconline_password,
               pin: fisconline_pin,
             },
