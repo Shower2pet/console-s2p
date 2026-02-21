@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, CheckCircle2, AlertCircle, Zap, RefreshCw, Eye, EyeOff } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Zap, RefreshCw, Eye, EyeOff, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,6 @@ interface FiskalySetupCardProps {
   fiskalySystemId?: string | null;
   legalName?: string | null;
   vatNumber?: string | null;
-  fiscalCode?: string | null;
   addressStreet?: string | null;
   zipCode?: string | null;
   city?: string | null;
@@ -26,7 +25,6 @@ interface FiskalySetupCardProps {
 const REQUIRED_FIELDS = [
   { key: "legalName", label: "Ragione Sociale" },
   { key: "vatNumber", label: "Partita IVA" },
-  { key: "fiscalCode", label: "Codice Fiscale (16 caratteri)" },
   { key: "addressStreet", label: "Via/Indirizzo" },
   { key: "zipCode", label: "CAP" },
   { key: "city", label: "Città" },
@@ -38,7 +36,6 @@ export const FiskalySetupCard = ({
   fiskalySystemId,
   legalName,
   vatNumber,
-  fiscalCode,
   addressStreet,
   zipCode,
   city,
@@ -50,9 +47,10 @@ export const FiskalySetupCard = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successSystemId, setSuccessSystemId] = useState<string | null>(null);
 
-  // Fisconline credentials (not saved)
+  // Fisconline credentials + CF rappresentante legale (not saved)
   const [fisconlinePassword, setFisconlinePassword] = useState("");
   const [fisconlinePin, setFisconlinePin] = useState("");
+  const [legalRepFiscalCode, setLegalRepFiscalCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showPin, setShowPin] = useState(false);
 
@@ -60,11 +58,12 @@ export const FiskalySetupCard = ({
   const isConfigured = !!currentSystemId;
 
   const fieldValues: Record<string, string | null | undefined> = {
-    legalName, vatNumber, fiscalCode, addressStreet, zipCode, city, province,
+    legalName, vatNumber, addressStreet, zipCode, city, province,
   };
   const missingFields = REQUIRED_FIELDS.filter((f) => !fieldValues[f.key]?.trim());
   const hasFisconline = fisconlinePassword.trim().length > 0 && fisconlinePin.trim().length > 0;
-  const canConfigure = missingFields.length === 0 && hasFisconline;
+  const legalRepCfValid = /^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/i.test(legalRepFiscalCode.trim());
+  const canConfigure = missingFields.length === 0 && hasFisconline && legalRepCfValid;
 
   const handleSetup = async (force = false) => {
     setIsLoading(true);
@@ -77,6 +76,7 @@ export const FiskalySetupCard = ({
           force,
           fisconline_password: fisconlinePassword,
           fisconline_pin: fisconlinePin,
+          legal_rep_fiscal_code: legalRepFiscalCode.trim().toUpperCase(),
         },
       });
 
@@ -109,9 +109,9 @@ export const FiskalySetupCard = ({
 
       if (data?.success) {
         setSuccessSystemId(data.system_id);
-        // Clear credentials from state after success
         setFisconlinePassword("");
         setFisconlinePin("");
+        setLegalRepFiscalCode("");
         toast.success(
           data.already_configured
             ? "Fiskaly già configurato"
@@ -154,14 +154,16 @@ export const FiskalySetupCard = ({
               </p>
             </div>
 
-            {/* Fisconline fields for reconfigure */}
             <FisconlineFields
               password={fisconlinePassword}
               pin={fisconlinePin}
+              legalRepFiscalCode={legalRepFiscalCode}
+              legalRepCfValid={legalRepCfValid}
               showPassword={showPassword}
               showPin={showPin}
               onPasswordChange={setFisconlinePassword}
               onPinChange={setFisconlinePin}
+              onLegalRepFcChange={setLegalRepFiscalCode}
               onTogglePassword={() => setShowPassword(!showPassword)}
               onTogglePin={() => setShowPin(!showPin)}
             />
@@ -170,7 +172,7 @@ export const FiskalySetupCard = ({
               variant="outline"
               size="sm"
               onClick={() => handleSetup(true)}
-              disabled={isLoading || !hasFisconline}
+              disabled={isLoading || !hasFisconline || !legalRepCfValid}
               className="gap-2 text-muted-foreground"
             >
               {isLoading ? (
@@ -203,14 +205,16 @@ export const FiskalySetupCard = ({
               </div>
             )}
 
-            {/* Fisconline credentials */}
             <FisconlineFields
               password={fisconlinePassword}
               pin={fisconlinePin}
+              legalRepFiscalCode={legalRepFiscalCode}
+              legalRepCfValid={legalRepCfValid}
               showPassword={showPassword}
               showPin={showPin}
               onPasswordChange={setFisconlinePassword}
               onPinChange={setFisconlinePin}
+              onLegalRepFcChange={setLegalRepFiscalCode}
               onTogglePassword={() => setShowPassword(!showPassword)}
               onTogglePin={() => setShowPin(!showPin)}
             />
@@ -246,16 +250,21 @@ export const FiskalySetupCard = ({
   );
 };
 
-/** Fisconline password + PIN fields */
+/** Fisconline password + PIN + CF rappresentante legale fields */
 function FisconlineFields({
-  password, pin, showPassword, showPin,
-  onPasswordChange, onPinChange, onTogglePassword, onTogglePin,
+  password, pin, legalRepFiscalCode, legalRepCfValid,
+  showPassword, showPin,
+  onPasswordChange, onPinChange, onLegalRepFcChange,
+  onTogglePassword, onTogglePin,
 }: {
   password: string; pin: string;
+  legalRepFiscalCode: string; legalRepCfValid: boolean;
   showPassword: boolean; showPin: boolean;
   onPasswordChange: (v: string) => void; onPinChange: (v: string) => void;
+  onLegalRepFcChange: (v: string) => void;
   onTogglePassword: () => void; onTogglePin: () => void;
 }) {
+  const cfTouched = legalRepFiscalCode.length > 0;
   return (
     <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
       <div>
@@ -265,6 +274,30 @@ function FisconlineFields({
           Non vengono salvate nel database.
         </p>
       </div>
+
+      {/* CF Rappresentante Legale */}
+      <div className="space-y-1.5">
+        <Label htmlFor="legal-rep-fc" className="text-xs">Codice Fiscale del Rappresentante Legale</Label>
+        <Input
+          id="legal-rep-fc"
+          value={legalRepFiscalCode}
+          onChange={(e) => onLegalRepFcChange(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+          placeholder="Es. RSSMRA85M01H501Z"
+          maxLength={16}
+          className={cfTouched && !legalRepCfValid ? "border-destructive" : ""}
+        />
+        <div className="flex items-start gap-1.5">
+          <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground">
+            Il CF personale (16 caratteri) di chi detiene le credenziali Fisconline. 
+            È diverso dal CF aziendale (che coincide con la P.IVA).
+          </p>
+        </div>
+        {cfTouched && !legalRepCfValid && (
+          <p className="text-xs text-destructive">Formato non valido — deve essere 16 caratteri alfanumerici (es. RSSMRA85M01H501Z)</p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="fisconline-password" className="text-xs">Password Fisconline</Label>
