@@ -49,14 +49,12 @@ const Settings = () => {
     }
   }, [profile]);
 
-  const effectiveFiscalCode = fiscalCode.trim() || vatNumber.trim();
-
   const updateMutation = useMutation({
     mutationFn: () =>
       updatePartnerData(user!.id, {
         legal_name: legalName.trim() || null,
         vat_number: vatNumber.trim() || null,
-        fiscal_code: effectiveFiscalCode || null,
+        fiscal_code: fiscalCode.trim() || null,
         address_street: addressStreet.trim() || null,
         address_number: addressNumber.trim() || null,
         zip_code: zipCode.trim() || null,
@@ -155,7 +153,7 @@ const Settings = () => {
           fiskalySystemId={profile?.fiskaly_system_id}
           legalName={legalName}
           vatNumber={vatNumber}
-          fiscalCode={effectiveFiscalCode}
+          fiscalCode={fiscalCode.trim() || undefined}
           addressStreet={addressStreet}
           zipCode={zipCode}
           city={city}
