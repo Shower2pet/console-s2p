@@ -182,6 +182,13 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
   const [city, setCity] = useState(profile.city ?? "");
   const [province, setProvince] = useState(profile.province ?? "");
 
+  // Validation
+  const vatValid = !vatNumber.trim() || /^\d{11}$/.test(vatNumber.trim());
+  const fiscalCodeValid = !fiscalCode.trim() || /^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/i.test(fiscalCode.trim()) || /^\d{11}$/.test(fiscalCode.trim());
+  const zipValid = !zipCode.trim() || /^\d{5}$/.test(zipCode.trim());
+  const provinceValid = !province.trim() || /^[A-Z]{2}$/i.test(province.trim());
+  const formValid = !!legalName.trim() && !!vatNumber.trim() && vatValid && fiscalCodeValid && zipValid && provinceValid;
+
   const effectiveFiscalCode = fiscalCode.trim() || vatNumber.trim();
 
   const saveMutation = useMutation({
@@ -232,11 +239,13 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <Label>Partita IVA *</Label>
-              <Input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} className="mt-1.5" />
+              <Input value={vatNumber} onChange={(e) => setVatNumber(e.target.value.replace(/\D/g, "").slice(0, 11))} className="mt-1.5" maxLength={11} placeholder="11 cifre" />
+              {vatNumber.trim() && !vatValid && <p className="text-xs text-destructive mt-1">Deve essere di 11 cifre numeriche</p>}
             </div>
             <div>
               <Label>Codice Fiscale</Label>
-              <Input value={fiscalCode} onChange={(e) => setFiscalCode(e.target.value)} className="mt-1.5" placeholder={vatNumber.trim() || "Uguale alla P.IVA"} />
+              <Input value={fiscalCode} onChange={(e) => setFiscalCode(e.target.value.toUpperCase().slice(0, 16))} className="mt-1.5" placeholder={vatNumber.trim() || "Uguale alla P.IVA"} maxLength={16} />
+              {fiscalCode.trim() && !fiscalCodeValid && <p className="text-xs text-destructive mt-1">Formato non valido (16 caratteri o 11 cifre)</p>}
             </div>
           </div>
 
@@ -254,7 +263,8 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
           <div className="grid sm:grid-cols-3 gap-4">
             <div>
               <Label>CAP</Label>
-              <Input value={zipCode} onChange={(e) => setZipCode(e.target.value)} className="mt-1.5" maxLength={5} />
+              <Input value={zipCode} onChange={(e) => setZipCode(e.target.value.replace(/\D/g, "").slice(0, 5))} className="mt-1.5" maxLength={5} />
+              {zipCode.trim() && !zipValid && <p className="text-xs text-destructive mt-1">Deve essere di 5 cifre</p>}
             </div>
             <div>
               <Label>Città</Label>
@@ -262,12 +272,13 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
             </div>
             <div>
               <Label>Provincia</Label>
-              <Input value={province} onChange={(e) => setProvince(e.target.value.toUpperCase())} className="mt-1.5" maxLength={2} />
+              <Input value={province} onChange={(e) => setProvince(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2))} className="mt-1.5" maxLength={2} />
+              {province.trim() && !provinceValid && <p className="text-xs text-destructive mt-1">2 lettere (es. RM)</p>}
             </div>
           </div>
         </div>
 
-        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !legalName.trim() || !vatNumber.trim()} className="gap-2">
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !formValid} className="gap-2">
           {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
           <Save className="h-4 w-4" /> Salva Dati Partner
         </Button>
