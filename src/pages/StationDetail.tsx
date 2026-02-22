@@ -88,8 +88,21 @@ const StationDetail = () => {
     setInitialized(false);
   }, [id]);
 
+  const isHeartbeatRecent = (lastHeartbeat: string | null | undefined): boolean => {
+    if (!lastHeartbeat) return false;
+    const diff = Date.now() - new Date(lastHeartbeat).getTime();
+    return diff < 90_000; // 90 secondi, coerente con auto_offline_expired_heartbeats
+  };
+
   const handleSave = async () => {
     if (!station) return;
+
+    // Blocca attivazione se heartbeat non recente (admin può bypassare)
+    if (editStatus === "AVAILABLE" && !isAdmin && !isHeartbeatRecent(station.last_heartbeat_at)) {
+      toast.error("Impossibile attivare la stazione: nessun heartbeat recente. Verificare che il dispositivo sia acceso e connesso.");
+      return;
+    }
+
     try {
       const payload: Record<string, any> = {
         id: station.id,
