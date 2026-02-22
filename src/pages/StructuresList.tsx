@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { Building2, Plus, Loader2, MapPin } from "lucide-react";
+import { Building2, Plus, Loader2, MapPin, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,13 @@ const StructuresList = () => {
   const [geoLat, setGeoLat] = useState<number | null>(null);
   const [geoLng, setGeoLng] = useState<number | null>(null);
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>("");
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => (structures ?? []).filter(s => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return s.name.toLowerCase().includes(q) || (s.address ?? "").toLowerCase().includes(q);
+  }), [structures, search]);
 
   const { data: partners } = useQuery({
     queryKey: ["partners-for-structure"],
@@ -79,7 +86,7 @@ const StructuresList = () => {
             <Building2 className="inline mr-2 h-6 w-6 text-primary" />
             {role === "admin" ? "Tutte le Strutture" : "Le Mie Strutture"}
           </h1>
-          <p className="text-muted-foreground">{(structures ?? []).length} strutture</p>
+          <p className="text-muted-foreground">{filtered.length} strutture</p>
         </div>
         {(role === "partner" || role === "admin") && (
           <Dialog open={open} onOpenChange={setOpen}>
@@ -136,8 +143,17 @@ const StructuresList = () => {
         )}
       </div>
 
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Cerca strutture..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {(structures ?? []).map((s) => (
+        {filtered.map((s) => (
           <Link key={s.id} to={`/structures/${s.id}`}>
             <Card className="hover:shadow-md hover:border-primary/30 transition-all cursor-pointer h-full">
               <StaticMapPreview lat={s.geo_lat} lng={s.geo_lng} height="120px" />
@@ -155,7 +171,7 @@ const StructuresList = () => {
             </Card>
           </Link>
         ))}
-        {(structures ?? []).length === 0 && (
+        {filtered.length === 0 && (
           <p className="text-muted-foreground col-span-full text-center py-8">Nessuna struttura trovata.</p>
         )}
       </div>
