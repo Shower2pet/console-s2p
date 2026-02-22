@@ -23,6 +23,44 @@ import { invokeStationControl } from "@/services/stationService";
 import { toast } from "sonner";
 import MapPicker from "@/components/MapPicker";
 
+/** Numeric input that tracks raw string while editing to avoid "sticky 0" issues */
+const NumericInput = ({
+  numericValue,
+  onNumericChange,
+  integer,
+  ...props
+}: Omit<React.ComponentProps<typeof Input>, "value" | "onChange" | "type"> & {
+  numericValue: number;
+  onNumericChange: (v: number) => void;
+  integer?: boolean;
+}) => {
+  const [raw, setRaw] = useState<string>(numericValue ? String(numericValue) : "");
+  const [focused, setFocused] = useState(false);
+
+  // Sync from parent when not focused
+  useEffect(() => {
+    if (!focused) setRaw(numericValue ? String(numericValue) : "");
+  }, [numericValue, focused]);
+
+  return (
+    <Input
+      {...props}
+      type="number"
+      value={raw}
+      onChange={(e) => {
+        setRaw(e.target.value);
+        const parsed = integer ? parseInt(e.target.value) : parseFloat(e.target.value);
+        onNumericChange(isNaN(parsed) ? 0 : parsed);
+      }}
+      onFocus={() => setFocused(true)}
+      onBlur={() => {
+        setFocused(false);
+        if (raw === "") onNumericChange(0);
+      }}
+    />
+  );
+};
+
 const StationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -491,35 +529,22 @@ const StationDetail = () => {
                       </div>
                       <div>
                         <Label className="text-xs">Prezzo (€)</Label>
-                        <Input
-                          type="number"
+                        <NumericInput
                           step="0.50"
-                          value={opt.price === 0 ? "" : opt.price}
                           placeholder="0"
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            updateOption(opt.id, "price", raw === "" ? 0 : parseFloat(raw));
-                          }}
-                          onBlur={(e) => {
-                            if (e.target.value === "") updateOption(opt.id, "price", 0);
-                          }}
+                          numericValue={opt.price}
+                          onNumericChange={(v) => updateOption(opt.id, "price", v)}
                         />
                       </div>
                       <div>
                         <Label className="text-xs">Durata (min)</Label>
-                        <Input
-                          type="number"
+                        <NumericInput
                           step="1"
                           min="1"
-                          value={opt.duration === 0 ? "" : Math.round(opt.duration / 60)}
                           placeholder="0"
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            updateOption(opt.id, "duration", raw === "" ? 0 : parseInt(raw) * 60);
-                          }}
-                          onBlur={(e) => {
-                            if (e.target.value === "") updateOption(opt.id, "duration", 0);
-                          }}
+                          numericValue={Math.round(opt.duration / 60)}
+                          onNumericChange={(v) => updateOption(opt.id, "duration", v * 60)}
+                          integer
                         />
                       </div>
                     </div>
