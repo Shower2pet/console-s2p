@@ -64,10 +64,10 @@ const ClientHome = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-heading font-bold text-foreground">Benvenuto, {displayName} 👋</h1>
-        <p className="text-muted-foreground">{role === "manager" ? "La tua struttura" : "La tua panoramica personale"}</p>
+        <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground">Benvenuto, {displayName} 👋</h1>
+        <p className="text-sm text-muted-foreground">{role === "manager" ? "La tua struttura" : "La tua panoramica personale"}</p>
       </div>
 
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
@@ -78,7 +78,7 @@ const ClientHome = () => {
         <StatCard title="Lavaggi Totali" value={totalWashes} icon={Droplets} variant="default" href="/stations" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2 animate-fade-in">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
