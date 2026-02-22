@@ -491,11 +491,36 @@ const StationDetail = () => {
                       </div>
                       <div>
                         <Label className="text-xs">Prezzo (€)</Label>
-                        <Input type="number" step="0.50" value={opt.price} onChange={(e) => updateOption(opt.id, "price", parseFloat(e.target.value) || 0)} />
+                        <Input
+                          type="number"
+                          step="0.50"
+                          value={opt.price === 0 ? "" : opt.price}
+                          placeholder="0"
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            updateOption(opt.id, "price", raw === "" ? 0 : parseFloat(raw));
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value === "") updateOption(opt.id, "price", 0);
+                          }}
+                        />
                       </div>
                       <div>
                         <Label className="text-xs">Durata (min)</Label>
-                        <Input type="number" step="1" min="1" value={Math.round(opt.duration / 60)} onChange={(e) => updateOption(opt.id, "duration", (parseInt(e.target.value) || 0) * 60)} />
+                        <Input
+                          type="number"
+                          step="1"
+                          min="1"
+                          value={opt.duration === 0 ? "" : Math.round(opt.duration / 60)}
+                          placeholder="0"
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            updateOption(opt.id, "duration", raw === "" ? 0 : parseInt(raw) * 60);
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value === "") updateOption(opt.id, "duration", 0);
+                          }}
+                        />
                       </div>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => removeOption(opt.id)} className="mt-1 text-destructive hover:text-destructive">
