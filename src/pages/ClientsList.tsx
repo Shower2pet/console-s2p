@@ -43,15 +43,15 @@ const ClientsList = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-heading font-bold text-foreground">
-            <Users className="inline mr-2 h-6 w-6 text-primary" />
+          <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground">
+            <Users className="inline mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             Gestione Clienti
           </h1>
           <p className="text-muted-foreground">{filtered.length} clienti registrati</p>
         </div>
-        <Button onClick={() => navigate("/clients/new")}>
+        <Button onClick={() => navigate("/clients/new")} className="self-start sm:self-auto">
           <UserPlus className="h-4 w-4 mr-2" /> Nuovo Partner
         </Button>
       </div>

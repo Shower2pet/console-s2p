@@ -241,23 +241,23 @@ const StationDetail = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <button onClick={() => navigate(-1)} className="rounded-lg p-2 hover:bg-accent transition-colors">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        <button onClick={() => navigate(-1)} className="rounded-lg p-2 hover:bg-accent transition-colors self-start">
           <ArrowLeft className="h-5 w-5 text-muted-foreground" />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-heading font-bold text-foreground flex items-center gap-2">
-            <Monitor className="h-6 w-6 text-primary" /> {station.id}
+          <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground flex items-center gap-2">
+            <Monitor className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" /> <span className="truncate">{station.id}</span>
           </h1>
           <p className="text-muted-foreground capitalize">
             {station.type}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={station.status ?? "OFFLINE"} />
           {station.manual_offline && (
             <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
-              <ShieldAlert className="h-3 w-3" /> Disattivata manualmente
+              <ShieldAlert className="h-3 w-3" /> Disattivata
             </span>
           )}
         </div>
@@ -282,7 +282,7 @@ const StationDetail = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               {/* Reset — placeholder, da implementare */}
               <Button
                 variant="outline"
@@ -344,7 +344,7 @@ const StationDetail = () => {
             <Building2 className="h-5 w-5 text-primary" /> Informazioni Stazione
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 gap-4 text-sm">
+        <CardContent className="grid gap-4 text-sm">
           <div>
             <span className="text-muted-foreground">Struttura assegnata:</span>{" "}
             {structureName ? (
