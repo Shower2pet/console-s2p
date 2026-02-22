@@ -5,6 +5,7 @@ import {
   Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ const StationDetail = () => {
   const [stationLng, setStationLng] = useState<number | null>(null);
   const [hwBusy, setHwBusy] = useState(false);
   const [editHasAccessGate, setEditHasAccessGate] = useState(false);
+  const [showOfflineConfirm, setShowOfflineConfirm] = useState(false);
 
   // Fetch structures for reassignment – filtered by station owner
   const stationOwnerId = station?.owner_id ?? editOwnerId;
@@ -96,13 +98,14 @@ const StationDetail = () => {
 
   const heartbeatOkForHw = station ? isHeartbeatRecent(station.last_heartbeat_at, 100_000) : false;
 
-  const handleSave = async () => {
+  const handleSave = async (forceBypass = false) => {
     if (!station) return;
 
-    // Blocca attivazione se heartbeat non recente (admin riceve warning ma può proseguire)
-    if (editStatus === "AVAILABLE" && !isHeartbeatRecent(station.last_heartbeat_at)) {
+    // Admin: conferma se heartbeat non recente
+    if (!forceBypass && editStatus === "AVAILABLE" && !isHeartbeatRecent(station.last_heartbeat_at)) {
       if (isAdmin) {
-        toast.warning("Attenzione: la stazione non ha un heartbeat recente. Lo stato potrebbe essere forzato a OFFLINE dal trigger di database.");
+        setShowOfflineConfirm(true);
+        return;
       } else {
         toast.error("Impossibile attivare la stazione: nessun heartbeat recente. Verificare che il dispositivo sia acceso e connesso.");
         return;
@@ -509,7 +512,7 @@ const StationDetail = () => {
               </div>
             </div>
 
-            <Button onClick={handleSave} disabled={updateStation.isPending} className="w-full gap-2">
+            <Button onClick={() => handleSave()} disabled={updateStation.isPending} className="w-full gap-2">
               <Save className="h-4 w-4" /> Salva Modifiche
             </Button>
           </CardContent>
@@ -569,6 +572,28 @@ const StationDetail = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Confirm dialog for admin forcing AVAILABLE on offline station */}
+      <AlertDialog open={showOfflineConfirm} onOpenChange={setShowOfflineConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" /> Stazione considerata offline
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Questa stazione non ha inviato un heartbeat recente. Impostarla come "Disponibile" potrebbe non avere effetto reale, e il trigger di database potrebbe forzarne lo stato a OFFLINE.
+              <br /><br />
+              Sei sicuro di voler procedere?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setShowOfflineConfirm(false); handleSave(true); }}>
+              Procedi comunque
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
