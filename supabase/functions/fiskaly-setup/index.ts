@@ -6,6 +6,8 @@ const corsHeaders = {
 };
 const FISKALY_API_VERSION = "2025-08-12";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function jsonErr(msg: string, extras: Record<string, unknown> = {}, status = 502) {
   return new Response(JSON.stringify({ error: msg, ...extras }), {
     status,
@@ -51,7 +53,6 @@ async function fCall(
 
 /**
  * Ottieni un bearer token Fiskaly.
- * key/secret possono essere le credenziali master o quelle di un Subject.
  */
 async function getToken(baseUrl: string, key: string, secret: string): Promise<string> {
   const res = await fetch(`${baseUrl}/tokens`, {
@@ -77,6 +78,36 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // ── Auth: require a valid JWT and admin/partner role ─────────────────────
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return jsonErr("Unauthorized", {}, 401);
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const callerClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsErr } = await callerClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims) {
+      return jsonErr("Unauthorized", {}, 401);
+    }
+
+    const callerId = claimsData.claims.sub as string;
+
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    const { data: callerProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", callerId)
+      .single();
+
+    if (!callerProfile || !["admin", "partner"].includes(callerProfile.role)) {
+      return jsonErr("Forbidden", {}, 403);
+    }
+
     const {
       partner_id,
       force = false,
@@ -85,12 +116,26 @@ Deno.serve(async (req) => {
       fisconline_pin = null,
     } = await req.json();
 
-    if (!partner_id) return jsonErr("partner_id è obbligatorio", {}, 400);
+    // ── Input validation ────────────────────────────────────────────────────
+    if (!partner_id || typeof partner_id !== "string" || !UUID_RE.test(partner_id)) {
+      return jsonErr("partner_id è obbligatorio e deve essere un UUID valido", {}, 400);
+    }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    // Partners can only configure themselves
+    if (callerProfile.role === "partner" && partner_id !== callerId) {
+      return jsonErr("Forbidden: can only configure own fiscal data", {}, 403);
+    }
+
+    if (providedSystemId && typeof providedSystemId !== "string") {
+      return jsonErr("system_id deve essere una stringa", {}, 400);
+    }
+    if (fisconline_password && (typeof fisconline_password !== "string" || fisconline_password.length > 100)) {
+      return jsonErr("Password Fisconline non valida", {}, 400);
+    }
+    if (fisconline_pin && (typeof fisconline_pin !== "string" || fisconline_pin.length > 50)) {
+      return jsonErr("PIN Fisconline non valido", {}, 400);
+    }
+
     const { data: partner } = await supabase
       .from("profiles")
       .select("*")
@@ -142,8 +187,6 @@ Deno.serve(async (req) => {
     console.log("Step 0: OK");
 
     // ── STEP 1: Trova o crea UNIT asset ──────────────────────────────────────
-    // content.id = ID della UNIT (da usare come scope)
-    // content.asset.id = asset fisico sottostante (non usare come scope!)
     let unitId: string | null = partner.fiskaly_unit_id ?? null;
 
     if (!unitId || force) {
@@ -165,26 +208,18 @@ Deno.serve(async (req) => {
         content: { type: "UNIT", name: partner.legal_name.trim() },
         metadata: { partner_id },
       });
-      console.log(`Step 1: UNIT → ${r.status} ${r.text.slice(0, 200)}`);
       if (r.status === 200 || r.status === 201 || r.status === 409) {
-        // content.id è l'ID della UNIT (l'identificatore da usare come scope)
         unitId = r.data?.content?.id ?? null;
-        console.log(`Step 1: unitId=${unitId} (asset.id=${r.data?.content?.asset?.id})`);
       }
-      if (!unitId) return jsonErr(`Errore creazione UNIT (${r.status})`, { details: r.text.slice(0, 200) });
+      if (!unitId) return jsonErr(`Errore creazione UNIT (${r.status})`);
       await supabase.from("profiles").update({ fiskaly_unit_id: unitId }).eq("id", partner_id);
-      console.log("Step 1: UNIT pronta:", unitId);
     }
 
     // ── STEP 2: Trova o crea Subject (API Key) per la UNIT ───────────────────
-    // Secondo la doc Fiskaly SIGN IT: bisogna creare un Subject di tipo API_KEY
-    // usando il token master con X-Scope-Identifier = unitId
-    // Poi usare le credenziali del Subject per autenticarsi e operare sulla UNIT
     let subjectKey: string | null = null;
     let subjectSecret: string | null = null;
     let subjectId: string | null = null;
 
-    // Cerca un Subject esistente per questa UNIT
     console.log("Step 2: ricerca Subject esistente per UNIT...");
     const subjListR = await fCall("GET", `${BASE}/subjects?limit=100`, tenantBearer, undefined, unitId);
     const existingSubject = (subjListR.data?.results ?? []).find(
@@ -192,12 +227,6 @@ Deno.serve(async (req) => {
     );
 
     if (existingSubject && !force) {
-      // Un Subject esiste ma non possiamo recuperare il secret → ricrearlo
-      // I Subject sono monouso per il secret: dopo la creazione il secret non è più visibile
-      // Se force=false e il subject esiste, non possiamo procedere senza il secret
-      // Soluzione: cerchiamo se il partner ha credenziali salvate nel DB
-      // (oppure forziamo la ri-creazione del Subject se force=true)
-      console.log("Step 2: Subject trovato ma secret non recuperabile — ricreo Subject");
       subjectId = existingSubject.content?.id ?? null;
     }
 
@@ -211,35 +240,23 @@ Deno.serve(async (req) => {
         metadata: { partner_id, unit_id: unitId },
       };
       const sr = await fCall("POST", `${BASE}/subjects`, tenantBearer, subjectBody, unitId);
-      console.log(`Step 2: Subject → ${sr.status} ${sr.text.slice(0, 300)}`);
 
       if (sr.status === 200 || sr.status === 201) {
-        // La risposta ha: content.credentials.key e content.credentials.secret
         subjectKey    = sr.data?.content?.credentials?.key ?? null;
         subjectSecret = sr.data?.content?.credentials?.secret ?? null;
         subjectId     = sr.data?.content?.id ?? null;
-        console.log(`Step 2: Subject creato: id=${subjectId} key=${subjectKey ? "OK" : "MISSING"} secret=${subjectSecret ? "OK" : "MISSING"}`);
       } else if (sr.status === 409) {
-        // Conflict: Subject già esiste — non possiamo recuperare il secret
-        // Dobbiamo usare force per ricrearlo, oppure usiamo il token master come fallback
-        console.warn("Step 2: Subject 409 conflict — non posso recuperare il secret");
-        // Continua con token master come fallback (potrebbe dare 405 sulle entity)
+        console.warn("Step 2: Subject 409 conflict");
       } else {
-        return jsonErr(`Errore creazione Subject (${sr.status})`, { details: sr.data?.content?.message ?? sr.text.slice(0, 200) });
+        return jsonErr(`Errore creazione Subject (${sr.status})`);
       }
     }
 
     // ── STEP 3: Token operativo per la UNIT ──────────────────────────────────
-    // Se abbiamo le credenziali del Subject, usiamole per un token "vero" per la UNIT
     let unitBearer: string;
     if (subjectKey && subjectSecret) {
-      console.log("Step 3: token con credenziali Subject...");
       unitBearer = await getToken(BASE, subjectKey, subjectSecret);
-      console.log("Step 3: token Subject OK ✓");
     } else {
-      console.warn("Step 3: nessuna credenziale Subject disponibile — uso token master con scope");
-      // Ultimo fallback: master token + X-Scope-Identifier
-      // (può dare 405 in ambienti con UNIT reali, ma meglio che niente)
       unitBearer = tenantBearer;
     }
 
@@ -247,7 +264,6 @@ Deno.serve(async (req) => {
     let entityId: string | null = force ? null : (partner.fiskaly_entity_id ?? null);
 
     if (!entityId) {
-      // Prima cerca un'entity esistente per questo partner (evita duplicati con force)
       console.log("Step 4: ricerca Entity esistente...");
       const existingEntities = await fCall("GET", `${BASE}/entities?limit=100`, unitBearer);
       const foundEntity = (existingEntities.data?.results ?? []).find(
@@ -255,7 +271,6 @@ Deno.serve(async (req) => {
       );
       if (foundEntity) {
         entityId = foundEntity.content?.id ?? null;
-        console.log("Step 4: Entity esistente trovata:", entityId, "state:", foundEntity.content?.state);
         if (entityId) {
           await supabase.from("profiles").update({ fiskaly_entity_id: entityId }).eq("id", partner_id);
         }
@@ -263,7 +278,7 @@ Deno.serve(async (req) => {
     }
 
     if (!entityId) {
-      console.log("Step 4: creazione Entity (con type IT)...");
+      console.log("Step 4: creazione Entity...");
       const entityBody = {
         content: {
           type: "COMPANY",
@@ -295,13 +310,10 @@ Deno.serve(async (req) => {
         },
         metadata: { partner_id, vat_number: partner.vat_number?.trim() ?? "" },
       };
-      console.log("Step 4: entityBody.content.fiscalization =", JSON.stringify(entityBody.content.fiscalization));
       const er = await fCall("POST", `${BASE}/entities`, unitBearer, entityBody);
-      console.log(`Step 4: Entity → ${er.status} ${er.text.slice(0, 500)}`);
 
       if (er.status === 200 || er.status === 201) {
         entityId = er.data?.content?.id ?? null;
-        console.log("Step 4: Entity creata:", entityId);
       } else if (er.status === 409) {
         entityId = er.data?.content?.id ?? null;
         if (!entityId) {
@@ -312,49 +324,30 @@ Deno.serve(async (req) => {
           entityId = found?.content?.id ?? null;
         }
         if (!entityId) return jsonErr("Entity conflict (409): ID non trovato. Usa 'Azzera IDs Fiskaly' nel pannello admin e riprova.", { unit_id: unitId });
-        console.log("Step 4: Entity conflict — uso esistente:", entityId);
       } else if (er.status === 405) {
-        // 405 = "cannot create more than 1 legal entity" — cerca l'entity esistente
-        console.log("Step 4: 405 — cerco entity esistente nella UNIT...");
         const lr = await fCall("GET", `${BASE}/entities?limit=100`, unitBearer);
         const found = (lr.data?.results ?? []).find(
           (e: any) => e.metadata?.partner_id === partner_id || e.content?.state,
         );
         entityId = found?.content?.id ?? null;
         if (!entityId) {
-          return jsonErr(
-            "Errore 405: esiste già un'entity per questa UNIT ma non è stato possibile recuperarla. Usa 'Azzera IDs Fiskaly' nel pannello admin.",
-            { unit_id: unitId, details: er.data?.content?.message },
-          );
+          return jsonErr("Errore 405: esiste già un'entity per questa UNIT. Usa 'Azzera IDs Fiskaly' nel pannello admin.", { unit_id: unitId });
         }
-        console.log("Step 4: Entity recuperata dopo 405:", entityId);
       } else {
-        return jsonErr(`Errore entity (${er.status})`, { details: er.data?.content?.message ?? er.text.slice(0, 200) });
+        return jsonErr(`Errore entity (${er.status})`);
       }
 
       if (!entityId) return jsonErr("Entity ID non ricevuto da Fiskaly");
       await supabase.from("profiles").update({ fiskaly_entity_id: entityId }).eq("id", partner_id);
-    } else {
-      console.log("Step 4: uso entity_id esistente:", entityId);
     }
 
     // ── STEP 5: Commissioning Entity ─────────────────────────────────────────
-    console.log("Step 5: commissioning entity", entityId);
     const cr = await fCall("PATCH", `${BASE}/entities/${entityId}`, unitBearer, { content: { state: "COMMISSIONED" } });
-    console.log(`Step 5: Commission → ${cr.status} ${cr.text.slice(0, 200)}`);
     if (!cr.status.toString().startsWith("2")) {
-      // Non fidarsi del messaggio d'errore: verificare lo stato reale via GET
       const checkEr = await fCall("GET", `${BASE}/entities/${entityId}`, unitBearer);
       const entityState = checkEr.data?.content?.state ?? "";
-      console.log(`Step 5: stato reale entity = ${entityState}`);
-      if (entityState === "COMMISSIONED" || entityState === "OPERATIVE") {
-        console.log("Step 5: già commissionata (confermato via GET) — OK");
-      } else {
-        // Entity non commissionata: errore reale, mostra il motivo
-        return jsonErr(`Errore commissioning entity (${cr.status}): entity in stato '${entityState}'`, {
-          details: cr.data?.content?.message,
-          entity_state: entityState,
-        });
+      if (entityState !== "COMMISSIONED" && entityState !== "OPERATIVE") {
+        return jsonErr(`Errore commissioning entity (${cr.status}): entity in stato '${entityState}'`);
       }
     }
 
@@ -368,7 +361,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log("Step 6: creazione System per entity", entityId);
     const syr = await fCall("POST", `${BASE}/systems`, unitBearer, {
       content: {
         type: "FISCAL_DEVICE",
@@ -386,7 +378,6 @@ Deno.serve(async (req) => {
       },
       metadata: { partner_id },
     });
-    console.log(`Step 6: System → ${syr.status} ${syr.text.slice(0, 400)}`);
 
     let systemId: string | null = null;
     if (syr.status === 200 || syr.status === 201) {
@@ -400,45 +391,29 @@ Deno.serve(async (req) => {
         );
         systemId = found?.content?.id ?? null;
       }
-      if (!systemId) return jsonErr("System conflict (409): ID non trovato. Usa 'Salva System ID manuale' nell'admin.", { entity_id: entityId });
-      console.log("Step 6: System conflict — uso esistente:", systemId);
+      if (!systemId) return jsonErr("System conflict (409): ID non trovato.");
     } else {
-      return jsonErr(`Errore system (${syr.status})`, {
-        details: syr.data?.content?.message ?? syr.text.slice(0, 200),
-        entity_id: entityId,
-      });
+      return jsonErr(`Errore system (${syr.status})`);
     }
     if (!systemId) return jsonErr("System ID non ricevuto da Fiskaly");
 
     // ── STEP 7: Commissioning System ─────────────────────────────────────────
-    console.log("Step 7: commissioning system", systemId);
     const scr = await fCall("PATCH", `${BASE}/systems/${systemId}`, unitBearer, { content: { state: "COMMISSIONED" } });
-    console.log(`Step 7: System commission → ${scr.status} ${scr.text.slice(0, 200)}`);
     if (!scr.status.toString().startsWith("2")) {
-      // Verifica stato reale via GET invece di fare pattern matching sul messaggio
       const checkSr = await fCall("GET", `${BASE}/systems/${systemId}`, unitBearer);
       const systemState = checkSr.data?.content?.state ?? "";
-      console.log(`Step 7: stato reale system = ${systemState}`);
-      if (systemState === "COMMISSIONED" || systemState === "OPERATIVE") {
-        console.log("Step 7: già commissionato (confermato via GET) — OK");
-      } else {
-        // System non commissionato: errore reale, blocca e mostra il motivo
-        return jsonErr(`Errore commissioning system (${scr.status}): system in stato '${systemState}'`, {
-          details: scr.data?.content?.message,
-          system_state: systemState,
-          entity_id: entityId,
-        });
+      if (systemState !== "COMMISSIONED" && systemState !== "OPERATIVE") {
+        return jsonErr(`Errore commissioning system (${scr.status}): system in stato '${systemState}'`);
       }
     }
 
-    // Salva sul DB (profiles + Subject credentials in partners_fiscal_data)
+    // Salva sul DB
     await supabase
       .from("profiles")
       .update({ fiskaly_system_id: systemId, fiskaly_entity_id: entityId, fiskaly_unit_id: unitId })
       .eq("id", partner_id);
 
-    // Salva/aggiorna le credenziali del Subject in partners_fiscal_data
-    // così generate-receipt può usare il token corretto per questa UNIT
+    // Salva credenziali Subject in partners_fiscal_data
     if (subjectKey && subjectSecret) {
       const fiscalCredentials = {
         api_key: subjectKey,
@@ -468,23 +443,19 @@ Deno.serve(async (req) => {
             fiscal_api_credentials: fiscalCredentials,
           });
       }
-      console.log("✅ Subject credentials salvate in partners_fiscal_data");
-    } else {
-      console.warn("⚠️ Subject credentials non disponibili — generate-receipt userà il master key");
     }
 
-    console.log("✅ Completato → system_id:", systemId, "entity_id:", entityId, "unit_id:", unitId);
     return jsonOk({
       success: true,
       system_id: systemId,
       entity_id: entityId,
       unit_id: unitId,
       env: ENV,
-      message: "Configurazione Fiskaly completata con successo ✓",
+      message: "Configurazione Fiskaly completata con successo",
     });
 
   } catch (err: any) {
     console.error("fiskaly-setup error:", err);
-    return jsonErr(err.message ?? "Errore interno", {}, 500);
+    return jsonErr("Errore interno", {}, 500);
   }
 });
