@@ -88,19 +88,25 @@ const StationDetail = () => {
     setInitialized(false);
   }, [id]);
 
-  const isHeartbeatRecent = (lastHeartbeat: string | null | undefined): boolean => {
+  const isHeartbeatRecent = (lastHeartbeat: string | null | undefined, thresholdMs = 90_000): boolean => {
     if (!lastHeartbeat) return false;
     const diff = Date.now() - new Date(lastHeartbeat).getTime();
-    return diff < 90_000; // 90 secondi, coerente con auto_offline_expired_heartbeats
+    return diff < thresholdMs;
   };
+
+  const heartbeatOkForHw = station ? isHeartbeatRecent(station.last_heartbeat_at, 100_000) : false;
 
   const handleSave = async () => {
     if (!station) return;
 
-    // Blocca attivazione se heartbeat non recente (admin può bypassare)
-    if (editStatus === "AVAILABLE" && !isAdmin && !isHeartbeatRecent(station.last_heartbeat_at)) {
-      toast.error("Impossibile attivare la stazione: nessun heartbeat recente. Verificare che il dispositivo sia acceso e connesso.");
-      return;
+    // Blocca attivazione se heartbeat non recente (admin riceve warning ma può proseguire)
+    if (editStatus === "AVAILABLE" && !isHeartbeatRecent(station.last_heartbeat_at)) {
+      if (isAdmin) {
+        toast.warning("Attenzione: la stazione non ha un heartbeat recente. Lo stato potrebbe essere forzato a OFFLINE dal trigger di database.");
+      } else {
+        toast.error("Impossibile attivare la stazione: nessun heartbeat recente. Verificare che il dispositivo sia acceso e connesso.");
+        return;
+      }
     }
 
     try {
@@ -129,6 +135,10 @@ const StationDetail = () => {
 
   const invokeHardware = async (command: "ON" | "OFF" | "PULSE", duration_minutes?: number) => {
     if (!station) return;
+    if ((command === "ON" || command === "OFF") && !heartbeatOkForHw) {
+      toast.error("Stazione offline: nessun heartbeat ricevuto negli ultimi 100 secondi. Verificare che il dispositivo sia acceso e connesso.");
+      return;
+    }
     setHwBusy(true);
     try {
       await invokeStationControl(station.id, command, duration_minutes);
@@ -288,7 +298,7 @@ const StationDetail = () => {
               <Button
                 variant="outline"
                 onClick={handleHwOn}
-                disabled={hwBusy || updateStation.isPending || !canActivate}
+                disabled={hwBusy || updateStation.isPending || !canActivate || !heartbeatOkForHw}
                 className="gap-2 border-primary/50 text-primary hover:bg-primary/10"
               >
                 {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />} Attiva Servizio
@@ -298,12 +308,18 @@ const StationDetail = () => {
               <Button
                 variant="destructive"
                 onClick={() => invokeHardware("OFF")}
-                disabled={hwBusy || updateStation.isPending}
+                disabled={hwBusy || updateStation.isPending || !heartbeatOkForHw}
                 className="gap-2"
               >
                 {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />} Spegni Servizio
               </Button>
             </div>
+            {!heartbeatOkForHw && (
+              <div className="text-xs text-destructive flex items-center gap-1.5 border-t pt-2">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>Stazione offline — nessun heartbeat negli ultimi 100 secondi. I comandi ON/OFF sono disabilitati.</span>
+              </div>
+            )}
             {missingReqs && (
               <div className="text-xs text-muted-foreground space-y-0.5 border-t pt-2">
                 <p className="font-medium text-foreground text-sm">Per attivare la stazione servono:</p>
