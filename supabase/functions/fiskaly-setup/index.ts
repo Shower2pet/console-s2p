@@ -126,14 +126,17 @@ Deno.serve(async (req) => {
       return jsonErr("Forbidden: can only configure own fiscal data", {}, 403);
     }
 
-    if (providedSystemId && typeof providedSystemId !== "string") {
-      return jsonErr("system_id deve essere una stringa", {}, 400);
+    if (providedSystemId && (typeof providedSystemId !== "string" || providedSystemId.length > 100 || !/^[a-zA-Z0-9_-]+$/.test(providedSystemId))) {
+      return jsonErr("system_id non valido", {}, 400);
     }
-    if (fisconline_password && (typeof fisconline_password !== "string" || fisconline_password.length > 100)) {
-      return jsonErr("Password Fisconline non valida", {}, 400);
+    if (fisconline_password && (typeof fisconline_password !== "string" || fisconline_password.length < 8 || fisconline_password.length > 100 || !/^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{}|;:',.<>?]+$/.test(fisconline_password))) {
+      return jsonErr("Password Fisconline non valida (min 8 caratteri, solo caratteri alfanumerici e speciali consentiti)", {}, 400);
     }
-    if (fisconline_pin && (typeof fisconline_pin !== "string" || fisconline_pin.length > 50)) {
-      return jsonErr("PIN Fisconline non valido", {}, 400);
+    if (fisconline_pin && (typeof fisconline_pin !== "string" || !/^[0-9]{5,10}$/.test(fisconline_pin))) {
+      return jsonErr("PIN Fisconline non valido (deve essere composto da 5-10 cifre numeriche)", {}, 400);
+    }
+    if (force !== undefined && force !== null && typeof force !== "boolean") {
+      return jsonErr("Il campo 'force' deve essere un booleano", {}, 400);
     }
 
     const { data: partner } = await supabase
@@ -211,7 +214,10 @@ Deno.serve(async (req) => {
       if (r.status === 200 || r.status === 201 || r.status === 409) {
         unitId = r.data?.content?.id ?? null;
       }
-      if (!unitId) return jsonErr(`Errore creazione UNIT (${r.status})`);
+      if (!unitId) {
+        console.error(`Errore creazione UNIT: status=${r.status}, body=${r.text?.slice(0, 300)}`);
+        return jsonErr("Errore nella creazione della UNIT fiscale. Contattare il supporto.", {}, 502);
+      }
       await supabase.from("profiles").update({ fiskaly_unit_id: unitId }).eq("id", partner_id);
     }
 
@@ -248,7 +254,8 @@ Deno.serve(async (req) => {
       } else if (sr.status === 409) {
         console.warn("Step 2: Subject 409 conflict");
       } else {
-        return jsonErr(`Errore creazione Subject (${sr.status})`);
+        console.error(`Errore creazione Subject: status=${sr.status}, body=${sr.text?.slice(0, 300)}`);
+        return jsonErr("Errore nella creazione delle credenziali fiscali. Contattare il supporto.", {}, 502);
       }
     }
 
@@ -323,7 +330,10 @@ Deno.serve(async (req) => {
           );
           entityId = found?.content?.id ?? null;
         }
-        if (!entityId) return jsonErr("Entity conflict (409): ID non trovato. Usa 'Azzera IDs Fiskaly' nel pannello admin e riprova.", { unit_id: unitId });
+        if (!entityId) {
+          console.error("Entity conflict (409): ID non trovato", { unit_id: unitId });
+          return jsonErr("Conflitto nella configurazione fiscale. Usa 'Azzera IDs Fiskaly' nel pannello admin e riprova.", {}, 409);
+        }
       } else if (er.status === 405) {
         const lr = await fCall("GET", `${BASE}/entities?limit=100`, unitBearer);
         const found = (lr.data?.results ?? []).find(
@@ -331,10 +341,12 @@ Deno.serve(async (req) => {
         );
         entityId = found?.content?.id ?? null;
         if (!entityId) {
-          return jsonErr("Errore 405: esiste già un'entity per questa UNIT. Usa 'Azzera IDs Fiskaly' nel pannello admin.", { unit_id: unitId });
+          console.error("Errore 405: entity già esistente per UNIT", { unit_id: unitId });
+          return jsonErr("Esiste già una configurazione fiscale per questa unità. Usa 'Azzera IDs Fiskaly' nel pannello admin.", {}, 409);
         }
       } else {
-        return jsonErr(`Errore entity (${er.status})`);
+        console.error(`Errore entity: status=${er.status}, body=${er.text?.slice(0, 300)}`);
+        return jsonErr("Errore nella creazione dell'entità fiscale. Contattare il supporto.", {}, 502);
       }
 
       if (!entityId) return jsonErr("Entity ID non ricevuto da Fiskaly");
@@ -347,7 +359,8 @@ Deno.serve(async (req) => {
       const checkEr = await fCall("GET", `${BASE}/entities/${entityId}`, unitBearer);
       const entityState = checkEr.data?.content?.state ?? "";
       if (entityState !== "COMMISSIONED" && entityState !== "OPERATIVE") {
-        return jsonErr(`Errore commissioning entity (${cr.status}): entity in stato '${entityState}'`);
+        console.error(`Errore commissioning entity: status=${cr.status}, state=${entityState}`);
+        return jsonErr("Errore nell'attivazione dell'entità fiscale. Verificare i dati e riprovare.", {}, 502);
       }
     }
 
@@ -391,9 +404,13 @@ Deno.serve(async (req) => {
         );
         systemId = found?.content?.id ?? null;
       }
-      if (!systemId) return jsonErr("System conflict (409): ID non trovato.");
+      if (!systemId) {
+        console.error("System conflict (409): ID non trovato");
+        return jsonErr("Conflitto nella configurazione del sistema fiscale. Contattare il supporto.", {}, 409);
+      }
     } else {
-      return jsonErr(`Errore system (${syr.status})`);
+      console.error(`Errore system: status=${syr.status}, body=${syr.text?.slice(0, 300)}`);
+      return jsonErr("Errore nella creazione del sistema fiscale. Contattare il supporto.", {}, 502);
     }
     if (!systemId) return jsonErr("System ID non ricevuto da Fiskaly");
 
@@ -403,7 +420,8 @@ Deno.serve(async (req) => {
       const checkSr = await fCall("GET", `${BASE}/systems/${systemId}`, unitBearer);
       const systemState = checkSr.data?.content?.state ?? "";
       if (systemState !== "COMMISSIONED" && systemState !== "OPERATIVE") {
-        return jsonErr(`Errore commissioning system (${scr.status}): system in stato '${systemState}'`);
+        console.error(`Errore commissioning system: status=${scr.status}, state=${systemState}`);
+        return jsonErr("Errore nell'attivazione del sistema fiscale. Verificare la configurazione e riprovare.", {}, 502);
       }
     }
 
