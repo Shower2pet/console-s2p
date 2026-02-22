@@ -64,18 +64,18 @@ Deno.serve(async (req) => {
     });
   }
 
-  // --- Parse body ---
+  // --- Parse & validate body ---
   const { station_id, command, duration_minutes } = await req.json();
 
-  if (!station_id || !command) {
-    return new Response(JSON.stringify({ error: "station_id and command are required" }), {
+  if (!station_id || typeof station_id !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(station_id)) {
+    return new Response(JSON.stringify({ error: "Invalid or missing station_id" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   const validCommands = ["PULSE", "ON", "OFF"];
-  if (!validCommands.includes(command)) {
+  if (!command || typeof command !== "string" || !validCommands.includes(command)) {
     return new Response(JSON.stringify({ error: `Invalid command. Must be one of: ${validCommands.join(", ")}` }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -95,8 +95,8 @@ Deno.serve(async (req) => {
   let payload: string;
 
   if (command === "PULSE") {
-    if (!duration_minutes || duration_minutes <= 0) {
-      return new Response(JSON.stringify({ error: "duration_minutes is required for PULSE command" }), {
+    if (!duration_minutes || typeof duration_minutes !== "number" || duration_minutes <= 0 || duration_minutes > 120) {
+      return new Response(JSON.stringify({ error: "duration_minutes is required for PULSE (1-120)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

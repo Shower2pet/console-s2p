@@ -864,7 +864,38 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      partners_fiscal_data_safe: {
+        Row: {
+          business_name: string | null
+          is_active: boolean | null
+          profile_id: string | null
+          sdi_code: string | null
+          vat_number: string | null
+        }
+        Insert: {
+          business_name?: string | null
+          is_active?: boolean | null
+          profile_id?: string | null
+          sdi_code?: string | null
+          vat_number?: string | null
+        }
+        Update: {
+          business_name?: string | null
+          is_active?: boolean | null
+          profile_id?: string | null
+          sdi_code?: string | null
+          vat_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partners_fiscal_data_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       auto_offline_expired_heartbeats: { Args: never; Returns: undefined }
@@ -892,6 +923,10 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_manager_of: { Args: { struct_id: string }; Returns: boolean }
+      mark_station_offline: {
+        Args: { p_station_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       payment_method_type: "STRIPE" | "CREDITS" | "HYBRID"

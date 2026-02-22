@@ -18,14 +18,13 @@ async function getMasterToken(baseUrl: string, apiKey: string, apiSecret: string
     },
     body: JSON.stringify({ content: { type: "API_KEY", key: apiKey, secret: apiSecret } }),
   });
-  if (!res.ok) throw new Error(`Auth failed: ${res.status} ${await res.text()}`);
+  if (!res.ok) throw new Error(`Auth failed: ${res.status}`);
   const data = await res.json();
   const bearer = data?.content?.authentication?.bearer;
   if (!bearer) throw new Error("No bearer token received");
   return bearer;
 }
 
-/** Get a token scoped to a specific UNIT asset via X-Scope-Identifier */
 async function getScopedToken(baseUrl: string, apiKey: string, apiSecret: string, unitAssetId: string): Promise<string | null> {
   try {
     const res = await fetch(`${baseUrl}/tokens`, {
@@ -46,24 +45,6 @@ async function getScopedToken(baseUrl: string, apiKey: string, apiSecret: string
   }
 }
 
-async function verifyAdmin(authHeader: string | null): Promise<{ ok: boolean; error?: string }> {
-  if (!authHeader?.startsWith("Bearer ")) return { ok: false, error: "Unauthorized" };
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
-  const userSupabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: authHeader } } }
-  );
-  const { data: { user } } = await userSupabase.auth.getUser();
-  if (!user) return { ok: false, error: "Unauthorized" };
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  if (profile?.role !== "admin") return { ok: false, error: "Forbidden: admin only" };
-  return { ok: true };
-}
-
 function jsonResp(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -75,12 +56,27 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // ── Auth: REQUIRE admin role ────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
-    if (authHeader) {
-      const adminCheck = await verifyAdmin(authHeader);
-      if (!adminCheck.ok) {
-        return jsonResp({ error: adminCheck.error }, adminCheck.error === "Forbidden: admin only" ? 403 : 401);
-      }
+    if (!authHeader?.startsWith("Bearer ")) {
+      return jsonResp({ error: "Unauthorized" }, 401);
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const userSupabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user } } = await userSupabase.auth.getUser();
+    if (!user) return jsonResp({ error: "Unauthorized" }, 401);
+
+    const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (profile?.role !== "admin") {
+      return jsonResp({ error: "Forbidden: admin only" }, 403);
     }
 
     const body = await req.json();
@@ -96,10 +92,7 @@ Deno.serve(async (req) => {
     const masterBearer = await getMasterToken(BASE_URL, API_KEY, API_SECRET);
 
     // ── ACTION: list_unit_entities ──────────────────────────────────────────
-    // Lists all UNIT assets, then for each UNIT gets a scoped token and lists its entities.
-    // This is the correct way since entities are not visible with a master token.
     if (action === "list_unit_entities") {
-      console.log("list_unit_entities: fetching UNIT assets...");
       const assetsRes = await fetch(`${BASE_URL}/assets?limit=100`, {
         headers: {
           Authorization: `Bearer ${masterBearer}`,
@@ -108,7 +101,6 @@ Deno.serve(async (req) => {
       });
       const assetsData = await assetsRes.json();
       const units: any[] = (assetsData?.results ?? []).filter((a: any) => a?.content?.type === "UNIT");
-      console.log(`list_unit_entities: found ${units.length} UNIT assets`);
 
       const results: any[] = [];
       for (const unit of units) {
@@ -131,7 +123,6 @@ Deno.serve(async (req) => {
         });
         const entData = await entRes.json();
         const entities = entData?.results ?? [];
-        console.log(`list_unit_entities: unit ${unitId} → ${entities.length} entities`);
         results.push({ unit_id: unitId, unit_name: unitName, unit_metadata: unitMeta, unit_state: unit?.content?.state, entities });
       }
 
@@ -139,14 +130,12 @@ Deno.serve(async (req) => {
     }
 
     // ── ACTION: decommission_entity ─────────────────────────────────────────
-    // Decommissions an entity using a scoped token for its UNIT.
     if (action === "decommission_entity" && resource_id) {
       const { unit_asset_id } = body;
-      if (!unit_asset_id) return jsonResp({ error: "unit_asset_id obbligatorio per decommission_entity" }, 400);
+      if (!unit_asset_id) return jsonResp({ error: "unit_asset_id obbligatorio" }, 400);
 
-      console.log(`decommission_entity: entity=${resource_id} unit=${unit_asset_id}`);
       const scopedBearer = await getScopedToken(BASE_URL, API_KEY, API_SECRET, unit_asset_id);
-      if (!scopedBearer) return jsonResp({ error: "Impossibile ottenere token scoped per questa UNIT" }, 502);
+      if (!scopedBearer) return jsonResp({ error: "Impossibile ottenere token scoped" }, 502);
 
       const decommRes = await fetch(`${BASE_URL}/entities/${resource_id}`, {
         method: "PATCH",
@@ -159,7 +148,6 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ content: { state: "DECOMMISSIONED" } }),
       });
       const decommText = await decommRes.text();
-      console.log(`decommission_entity: ${decommRes.status} ${decommText.slice(0, 300)}`);
       let decommData: unknown;
       try { decommData = JSON.parse(decommText); } catch { decommData = { raw: decommText }; }
       return jsonResp({ status: decommRes.status, ok: decommRes.ok, data: decommData, env: ENV });
@@ -168,7 +156,7 @@ Deno.serve(async (req) => {
     // ── Standard CRUD actions ────────────────────────────────────────────────
     const allowedResources = ["assets", "entities", "systems", "subjects"];
     if (!allowedResources.includes(resource)) {
-      return jsonResp({ error: `Resource non valida: ${resource}` }, 400);
+      return jsonResp({ error: "Resource non valida" }, 400);
     }
 
     const authHeaders: Record<string, string> = {
@@ -177,7 +165,6 @@ Deno.serve(async (req) => {
       "X-Api-Version": FISKALY_API_VERSION,
     };
 
-    // Optional scope override
     const scopeId = body.scope_id as string | undefined;
     if (scopeId) authHeaders["X-Scope-Identifier"] = scopeId;
 
@@ -202,13 +189,11 @@ Deno.serve(async (req) => {
       reqBody = JSON.stringify(payload ?? {});
       authHeaders["X-Idempotency-Key"] = crypto.randomUUID();
     } else {
-      return jsonResp({ error: "Azione non valida. Usa: list_unit_entities, decommission_entity, disable_unit, list, get, patch, post" }, 400);
+      return jsonResp({ error: "Azione non valida" }, 400);
     }
 
-    console.log(`Fiskaly Explorer: ${method} ${url}`);
     const fiskalyRes = await fetch(url, { method, headers: authHeaders, body: reqBody });
     const resText = await fiskalyRes.text();
-    console.log(`Response: ${fiskalyRes.status} ${resText.slice(0, 500)}`);
     let resData: unknown;
     try { resData = JSON.parse(resText); } catch { resData = { raw: resText }; }
 
@@ -216,6 +201,6 @@ Deno.serve(async (req) => {
 
   } catch (err: any) {
     console.error("fiskaly-explorer error:", err);
-    return jsonResp({ error: err.message ?? "Errore interno" }, 500);
+    return jsonResp({ error: "Errore interno" }, 500);
   }
 });

@@ -39,8 +39,54 @@ Deno.serve(async (req) => {
 
     const { email, firstName, lastName, role, structureId, stationIds, legalName, vatNumber } = await req.json();
 
-    if (!email || !firstName || !role) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+    // ── Input validation ────────────────────────────────────────────────────
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || typeof email !== "string" || !emailRe.test(email) || email.length > 255) {
+      return new Response(JSON.stringify({ error: "Email non valida" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!firstName || typeof firstName !== "string" || firstName.length > 100) {
+      return new Response(JSON.stringify({ error: "Nome obbligatorio (max 100 caratteri)" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (lastName && (typeof lastName !== "string" || lastName.length > 100)) {
+      return new Response(JSON.stringify({ error: "Cognome non valido (max 100 caratteri)" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const validRoles = ["partner", "manager"];
+    if (!role || !validRoles.includes(role)) {
+      return new Response(JSON.stringify({ error: "Ruolo non valido. Deve essere: partner o manager" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (structureId && (typeof structureId !== "string" || !uuidRe.test(structureId))) {
+      return new Response(JSON.stringify({ error: "structureId non valido" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (stationIds && (!Array.isArray(stationIds) || stationIds.some((id: any) => typeof id !== "string"))) {
+      return new Response(JSON.stringify({ error: "stationIds non valido" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (legalName && (typeof legalName !== "string" || legalName.length > 200)) {
+      return new Response(JSON.stringify({ error: "Ragione sociale non valida" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (vatNumber && (typeof vatNumber !== "string" || vatNumber.length > 20)) {
+      return new Response(JSON.stringify({ error: "Partita IVA non valida" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

@@ -8,6 +8,8 @@ const corsHeaders = {
 
 const FISKALY_API_VERSION = "2025-08-12";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function markError(
   supabase: ReturnType<typeof createClient>,
   receiptId: string,
@@ -49,8 +51,34 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ── Auth: require a valid JWT ───────────────────────────────────────────────
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+  const callerClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const token = authHeader.replace("Bearer ", "");
+  const { data: claimsData, error: claimsErr } = await callerClient.auth.getClaims(token);
+  if (claimsErr || !claimsData?.claims) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Use service role for DB operations
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
+    supabaseUrl,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
@@ -60,6 +88,29 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { session_id } = body;
     let { partner_id, amount } = body;
+
+    // ── Input validation ────────────────────────────────────────────────────
+    if (session_id && (typeof session_id !== "string" || !UUID_RE.test(session_id))) {
+      return new Response(
+        JSON.stringify({ error: "Invalid session_id format" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (partner_id && (typeof partner_id !== "string" || !UUID_RE.test(partner_id))) {
+      return new Response(
+        JSON.stringify({ error: "Invalid partner_id format" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (amount !== undefined && amount !== null) {
+      amount = Number(amount);
+      if (isNaN(amount) || amount <= 0 || amount > 10000) {
+        return new Response(
+          JSON.stringify({ error: "Invalid amount: must be a positive number up to 10000" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
 
     console.log("generate-receipt called:", { session_id });
 
@@ -80,7 +131,6 @@ Deno.serve(async (req) => {
 
         if (!partner_id && station?.owner_id) {
           partner_id = station.owner_id;
-          console.log("Resolved partner_id:", partner_id, "for station:", session.station_id);
         }
 
         if (!amount && station?.washing_options) {
@@ -108,7 +158,6 @@ Deno.serve(async (req) => {
             .maybeSingle();
           if (tx?.total_value) {
             amount = tx.total_value;
-            console.log("Amount resolved:", amount, "from transaction: true");
           }
         }
       }
@@ -137,13 +186,12 @@ Deno.serve(async (req) => {
     if (insertErr || !receipt) {
       console.error("Insert receipt error:", insertErr);
       return new Response(
-        JSON.stringify({ error: "Failed to create receipt record", details: insertErr?.message }),
+        JSON.stringify({ error: "Failed to create receipt record" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     receiptId = receipt.id;
-    console.log("Receipt row ID:", receiptId);
 
     // ── Dati fiscali partner ───────────────────────────────────────────────────
     const { data: partner } = await supabase
@@ -160,9 +208,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── Leggi credenziali Subject del partner (Option A) ──────────────────────
-    // Se il partner ha credenziali Subject salvate in partners_fiscal_data, usale.
-    // Altrimenti fallback al master key globale.
+    // ── Leggi credenziali Subject del partner ─────────────────────────────────
     const { data: fiscalData } = await supabase
       .from("partners_fiscal_data")
       .select("fiscal_api_credentials")
@@ -175,13 +221,9 @@ Deno.serve(async (req) => {
       env?: string;
     } | null;
 
-    // Determina le credenziali da usare
     const fiskalyApiKey    = creds?.api_key    ?? Deno.env.get("FISKALY_API_KEY");
     const fiskalyApiSecret = creds?.api_secret ?? Deno.env.get("FISKALY_API_SECRET");
     const fiskalyEnv       = creds?.env?.toUpperCase() ?? (Deno.env.get("FISKALY_ENV") ?? "TEST").toUpperCase();
-
-    const credSource = creds?.api_key ? "partner Subject" : "global master key";
-    console.log(`Authenticating with Fiskaly [${credSource}]...`);
 
     if (!fiskalyApiKey || !fiskalyApiSecret) {
       await markError(supabase, receiptId, "Credenziali Fiskaly non configurate");
@@ -195,8 +237,6 @@ Deno.serve(async (req) => {
       ? "https://live.api.fiskaly.com"
       : "https://test.api.fiskaly.com";
 
-    console.log("Authenticating with Fiskaly...", fiskalyBaseUrl);
-
     // ── Ottieni token Bearer ───────────────────────────────────────────────────
     let jwtBearer: string;
     try {
@@ -209,8 +249,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log("Fiskaly auth OK.");
-
     const authHeaders = {
       Authorization: `Bearer ${jwtBearer}`,
       "Content-Type": "application/json",
@@ -218,7 +256,6 @@ Deno.serve(async (req) => {
     };
 
     // ── Crea INTENTION::TRANSACTION ───────────────────────────────────────────
-    console.log("Creating INTENTION record...");
     const intentionRes = await fetch(`${fiskalyBaseUrl}/records`, {
       method: "POST",
       headers: { ...authHeaders, "X-Idempotency-Key": crypto.randomUUID() },
@@ -233,9 +270,8 @@ Deno.serve(async (req) => {
 
     if (!intentionRes.ok) {
       const intentionBody = await intentionRes.text();
-      const errMsg = `Fiskaly INTENTION failed [${intentionRes.status}]: ${intentionBody}`;
-      console.error(errMsg);
-      await markError(supabase, receiptId, errMsg);
+      console.error(`Fiskaly INTENTION failed [${intentionRes.status}]: ${intentionBody}`);
+      await markError(supabase, receiptId, `Fiskaly INTENTION failed [${intentionRes.status}]`);
       return new Response(
         JSON.stringify({ error: "Fiskaly intention creation failed", receipt_id: receiptId }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -310,16 +346,13 @@ Deno.serve(async (req) => {
         .update({ status: "SENT", fiskaly_record_id: fiskalyRecordId })
         .eq("id", receiptId);
 
-      console.log("✅ Receipt emessa:", receiptId, "fiskaly_record_id:", fiskalyRecordId);
-
       return new Response(
         JSON.stringify({ success: true, receipt_id: receiptId, fiskaly_record_id: fiskalyRecordId }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     } else {
-      const errMsg = `Fiskaly TRANSACTION::RECEIPT failed [${transactionRes.status}]: ${transactionBody}`;
-      console.error(errMsg);
-      await markError(supabase, receiptId, errMsg);
+      console.error(`Fiskaly TRANSACTION::RECEIPT failed [${transactionRes.status}]: ${transactionBody}`);
+      await markError(supabase, receiptId, `Fiskaly TRANSACTION::RECEIPT failed [${transactionRes.status}]`);
       return new Response(
         JSON.stringify({ error: "Fiskaly receipt emission failed", receipt_id: receiptId }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -328,10 +361,10 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("[GENERATE-RECEIPT] Unexpected error:", err);
     if (receiptId) {
-      await markError(supabase, receiptId, `Unexpected: ${String(err)}`);
+      await markError(supabase, receiptId, `Unexpected error`);
     }
     return new Response(
-      JSON.stringify({ error: "Internal error", details: String(err) }),
+      JSON.stringify({ error: "Internal error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
