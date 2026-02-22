@@ -28,7 +28,6 @@ const AdminHome = () => {
   const todayRevenue = (transactions ?? []).filter(t => t.created_at?.startsWith(today)).reduce((s, t) => s + Number(t.total_value ?? 0), 0);
   const todayWashes = (transactions ?? []).filter(t => t.created_at?.startsWith(today) && (t.transaction_type === "WASH_SERVICE" || t.transaction_type === "GUEST_WASH")).length;
 
-  // Chart period filtering
   const now = new Date();
   const periodStart = period === "today" ? today
     : period === "7d" ? subDays(now, 7).toISOString().slice(0, 10)
@@ -36,7 +35,6 @@ const AdminHome = () => {
 
   const filteredChart = chartData.filter(d => d.date >= periodStart);
 
-  // Map pins
   const mapPins = (stations ?? []).filter(s => {
     const lat = s.geo_lat ?? (s as any).structures?.geo_lat;
     const lng = s.geo_lng ?? (s as any).structures?.geo_lng;
@@ -58,10 +56,10 @@ const AdminHome = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-heading font-bold text-foreground">Dashboard Admin</h1>
-        <p className="text-muted-foreground">Panoramica globale Shower2Pet</p>
+        <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground">Dashboard Admin</h1>
+        <p className="text-sm text-muted-foreground">Panoramica globale Shower2Pet</p>
       </div>
 
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
@@ -72,13 +70,13 @@ const AdminHome = () => {
         <StatCard title="Lavaggi Oggi" value={todayWashes} icon={Droplets} variant="primary" href="/revenue" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2 animate-fade-in">
-          <CardHeader className="pb-2">
+          <CardHeader className="p-3 sm:p-6 pb-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-lg font-heading">Ricavi per Giorno</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-heading">Ricavi per Giorno</CardTitle>
               <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-                <SelectTrigger className="w-[160px] h-8 text-xs">
+                <SelectTrigger className="w-[140px] sm:w-[160px] h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -89,21 +87,21 @@ const AdminHome = () => {
               </Select>
             </div>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
+          <CardContent className="p-2 sm:p-6 pt-0">
+            <ResponsiveContainer width="100%" height={220}>
               <BarChart data={filteredChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(210, 20%, 90%)" />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 10 }}
                   stroke="hsl(207, 20%, 46%)"
                   tickFormatter={(v) => {
-                    try { return format(new Date(v), "dd MMM", { locale: it }); } catch { return v; }
+                    try { return format(new Date(v), "dd/MM", { locale: it }); } catch { return v; }
                   }}
                 />
-                <YAxis tick={{ fontSize: 12 }} stroke="hsl(207, 20%, 46%)" />
+                <YAxis tick={{ fontSize: 10 }} stroke="hsl(207, 20%, 46%)" width={40} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: "hsl(0,0%,100%)", border: "1px solid hsl(210,20%,90%)", borderRadius: "0.75rem", fontFamily: "Outfit" }}
+                  contentStyle={{ backgroundColor: "hsl(0,0%,100%)", border: "1px solid hsl(210,20%,90%)", borderRadius: "0.75rem", fontFamily: "Outfit", fontSize: "12px" }}
                   formatter={(value: number) => [`€${value.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`, "Ricavi"]}
                   labelFormatter={(v) => { try { return format(new Date(v), "dd MMMM yyyy", { locale: it }); } catch { return v; } }}
                 />
@@ -116,7 +114,7 @@ const AdminHome = () => {
         <Card className="animate-fade-in">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-heading">Strutture</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-heading">Strutture</CardTitle>
               <Link to="/structures" className="text-xs text-primary hover:underline flex items-center gap-1">
                 Vedi tutte <ArrowRight className="h-3 w-3" />
               </Link>
@@ -126,7 +124,7 @@ const AdminHome = () => {
             {(structures ?? []).slice(0, 5).map((s) => (
               <Link key={s.id} to={`/structures/${s.id}`} className="flex items-center justify-between rounded-lg p-2 hover:bg-accent/50 transition-colors">
                 <span className="text-sm font-medium text-foreground truncate">{s.name}</span>
-                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
               </Link>
             ))}
             {(structures ?? []).length === 0 && <p className="text-sm text-muted-foreground">Nessuna struttura trovata</p>}
@@ -134,15 +132,14 @@ const AdminHome = () => {
         </Card>
       </div>
 
-      {/* Global Stations Map */}
       {mapPins.length > 0 && (
         <Card className="animate-fade-in">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-heading flex items-center gap-2">
+            <CardTitle className="text-base sm:text-lg font-heading flex items-center gap-2">
               <MapPin className="h-5 w-5 text-primary" /> Mappa Stazioni
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-2 sm:p-6 pt-0">
             <div className="flex gap-3 mb-3 flex-wrap">
               {[
                 { label: "Libera", color: "#22c55e" },
@@ -156,7 +153,7 @@ const AdminHome = () => {
                 </div>
               ))}
             </div>
-            <StationsMap stations={mapPins} height="380px" />
+            <StationsMap stations={mapPins} height="300px" />
           </CardContent>
         </Card>
       )}

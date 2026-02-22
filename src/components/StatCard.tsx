@@ -29,27 +29,27 @@ const iconStyles = {
 
 export const StatCard = ({ title, value, subtitle, icon: Icon, trend, variant = 'default', href }: StatCardProps) => {
   const content = (
-    <Card className={cn("animate-fade-in border", variantStyles[variant], href && "hover:shadow-md hover:border-primary/30 transition-all cursor-pointer")}>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-2xl font-heading font-bold text-foreground">{value}</p>
-            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+    <Card className={cn("animate-fade-in border h-full", variantStyles[variant], href && "hover:shadow-md hover:border-primary/30 transition-all cursor-pointer")}>
+      <CardContent className="p-3 sm:p-5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+            <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">{title}</p>
+            <p className="text-lg sm:text-2xl font-heading font-bold text-foreground truncate">{value}</p>
+            {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
             {trend && (
               <p className={cn("text-xs font-medium", trend.positive ? "text-success-foreground" : "text-destructive")}>
-                {trend.positive ? '↑' : '↓'} {Math.abs(trend.value)}% vs mese prec.
+                {trend.positive ? '↑' : '↓'} {Math.abs(trend.value)}%
               </p>
             )}
           </div>
-          <div className={cn("rounded-xl p-3", iconStyles[variant])}>
-            <Icon className="h-5 w-5" />
+          <div className={cn("rounded-xl p-2 sm:p-3 flex-shrink-0", iconStyles[variant])}>
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
         </div>
       </CardContent>
     </Card>
   );
 
-  if (href) return <Link to={href}>{content}</Link>;
+  if (href) return <Link to={href} className="block">{content}</Link>;
   return content;
 };

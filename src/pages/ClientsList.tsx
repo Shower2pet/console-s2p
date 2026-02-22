@@ -42,14 +42,14 @@ const ClientsList = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground">
             <Users className="inline mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             Gestione Clienti
           </h1>
-          <p className="text-muted-foreground">{filtered.length} clienti registrati</p>
+          <p className="text-sm text-muted-foreground">{filtered.length} clienti registrati</p>
         </div>
         <Button onClick={() => navigate("/clients/new")} className="self-start sm:self-auto">
           <UserPlus className="h-4 w-4 mr-2" /> Nuovo Partner
@@ -57,7 +57,7 @@ const ClientsList = () => {
       </div>
 
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Cerca clienti..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -65,58 +65,93 @@ const ClientsList = () => {
         </CardContent>
       </Card>
 
-      <Card>
+      {/* Mobile: card layout — Desktop: table */}
+      {/* Mobile cards */}
+      <div className="space-y-3 sm:hidden">
+        {filtered.map((p) => {
+          const displayName = p.legal_name || [p.first_name, p.last_name].filter(Boolean).join(" ") || "—";
+          const initials = displayName.charAt(0).toUpperCase();
+          return (
+            <Card key={p.id} className="cursor-pointer hover:shadow-md transition-all" onClick={() => navigate(`/clients/${p.id}`)}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary flex-shrink-0">
+                    {initials}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground text-sm truncate">{displayName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{p.email ?? "—"}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="capitalize rounded-md bg-accent px-2 py-0.5 text-[10px] font-medium text-accent-foreground">
+                        {p.role ?? "user"}
+                      </span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Building2 className="h-3 w-3" /> {structureCountMap[p.id] ?? 0}
+                      </span>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+        {filtered.length === 0 && (
+          <p className="text-muted-foreground text-center py-8">Nessun cliente trovato.</p>
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <Card className="hidden sm:block">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="p-4 font-medium">Ragione Sociale</th>
-                  <th className="p-4 font-medium">Email</th>
-                  <th className="p-4 font-medium">Ruolo</th>
-                  <th className="p-4 font-medium">Strutture</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {filtered.map((p) => {
-                  const displayName = p.legal_name || [p.first_name, p.last_name].filter(Boolean).join(" ") || "—";
-                  const initials = displayName.charAt(0).toUpperCase();
-                  return (
-                    <tr key={p.id} className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate(`/clients/${p.id}`)}>
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                            {initials}
-                          </div>
-                          <Link to={`/clients/${p.id}`} className="font-medium text-foreground hover:text-primary transition-colors">{displayName}</Link>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-muted-foreground">
+                <th className="p-4 font-medium">Ragione Sociale</th>
+                <th className="p-4 font-medium">Email</th>
+                <th className="p-4 font-medium">Ruolo</th>
+                <th className="p-4 font-medium">Strutture</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {filtered.map((p) => {
+                const displayName = p.legal_name || [p.first_name, p.last_name].filter(Boolean).join(" ") || "—";
+                const initials = displayName.charAt(0).toUpperCase();
+                return (
+                  <tr key={p.id} className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate(`/clients/${p.id}`)}>
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
+                          {initials}
                         </div>
-                      </td>
-                      <td className="p-4 text-muted-foreground">{p.email ?? "—"}</td>
-                      <td className="p-4">
-                        <span className="capitalize rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-                          {p.role ?? "user"}
-                        </span>
-                      </td>
-                      <td className="p-4 text-foreground font-medium">
-                        <div className="flex items-center gap-1">
-                          <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                          {structureCountMap[p.id] ?? 0}
-                          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground ml-2" />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="p-8 text-center text-muted-foreground">
-                      Nessun cliente trovato.
+                        <Link to={`/clients/${p.id}`} className="font-medium text-foreground hover:text-primary transition-colors truncate">{displayName}</Link>
+                      </div>
+                    </td>
+                    <td className="p-4 text-muted-foreground truncate max-w-[200px]">{p.email ?? "—"}</td>
+                    <td className="p-4">
+                      <span className="capitalize rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                        {p.role ?? "user"}
+                      </span>
+                    </td>
+                    <td className="p-4 text-foreground font-medium">
+                      <div className="flex items-center gap-1">
+                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        {structureCountMap[p.id] ?? 0}
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground ml-2" />
+                      </div>
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                    Nessun cliente trovato.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </CardContent>
       </Card>
     </div>

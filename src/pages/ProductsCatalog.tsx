@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Pencil, Package, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -92,56 +91,55 @@ const ProductsCatalog = () => {
   const activeProducts = (products ?? []).filter(p => p.is_active);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-heading font-bold text-foreground flex items-center gap-2">
-            <Package className="h-6 w-6 text-primary" /> Catalogo Prodotti
+          <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground flex items-center gap-2">
+            <Package className="h-5 w-5 sm:h-6 sm:w-6 text-primary" /> Catalogo Prodotti
           </h1>
-          <p className="text-muted-foreground">{activeProducts.length} prodotti attivi</p>
+          <p className="text-sm text-muted-foreground">{activeProducts.length} prodotti attivi</p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
+        <Button onClick={openCreate} className="gap-2 self-start sm:self-auto">
           <Plus className="h-4 w-4" /> Nuovo Prodotto
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {activeProducts.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Nessun prodotto nel catalogo.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Descrizione</TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activeProducts.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium text-foreground">{p.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="capitalize">{p.type}</Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground max-w-[300px] truncate">{p.description ?? "—"}</TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteId(p.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Mobile: card list — Desktop: table would scroll, so use cards everywhere */}
+      <div className="space-y-3">
+        {activeProducts.length === 0 ? (
+          <Card>
+            <CardContent className="py-8">
+              <p className="text-muted-foreground text-center">Nessun prodotto nel catalogo.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          activeProducts.map((p) => (
+            <Card key={p.id} className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-foreground text-sm sm:text-base">{p.name}</p>
+                      <Badge variant="secondary" className="capitalize text-xs">{p.type}</Badge>
+                    </div>
+                    {p.description && (
+                      <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">{p.description}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(p.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
