@@ -134,7 +134,7 @@ const Onboarding = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-lg space-y-6 animate-fade-in">
         <div className="text-center">
-          <h1 className="text-2xl font-heading font-bold text-foreground">Benvenuto in Shower2Pet 🐾</h1>
+          <h1 className="text-2xl font-heading font-bold text-foreground">Benvenuto in Shower2Pet</h1>
           <p className="text-muted-foreground mt-1">Completa la configurazione del tuo account</p>
         </div>
 
