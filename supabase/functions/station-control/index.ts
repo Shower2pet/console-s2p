@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import mqtt from "npm:mqtt@5";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -113,32 +112,25 @@ Deno.serve(async (req) => {
     payload = "0";
   }
 
-  // --- MQTT publish ---
-  // Deno Edge Functions only support WebSocket connections (no raw TCP).
-  // MQTT_HOST should be the full wss:// URL with port and path, e.g.:
-  //   wss://broker.example.com:8084/mqtt
-  // If only a hostname is provided, we prepend wss:// and append /mqtt.
-  const rawHost = Deno.env.get("MQTT_HOST")!;
-  let mqttHost = rawHost.trim();
+  // --- MQTT publish via native WebSocket ---
+  const rawHost = Deno.env.get("MQTT_HOST")!.trim();
+  const mqttUser = Deno.env.get("MQTT_USER")!;
+  const mqttPass = Deno.env.get("MQTT_PASSWORD")!;
 
-  // Convert mqtt(s):// to wss://
+  // Normalize: ensure wss:// prefix and /mqtt path
+  let mqttHost = rawHost;
   mqttHost = mqttHost.replace(/^mqtts?:\/\//, "wss://");
-  // If no protocol, prepend wss://
   if (!/^wss?:\/\//.test(mqttHost)) {
     mqttHost = "wss://" + mqttHost;
   }
-  // Ensure /mqtt path if not already present
   if (!mqttHost.includes("/mqtt")) {
     mqttHost += "/mqtt";
   }
 
-  const mqttUser = Deno.env.get("MQTT_USER")!;
-  const mqttPass = Deno.env.get("MQTT_PASSWORD")!;
-
   console.log(`[station-control] MQTT target: ${mqttHost}, topic: ${topic}, payload: ${payload}`);
 
   try {
-    const published = await publishMqtt(mqttHost, mqttUser, mqttPass, topic, payload);
+    const published = await mqttPublishNative(mqttHost, mqttUser, mqttPass, topic, payload);
     if (!published) {
       return new Response(JSON.stringify({ error: "MQTT publish timed out" }), {
         status: 504,
@@ -166,8 +158,79 @@ Deno.serve(async (req) => {
   }
 });
 
-function publishMqtt(
-  host: string,
+// ──────────────────────────────────────────────────────────────
+// Native WebSocket MQTT 3.1.1 — minimal publish-only client
+// ──────────────────────────────────────────────────────────────
+
+function encodeUtf8String(str: string): Uint8Array {
+  const encoded = new TextEncoder().encode(str);
+  const buf = new Uint8Array(2 + encoded.length);
+  buf[0] = (encoded.length >> 8) & 0xff;
+  buf[1] = encoded.length & 0xff;
+  buf.set(encoded, 2);
+  return buf;
+}
+
+function encodeRemainingLength(length: number): Uint8Array {
+  const bytes: number[] = [];
+  do {
+    let encodedByte = length % 128;
+    length = Math.floor(length / 128);
+    if (length > 0) encodedByte |= 0x80;
+    bytes.push(encodedByte);
+  } while (length > 0);
+  return new Uint8Array(bytes);
+}
+
+function buildConnectPacket(clientId: string, username: string, password: string): Uint8Array {
+  const protocolName = encodeUtf8String("MQTT");
+  const protocolLevel = new Uint8Array([0x04]); // MQTT 3.1.1
+  const connectFlags = new Uint8Array([0xc2]); // username + password + clean session
+  const keepAlive = new Uint8Array([0x00, 0x3c]); // 60 seconds
+  const clientIdBytes = encodeUtf8String(clientId);
+  const usernameBytes = encodeUtf8String(username);
+  const passwordBytes = encodeUtf8String(password);
+
+  const variableHeaderAndPayload = new Uint8Array([
+    ...protocolName,
+    ...protocolLevel,
+    ...connectFlags,
+    ...keepAlive,
+    ...clientIdBytes,
+    ...usernameBytes,
+    ...passwordBytes,
+  ]);
+
+  const remainingLength = encodeRemainingLength(variableHeaderAndPayload.length);
+  const packet = new Uint8Array(1 + remainingLength.length + variableHeaderAndPayload.length);
+  packet[0] = 0x10; // CONNECT
+  packet.set(remainingLength, 1);
+  packet.set(variableHeaderAndPayload, 1 + remainingLength.length);
+  return packet;
+}
+
+function buildPublishPacket(topic: string, payload: string): Uint8Array {
+  const topicBytes = encodeUtf8String(topic);
+  const payloadBytes = new TextEncoder().encode(payload);
+
+  const variableHeaderAndPayload = new Uint8Array(topicBytes.length + payloadBytes.length);
+  variableHeaderAndPayload.set(topicBytes, 0);
+  variableHeaderAndPayload.set(payloadBytes, topicBytes.length);
+
+  const remainingLength = encodeRemainingLength(variableHeaderAndPayload.length);
+  const packet = new Uint8Array(1 + remainingLength.length + variableHeaderAndPayload.length);
+  packet[0] = 0x30; // PUBLISH, QoS 0
+  packet.set(remainingLength, 1);
+  packet.set(variableHeaderAndPayload, 1 + remainingLength.length);
+  return packet;
+}
+
+function buildDisconnectPacket(): Uint8Array {
+  return new Uint8Array([0xe0, 0x00]);
+}
+
+function mqttPublishNative(
+  wsUrl: string,
   username: string,
   password: string,
   topic: string,
@@ -175,37 +238,68 @@ function publishMqtt(
   timeoutMs = 15000
 ): Promise<boolean> {
   return new Promise((resolve) => {
-    console.log(`[MQTT] Connecting to ${host}...`);
+    const clientId = `s2p-edge-${Date.now()}`;
+    console.log(`[MQTT-native] Connecting to ${wsUrl}...`);
+
+    let resolved = false;
+    const done = (result: boolean) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timer);
+      try { ws.close(); } catch { /* ignore */ }
+      resolve(result);
+    };
 
     const timer = setTimeout(() => {
-      console.error("[MQTT] Overall timeout reached");
-      try { client.end(true); } catch { /* ignore */ }
-      resolve(false);
+      console.error("[MQTT-native] Overall timeout reached");
+      done(false);
     }, timeoutMs);
 
-    const client = mqtt.connect(host, {
-      username,
-      password,
-      connectTimeout: 10000,
-      protocolVersion: 4, // MQTT 3.1.1 — wider broker compatibility
-    });
-
-    client.on("connect", () => {
-      console.log("[MQTT] Connected, publishing...");
-      client.publish(topic, payload, { qos: 1 }, (err) => {
-        clearTimeout(timer);
-        if (err) console.error("[MQTT] Publish error:", err);
-        else console.log("[MQTT] Published OK");
-        client.end(true);
-        resolve(!err);
-      });
-    });
-
-    client.on("error", (err) => {
-      console.error("[MQTT] Connection error:", err);
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(wsUrl, ["mqtt"]);
+      ws.binaryType = "arraybuffer";
+    } catch (err) {
+      console.error("[MQTT-native] WebSocket creation failed:", err);
       clearTimeout(timer);
-      try { client.end(true); } catch { /* ignore */ }
       resolve(false);
-    });
+      return;
+    }
+
+    ws.onopen = () => {
+      console.log("[MQTT-native] WebSocket open, sending CONNECT...");
+      ws.send(buildConnectPacket(clientId, username, password));
+    };
+
+    ws.onmessage = (event) => {
+      const data = new Uint8Array(event.data as ArrayBuffer);
+      const packetType = data[0] >> 4;
+
+      if (packetType === 2) {
+        // CONNACK
+        const returnCode = data[3];
+        if (returnCode === 0) {
+          console.log("[MQTT-native] CONNACK OK, publishing...");
+          ws.send(buildPublishPacket(topic, payload));
+          // QoS 0 — no PUBACK expected, just send DISCONNECT
+          ws.send(buildDisconnectPacket());
+          console.log("[MQTT-native] Published OK (QoS 0)");
+          done(true);
+        } else {
+          console.error(`[MQTT-native] CONNACK refused, code: ${returnCode}`);
+          done(false);
+        }
+      }
+    };
+
+    ws.onerror = (event) => {
+      console.error("[MQTT-native] WebSocket error:", event);
+      done(false);
+    };
+
+    ws.onclose = () => {
+      console.log("[MQTT-native] WebSocket closed");
+      if (!resolved) done(false);
+    };
   });
 }
