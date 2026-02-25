@@ -115,22 +115,27 @@ Deno.serve(async (req) => {
 
   // --- MQTT publish ---
   // Deno Edge Functions only support WebSocket connections (no raw TCP).
-  // Convert mqtts:// URL to wss:// on port 8884 for HiveMQ Cloud.
+  // MQTT_HOST should be the full wss:// URL with port and path, e.g.:
+  //   wss://broker.example.com:8084/mqtt
+  // If only a hostname is provided, we prepend wss:// and append /mqtt.
   const rawHost = Deno.env.get("MQTT_HOST")!;
-  let mqttHost = rawHost
-    .replace(/^mqtts?:\/\//, "wss://")
-    .replace(/:8883\b/, ":8884");
-  // If no protocol was present, prepend wss://
+  let mqttHost = rawHost.trim();
+
+  // Convert mqtt(s):// to wss://
+  mqttHost = mqttHost.replace(/^mqtts?:\/\//, "wss://");
+  // If no protocol, prepend wss://
   if (!/^wss?:\/\//.test(mqttHost)) {
     mqttHost = "wss://" + mqttHost;
   }
-  // Ensure port 8884 for HiveMQ Cloud WebSocket
-  if (!/:(\d+)/.test(mqttHost)) {
-    mqttHost += ":8884";
+  // Ensure /mqtt path if not already present
+  if (!mqttHost.includes("/mqtt")) {
+    mqttHost += "/mqtt";
   }
-  mqttHost += mqttHost.includes("/mqtt") ? "" : "/mqtt";
+
   const mqttUser = Deno.env.get("MQTT_USER")!;
   const mqttPass = Deno.env.get("MQTT_PASSWORD")!;
+
+  console.log(`[station-control] MQTT target: ${mqttHost}, topic: ${topic}, payload: ${payload}`);
 
   try {
     const published = await publishMqtt(mqttHost, mqttUser, mqttPass, topic, payload);
@@ -167,10 +172,13 @@ function publishMqtt(
   password: string,
   topic: string,
   payload: string,
-  timeoutMs = 10000
+  timeoutMs = 15000
 ): Promise<boolean> {
   return new Promise((resolve) => {
+    console.log(`[MQTT] Connecting to ${host}...`);
+
     const timer = setTimeout(() => {
+      console.error("[MQTT] Overall timeout reached");
       try { client.end(true); } catch { /* ignore */ }
       resolve(false);
     }, timeoutMs);
@@ -178,20 +186,23 @@ function publishMqtt(
     const client = mqtt.connect(host, {
       username,
       password,
-      connectTimeout: 5000,
-      protocolVersion: 5,
+      connectTimeout: 10000,
+      protocolVersion: 4, // MQTT 3.1.1 — wider broker compatibility
     });
 
     client.on("connect", () => {
+      console.log("[MQTT] Connected, publishing...");
       client.publish(topic, payload, { qos: 1 }, (err) => {
         clearTimeout(timer);
+        if (err) console.error("[MQTT] Publish error:", err);
+        else console.log("[MQTT] Published OK");
         client.end(true);
         resolve(!err);
       });
     });
 
     client.on("error", (err) => {
-      console.error("MQTT connect error:", err);
+      console.error("[MQTT] Connection error:", err);
       clearTimeout(timer);
       try { client.end(true); } catch { /* ignore */ }
       resolve(false);
