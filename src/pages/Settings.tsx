@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import { updatePartnerData } from "@/services/profileService";
 import {
   fetchSubscriptionPlans,
@@ -69,7 +70,7 @@ const Settings = () => {
       toast.success("Dati aziendali salvati");
       qc.invalidateQueries({ queryKey: ["profile"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => handleAppError(e, "Settings: salvataggio dati aziendali"),
   });
 
   return (
@@ -205,7 +206,7 @@ const SubscriptionPlansSection = ({ userId }: { userId: string }) => {
       setNewMaxWashes("");
       qc.invalidateQueries({ queryKey: ["subscription-plans"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => handleAppError(e, "Settings: creazione piano abbonamento"),
   });
 
   const deletePlan = useMutation({
@@ -214,7 +215,7 @@ const SubscriptionPlansSection = ({ userId }: { userId: string }) => {
       toast.success("Piano disattivato");
       qc.invalidateQueries({ queryKey: ["subscription-plans"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => handleAppError(e, "Settings: disattivazione piano"),
   });
 
   return (

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import { fetchFreeStations, type FreeStation } from "@/services/stationService";
 import { inviteUser } from "@/services/userService";
 
@@ -49,7 +50,7 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
       setLoadingStations(true);
       fetchFreeStations()
         .then((data) => setFreeStations(data))
-        .catch(() => toast.error("Errore caricamento stazioni"))
+        .catch((e) => handleAppError(e, "InviteUserDialog: caricamento stazioni"))
         .finally(() => setLoadingStations(false));
     }
     if (!open) {
@@ -79,7 +80,7 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
       reset();
       onSuccess?.();
     } catch (err: any) {
-      toast.error(err.message ?? "Impossibile creare l'utente");
+      handleAppError(err, "InviteUserDialog: creazione utente");
     } finally {
       setIsSubmitting(false);
     }

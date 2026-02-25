@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import DeletePartnerDialog from "@/components/DeletePartnerDialog";
 import StaticMapPreview from "@/components/StaticMapPreview";
 import AssignStationDialog from "@/components/AssignStationDialog";
@@ -61,7 +62,7 @@ const ClientDetail = () => {
       toast.success("Partner eliminato con successo");
       navigate("/clients");
     } catch (err: any) {
-      toast.error(err.message ?? "Errore durante l'eliminazione");
+      handleAppError(err, "ClientDetail: eliminazione partner");
     }
   };
 
@@ -210,7 +211,7 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
       toast.success("Dati partner salvati");
       qc.invalidateQueries({ queryKey: ["client-profile", profileId] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => handleAppError(e, "ClientDetail: salvataggio dati partner"),
   });
 
   return (

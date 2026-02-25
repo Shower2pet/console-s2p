@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import { onAuthStateChange, getSession, updatePassword } from "@/services/authService";
 import logoHorizontal from "@/assets/logo-horizontal.png";
 import logoVertical from "@/assets/logo-vertical.png";
@@ -64,7 +65,7 @@ const UpdatePassword = () => {
       toast.success("Password impostata con successo!");
       navigate("/", { replace: true });
     } catch (error: any) {
-      toast.error(error.message);
+      handleAppError(error, "UpdatePassword: impostazione password");
     } finally {
       setSubmitting(false);
     }

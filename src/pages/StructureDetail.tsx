@@ -14,6 +14,7 @@ import InviteUserDialog from "@/components/InviteUserDialog";
 import MapPicker from "@/components/MapPicker";
 import StationsMap from "@/components/StationsMap";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import { fetchStructureManagers } from "@/services/structureService";
 import { unassignStationsFromStructure } from "@/services/stationService";
 import { deleteStructure } from "@/services/structureService";
@@ -45,7 +46,7 @@ const StructureDetail = () => {
       await updateStructure.mutateAsync({ id: structure.id, geo_lat: mapLat, geo_lng: mapLng });
       toast.success("Posizione struttura aggiornata");
     } catch (e: any) {
-      toast.error(e.message);
+      handleAppError(e, "StructureDetail: salvataggio posizione");
     }
   };
 
@@ -77,7 +78,7 @@ const StructureDetail = () => {
       toast.success("Struttura eliminata");
       navigate("/structures");
     } catch (e: any) {
-      toast.error(e.message);
+      handleAppError(e, "StructureDetail: eliminazione struttura");
     }
   };
 
