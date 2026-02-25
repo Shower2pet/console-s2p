@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import {
   fetchCreditPackages,
   createCreditPackage,
@@ -78,8 +79,8 @@ const Packages = () => {
         toast.success("Pacchetto creato");
       }
       setDialogOpen(false);
-    } catch {
-      toast.error("Errore nel salvataggio");
+    } catch (e) {
+      handleAppError(e, "Packages: salvataggio pacchetto");
     }
   };
 
@@ -87,8 +88,8 @@ const Packages = () => {
     try {
       await deletePkg.mutateAsync(id);
       toast.success("Pacchetto eliminato");
-    } catch {
-      toast.error("Errore nell'eliminazione");
+    } catch (e) {
+      handleAppError(e, "Packages: eliminazione pacchetto");
     }
   };
 

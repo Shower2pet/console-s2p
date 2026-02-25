@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import { fetchFreeStations, type FreeStation } from "@/services/stationService";
 import { inviteUser } from "@/services/userService";
 
@@ -51,7 +52,7 @@ const CreatePartner = () => {
   useEffect(() => {
     fetchFreeStations()
       .then((data) => setFreeStations(data))
-      .catch(() => toast.error("Errore caricamento stazioni"))
+      .catch((e) => handleAppError(e, "CreatePartner: caricamento stazioni"))
       .finally(() => setLoadingStations(false));
   }, []);
 
@@ -109,7 +110,7 @@ const CreatePartner = () => {
       setCreatedUser({ email: values.email, password: result.tempPassword });
       reset();
     } catch (err: any) {
-      toast.error(err.message ?? "Impossibile creare l'utente");
+      handleAppError(err, "CreatePartner: creazione utente");
     } finally {
       setIsSubmitting(false);
     }

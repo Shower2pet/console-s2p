@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface FiskalySetupCardProps {
@@ -101,12 +102,14 @@ export const FiskalySetupCard = ({
         } catch { /* ignore */ }
         setErrorMsg(msg);
         toast.error("Errore configurazione Fiskaly");
+        handleAppError(new Error(msg), "FiskalySetupCard: errore Fiskaly", { silent: true });
         return;
       }
 
       if (data?.error) {
         setErrorMsg(data.error);
         toast.error("Errore configurazione Fiskaly");
+        handleAppError(new Error(data.error), "FiskalySetupCard: errore dati Fiskaly", { silent: true });
         return;
       }
 
@@ -123,7 +126,7 @@ export const FiskalySetupCard = ({
       }
     } catch (err: any) {
       setErrorMsg(err.message ?? "Errore imprevisto");
-      toast.error("Errore configurazione Fiskaly");
+      handleAppError(err, "FiskalySetupCard: setup Fiskaly");
     } finally {
       setIsLoading(false);
     }

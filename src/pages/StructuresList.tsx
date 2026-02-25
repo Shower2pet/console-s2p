@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useStructures, useCreateStructure } from "@/hooks/useStructures";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import MapPicker from "@/components/MapPicker";
 import StaticMapPreview from "@/components/StaticMapPreview";
 import { fetchPartnersList } from "@/services/profileService";
@@ -66,7 +67,7 @@ const StructuresList = () => {
       setGeoLng(null);
       setSelectedOwnerId("");
     } catch (e: any) {
-      toast.error(e.message);
+      handleAppError(e, "StructuresList: creazione struttura");
     }
   };
 

@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -64,8 +65,7 @@ const Inventory = () => {
       invalidate();
     },
     onError: (err: any) => {
-      const msg = err?.message?.includes("duplicate") ? "Serial Number già esistente." : err?.message || "Errore durante il salvataggio.";
-      toast.error(msg);
+      handleAppError(err, "Inventory: creazione stazione");
     },
   });
 
@@ -76,7 +76,7 @@ const Inventory = () => {
       setDeleteId(null);
       invalidate();
     },
-    onError: (err: any) => toast.error(err?.message || "Impossibile eliminare."),
+    onError: (err: any) => handleAppError(err, "Inventory: eliminazione stazione"),
   });
 
   return (

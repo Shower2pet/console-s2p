@@ -21,6 +21,7 @@ import { fetchStructuresForOwner } from "@/services/structureService";
 import { fetchPartnersList } from "@/services/profileService";
 import { invokeStationControl } from "@/services/stationService";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import MapPicker from "@/components/MapPicker";
 
 /** Numeric input that tracks raw string while editing to avoid "sticky 0" issues */
@@ -165,7 +166,7 @@ const StationDetail = () => {
       await updateStation.mutateAsync(payload as any);
       toast.success("Stazione aggiornata con successo");
     } catch (e: any) {
-      toast.error(e.message);
+      handleAppError(e, "StationDetail: salvataggio stazione");
     }
   };
 
@@ -180,7 +181,7 @@ const StationDetail = () => {
       await invokeStationControl(station.id, command, duration_minutes);
       toast.success("Comando hardware inviato");
     } catch (e: any) {
-      toast.error(e.message ?? "Errore di comunicazione con la stazione");
+      handleAppError(e, "StationDetail: comando hardware");
     } finally {
       setHwBusy(false);
     }
@@ -203,7 +204,7 @@ const StationDetail = () => {
       setEditStructureId("");
       toast.success("Stazione rimossa dal cliente e spostata in magazzino");
     } catch (e: any) {
-      toast.error(e.message);
+      handleAppError(e, "StationDetail: rimozione dal cliente");
     }
   };
 
@@ -220,7 +221,7 @@ const StationDetail = () => {
       setShowTicketForm(false);
       setTicketReason("");
     } catch (e: any) {
-      toast.error(e.message);
+      handleAppError(e, "StationDetail: apertura ticket manutenzione");
     }
   };
 

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import MapPicker from "@/components/MapPicker";
 import { updatePassword } from "@/services/authService";
 import { updateMustChangePassword } from "@/services/profileService";
@@ -38,7 +39,7 @@ const Onboarding = () => {
       setLoadingStations(true);
       fetchPendingStations(user.id)
         .then(setPendingStations)
-        .catch(() => toast.error("Errore caricamento stazioni"))
+        .catch((e) => handleAppError(e, "Onboarding: caricamento stazioni"))
         .finally(() => setLoadingStations(false));
     }
   }, [step, user]);
@@ -64,7 +65,7 @@ const Onboarding = () => {
         navigate("/", { replace: true });
       }
     } catch (err: any) {
-      toast.error(err.message);
+      handleAppError(err, "Onboarding: cambio password");
     } finally {
       setSaving(false);
     }
@@ -116,14 +117,14 @@ const Onboarding = () => {
           try {
             await assignStationsToStructure(s.stationIds, created.id);
           } catch (stErr: any) {
-            toast.error(`Errore assegnazione stazioni: ${stErr.message}`);
+            handleAppError(stErr, "Onboarding: assegnazione stazioni");
           }
         }
       }
       toast.success("Strutture create con successo!");
       navigate("/", { replace: true });
     } catch (err: any) {
-      toast.error(err.message ?? "Errore durante la creazione");
+      handleAppError(err, "Onboarding: creazione strutture");
     } finally {
       setSaving(false);
     }

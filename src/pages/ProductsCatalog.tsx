@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -67,7 +68,7 @@ const ProductsCatalog = () => {
       setDialogOpen(false);
       qc.invalidateQueries({ queryKey: ["products"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => handleAppError(e, "ProductsCatalog: salvataggio prodotto"),
   });
 
   const deleteMutation = useMutation({
@@ -77,7 +78,7 @@ const ProductsCatalog = () => {
       setDeleteId(null);
       qc.invalidateQueries({ queryKey: ["products"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => handleAppError(e, "ProductsCatalog: disattivazione prodotto"),
   });
 
   if (isLoading) {

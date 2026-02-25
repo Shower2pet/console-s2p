@@ -14,6 +14,7 @@ import { useStations } from "@/hooks/useStations";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 
 type TicketStatus = "open" | "in_progress" | "risolto";
 type SortField = "created_at" | "severity" | "status";
@@ -133,7 +134,7 @@ const Maintenance = () => {
       setNewReason("");
       setNewSeverity("low");
     } catch (e: any) {
-      toast.error(e.message);
+      handleAppError(e, "Maintenance: creazione ticket");
     }
   };
 
@@ -149,7 +150,7 @@ const Maintenance = () => {
       setStatusDialogLog(null);
       setStatusNotes("");
     } catch (e: any) {
-      toast.error(e.message);
+      handleAppError(e, "Maintenance: aggiornamento stato ticket");
     }
   };
 

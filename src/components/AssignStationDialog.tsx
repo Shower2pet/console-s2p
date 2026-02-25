@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import { fetchFreeStations, assignStationToPartner } from "@/services/stationService";
 
 interface AssignStationDialogProps {
@@ -39,7 +40,7 @@ const AssignStationDialog = ({ partnerId, partnerName, prominent = false }: Assi
       qc.invalidateQueries({ queryKey: ["client-stations-all"] });
       qc.invalidateQueries({ queryKey: ["client-stations"] });
     } catch (e: any) {
-      toast.error(e.message);
+      handleAppError(e, "AssignStationDialog: assegnazione stazione");
     } finally {
       setAssigning(null);
     }
