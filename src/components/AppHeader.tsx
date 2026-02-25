@@ -1,7 +1,16 @@
-import { Bell } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { MobileSidebarTrigger } from "@/components/AppSidebar";
+import { useNavigate } from "react-router-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const roleLabels: Record<string, string> = {
   admin: "Amministratore",
@@ -11,9 +20,15 @@ const roleLabels: Record<string, string> = {
 };
 
 export const AppHeader = () => {
-  const { profile, role } = useAuth();
+  const { profile, role, logout } = useAuth();
+  const navigate = useNavigate();
   const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || profile?.email || "Utente";
   const initials = displayName.charAt(0).toUpperCase();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   return (
     <header className="flex h-14 md:h-16 items-center justify-between border-b bg-card px-3 md:px-6 gap-2">
@@ -32,15 +47,31 @@ export const AppHeader = () => {
           <Bell className="h-5 w-5 text-muted-foreground" />
           <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-destructive" />
         </button>
-        <div className="flex items-center gap-2 md:gap-3">
-          <div className="h-8 w-8 md:h-9 md:w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-heading text-sm font-bold">
-            {initials}
-          </div>
-          <div className="hidden md:block">
-            <p className="text-sm font-medium text-foreground">{displayName}</p>
-            <p className="text-xs text-muted-foreground">{roleLabels[role ?? "user"]}</p>
-          </div>
-        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-2 md:gap-3 rounded-lg p-1 hover:bg-accent transition-colors outline-none">
+              <div className="h-8 w-8 md:h-9 md:w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-heading text-sm font-bold">
+                {initials}
+              </div>
+              <div className="hidden md:block text-left">
+                <p className="text-sm font-medium text-foreground">{displayName}</p>
+                <p className="text-xs text-muted-foreground">{roleLabels[role ?? "user"]}</p>
+              </div>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel className="font-normal">
+              <p className="text-sm font-medium">{displayName}</p>
+              <p className="text-xs text-muted-foreground">{profile?.email}</p>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
+              <LogOut className="h-4 w-4 mr-2" />
+              Esci
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
