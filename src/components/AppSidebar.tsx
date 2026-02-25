@@ -1,4 +1,4 @@
-import { Home, Monitor, Users, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText, Warehouse, Menu, X } from "lucide-react";
+import { Home, Monitor, Users, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText, Warehouse, Menu, X, Shield, Store, User } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
@@ -37,11 +37,11 @@ const managerItems = [
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
 ];
 
-const roleEmoji: Record<string, string> = {
-  admin: "👑 Admin",
-  partner: "🏪 Partner",
-  manager: "🔧 Manager",
-  user: "👤 Utente",
+const roleConfig: Record<string, { label: string; icon: typeof Shield }> = {
+  admin: { label: "Admin", icon: Shield },
+  partner: { label: "Partner", icon: Store },
+  manager: { label: "Manager", icon: Wrench },
+  user: { label: "Utente", icon: User },
 };
 
 // Shared nav content
@@ -69,8 +69,8 @@ const SidebarNav = ({ items, collapsed, role, displayName, email, onLogout, onNa
     {/* Role badge */}
     {!collapsed && (
       <div className="px-4 pt-3 pb-1">
-        <span className="inline-block rounded-full bg-sidebar-accent px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-accent-foreground">
-          {roleEmoji[role ?? "user"]}
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-sidebar-accent px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-accent-foreground">
+          {(() => { const rc = roleConfig[role ?? "user"]; const Icon = rc.icon; return <><Icon className="h-3 w-3" />{rc.label}</>; })()}
         </span>
       </div>
     )}

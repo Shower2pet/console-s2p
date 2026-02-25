@@ -314,7 +314,7 @@ const PartnerFiscalTab = () => {
         <div className="flex gap-1">
           {(["all", "configured", "not_configured", "missing_data"] as const).map((f) => (
             <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} className="h-8 text-xs" onClick={() => setFilter(f)}>
-              {{ all: "Tutti", configured: "✅ Config.", not_configured: "❌ Non config.", missing_data: "⚠️ Dati" }[f]}
+              {{ all: "Tutti", configured: "Config.", not_configured: "Non config.", missing_data: "Dati manc." }[f]}
             </Button>
           ))}
         </div>

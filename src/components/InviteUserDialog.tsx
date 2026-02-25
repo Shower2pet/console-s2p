@@ -108,7 +108,7 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
         {createdUser ? (
           <>
             <DialogHeader>
-              <DialogTitle>Utente Creato con Successo ✅</DialogTitle>
+              <DialogTitle>Utente Creato con Successo</DialogTitle>
               <DialogDescription>
                 Comunica queste credenziali al nuovo utente. La password è temporanea.
               </DialogDescription>

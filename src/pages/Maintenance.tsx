@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Wrench, Plus, Loader2, ArrowUpDown, Search, AlertTriangle, ChevronDown } from "lucide-react";
+import { Wrench, Plus, Loader2, ArrowUpDown, Search, AlertTriangle, ChevronDown, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -396,8 +396,8 @@ const Maintenance = () => {
               />
             </div>
             {statusDialogLog?.severity === "high" && newTicketStatus === "risolto" && (
-              <p className="text-xs text-muted-foreground bg-success/10 p-2 rounded">
-                ✅ Risolvendo questo ticket, la stazione tornerà DISPONIBILE automaticamente.
+              <p className="text-xs text-muted-foreground bg-success/10 p-2 rounded flex items-center gap-1.5">
+                <CheckCircle className="h-3.5 w-3.5 text-primary" /> Risolvendo questo ticket, la stazione tornerà DISPONIBILE automaticamente.
               </p>
             )}
           </div>
