@@ -17,7 +17,7 @@ const severityColor: Record<string, string> = {
   critical: "bg-red-600/10 text-red-700 border-red-600/20",
 };
 
-const ErrorLogRow = ({ log, onResolve }: { log: any; onResolve: (id: string) => void }) => {
+const ErrorLogRow = ({ log, onResolve, onUnresolve }: { log: any; onResolve: (id: string) => void; onUnresolve: (id: string) => void }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -45,16 +45,18 @@ const ErrorLogRow = ({ log, onResolve }: { log: any; onResolve: (id: string) => 
             <p className="text-xs text-muted-foreground">Utente: {log.user_email}</p>
           )}
         </div>
-        {!log.resolved && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="shrink-0 h-7 text-xs gap-1"
-            onClick={(e) => { e.stopPropagation(); onResolve(log.id); }}
-          >
-            <CheckCircle className="h-3 w-3" /> Risolvi
-          </Button>
-        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="shrink-0 h-7 text-xs gap-1"
+          onClick={(e) => { e.stopPropagation(); log.resolved ? onUnresolve(log.id) : onResolve(log.id); }}
+        >
+          {log.resolved ? (
+            <><AlertTriangle className="h-3 w-3" /> Riapri</>
+          ) : (
+            <><CheckCircle className="h-3 w-3" /> Risolvi</>
+          )}
+        </Button>
       </div>
       {expanded && (
         <div className="border-t bg-muted/20 px-4 py-3 space-y-2 text-xs">
@@ -100,12 +102,21 @@ export const AdminErrorLogs = () => {
   });
 
   const resolveMutation = useMutation({
-    mutationFn: resolveErrorLog,
+    mutationFn: (id: string) => resolveErrorLog(id, true),
     onSuccess: () => {
       toast.success("Errore segnato come risolto");
       qc.invalidateQueries({ queryKey: ["error-logs"] });
     },
     onError: () => toast.error("Errore nel risolvere il log"),
+  });
+
+  const unresolveMutation = useMutation({
+    mutationFn: (id: string) => resolveErrorLog(id, false),
+    onSuccess: () => {
+      toast.success("Errore riaperto");
+      qc.invalidateQueries({ queryKey: ["error-logs"] });
+    },
+    onError: () => toast.error("Errore nel riaprire il log"),
   });
 
   const resolveAllMutation = useMutation({
@@ -173,7 +184,7 @@ export const AdminErrorLogs = () => {
         ) : (
           <div className="space-y-2 max-h-[600px] overflow-y-auto">
             {logs.map((log: any) => (
-              <ErrorLogRow key={log.id} log={log} onResolve={(id) => resolveMutation.mutate(id)} />
+              <ErrorLogRow key={log.id} log={log} onResolve={(id) => resolveMutation.mutate(id)} onUnresolve={(id) => unresolveMutation.mutate(id)} />
             ))}
           </div>
         )}
