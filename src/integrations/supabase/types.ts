@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_error_logs: {
+        Row: {
+          component: string | null
+          created_at: string
+          error_context: string | null
+          error_message: string
+          error_stack: string | null
+          id: string
+          page_url: string | null
+          resolved: boolean
+          severity: string
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          component?: string | null
+          created_at?: string
+          error_context?: string | null
+          error_message: string
+          error_stack?: string | null
+          id?: string
+          page_url?: string | null
+          resolved?: boolean
+          severity?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          component?: string | null
+          created_at?: string
+          error_context?: string | null
+          error_message?: string
+          error_stack?: string | null
+          id?: string
+          page_url?: string | null
+          resolved?: boolean
+          severity?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       credit_packages: {
         Row: {
           credits_value: number
@@ -898,7 +940,6 @@ export type Database = {
       }
     }
     Functions: {
-      auto_offline_expired_heartbeats: { Args: never; Returns: undefined }
       get_public_stations: {
         Args: never
         Returns: {

@@ -1,6 +1,8 @@
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { handleAppError } from "@/lib/globalErrorHandler";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -27,7 +29,24 @@ import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
 import UpdatePassword from "@/pages/auth/UpdatePassword";
 
-const queryClient = new QueryClient({});
+const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      // Only show toast for queries that have already loaded data (refetch errors)
+      // Initial load errors are handled by individual components
+      if (query.state.data !== undefined) {
+        handleAppError(error, `QueryCache: ${query.queryKey}`, { silent: false });
+      } else {
+        handleAppError(error, `QueryCache: ${query.queryKey}`, { silent: true });
+      }
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      handleAppError(error, `MutationCache: ${mutation.options.mutationKey ?? "unknown"}`);
+    },
+  }),
+});
 
 const HomePage = () => {
   const { isAdmin, profile } = useAuth();
@@ -74,16 +93,18 @@ const AppRoutes = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Sonner />
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Sonner />
+        <AuthProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

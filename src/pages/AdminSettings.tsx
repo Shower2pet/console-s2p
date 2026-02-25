@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Settings, Search, CheckCircle, XCircle, AlertTriangle, RefreshCw, Save,
   Zap, Trash2, Building2, Globe, ChevronDown, ChevronRight, PenLine, Ban,
-  ShieldCheck, ShieldAlert, Link2, RotateCcw,
+  ShieldCheck, ShieldAlert, Link2, RotateCcw, Bug,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { updatePartnerData } from "@/services/profileService";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Profile } from "@/types/database";
+import { AdminErrorLogs } from "@/components/AdminErrorLogs";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const FISKALY_REQUIRED_FIELDS = [
@@ -656,6 +657,8 @@ const AdminSettings = () => {
           </Tabs>
         </CardContent>
       </Card>
+
+      <AdminErrorLogs />
 
       <Card>
         <CardHeader>
