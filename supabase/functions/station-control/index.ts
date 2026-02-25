@@ -117,15 +117,9 @@ Deno.serve(async (req) => {
   const mqttUser = Deno.env.get("MQTT_USER")!;
   const mqttPass = Deno.env.get("MQTT_PASSWORD")!;
 
-  // Normalize: ensure wss:// prefix and /mqtt path
-  let mqttHost = rawHost;
-  mqttHost = mqttHost.replace(/^mqtts?:\/\//, "wss://");
-  if (!/^wss?:\/\//.test(mqttHost)) {
-    mqttHost = "wss://" + mqttHost;
-  }
-  if (!mqttHost.includes("/mqtt")) {
-    mqttHost += "/mqtt";
-  }
+  // EMQX Serverless: WSS on port 8084 (8883 is MQTTS/TCP, not supported in Deno)
+  const cleanHost = rawHost.replace(/^(wss?|mqtts?):\/\//, "").replace(/:\d+.*$/, "").replace(/\/.*$/, "");
+  const mqttHost = `wss://${cleanHost}:8084/mqtt`;
 
   console.log(`[station-control] MQTT target: ${mqttHost}, topic: ${topic}, payload: ${payload}`);
 
