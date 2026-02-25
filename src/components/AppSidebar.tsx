@@ -95,24 +95,14 @@ const SidebarNav = ({ items, collapsed, role, displayName, email, onLogout, onNa
       ))}
     </nav>
 
-    {/* User info & Logout */}
-    <div className="border-t border-sidebar-border p-3 space-y-2">
+    {/* User info */}
+    <div className="border-t border-sidebar-border p-3">
       {!collapsed && (
         <div className="px-3 py-2">
           <p className="text-xs font-medium text-sidebar-foreground/90 truncate">{displayName}</p>
           <p className="text-[10px] text-sidebar-foreground/50 truncate">{email}</p>
         </div>
       )}
-      <button
-        onClick={onLogout}
-        className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors",
-          collapsed && "justify-center px-2"
-        )}
-      >
-        <LogOut className="h-5 w-5" />
-        {!collapsed && <span>Esci</span>}
-      </button>
     </div>
   </>
 );
