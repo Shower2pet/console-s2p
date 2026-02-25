@@ -50,10 +50,10 @@ export const fetchErrorLogs = async (limit = 100, onlyUnresolved = false) => {
 /**
  * Mark an error log as resolved
  */
-export const resolveErrorLog = async (id: string) => {
+export const resolveErrorLog = async (id: string, resolved = true) => {
   const { error } = await (supabase as any)
     .from("app_error_logs")
-    .update({ resolved: true })
+    .update({ resolved })
     .eq("id", id);
   if (error) throw error;
 };
