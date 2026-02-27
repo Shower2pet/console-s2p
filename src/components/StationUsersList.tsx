@@ -5,7 +5,7 @@ import { Search, Users, ShowerHead, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface StationUser {
   id: string;
@@ -30,13 +30,14 @@ const fetchStationUsers = async (stationId: string): Promise<StationUser[]> => {
 const StationUsersList = ({ stationId }: { stationId: string }) => {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 250);
   const { data: users, isLoading } = useQuery({
     queryKey: ["station-users", stationId],
     queryFn: () => fetchStationUsers(stationId),
   });
 
   const list = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = debouncedSearch.trim().toLowerCase();
     const source = users ?? [];
     if (!term) return source;
 
@@ -48,7 +49,7 @@ const StationUsersList = ({ stationId }: { stationId: string }) => {
         (u.phone ?? "").toLowerCase().includes(term)
       );
     });
-  }, [users, search]);
+  }, [users, debouncedSearch]);
 
   return (
     <Card>
