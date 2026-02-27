@@ -953,6 +953,7 @@ export type Database = {
           last_heartbeat_at: string
           status: string
           structure_id: string
+          structure_name: string
           type: string
           visibility: string
           washing_options: Json
