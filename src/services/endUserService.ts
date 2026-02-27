@@ -55,8 +55,7 @@ export const fetchUserNotes = async (targetUserId: string): Promise<UserNote[]> 
 
   const authorMap = new Map<string, { name: string; email: string }>();
   (staffProfiles ?? []).forEach((p: any) => {
-    const roleSuffix = p.role === 'admin' ? ' (Admin)' : '';
-    const name = ([p.first_name, p.last_name].filter(Boolean).join(" ") || p.role || "Staff") + roleSuffix;
+    const name = [p.first_name, p.last_name].filter(Boolean).join(" ") || p.role || "Staff";
     authorMap.set(p.id, { name, email: p.email ?? "" });
   });
 
