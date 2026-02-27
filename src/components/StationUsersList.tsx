@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Users, ShowerHead, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { useDebounce } from "@/hooks/useDebounce";
+
 
 interface StationUser {
   id: string;
@@ -18,10 +18,10 @@ interface StationUser {
   last_wash_at: string | null;
 }
 
-const fetchStationUsers = async (stationId: string, search: string): Promise<StationUser[]> => {
+const fetchStationUsers = async (stationId: string): Promise<StationUser[]> => {
   const { data, error } = await (supabase.rpc as any)("get_station_users", {
     p_station_id: stationId,
-    p_search: search,
+    p_search: "",
   });
   if (error) throw error;
   return (data ?? []) as StationUser[];
@@ -30,22 +30,31 @@ const fetchStationUsers = async (stationId: string, search: string): Promise<Sta
 const StationUsersList = ({ stationId }: { stationId: string }) => {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
-
-  const { data: users, isLoading, isFetching } = useQuery({
-    queryKey: ["station-users", stationId, debouncedSearch],
-    queryFn: () => fetchStationUsers(stationId, debouncedSearch),
-    placeholderData: (prev) => prev,
+  const { data: users, isLoading } = useQuery({
+    queryKey: ["station-users", stationId],
+    queryFn: () => fetchStationUsers(stationId),
   });
 
-  const list = users ?? [];
+  const list = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const source = users ?? [];
+    if (!term) return source;
+
+    return source.filter((u) => {
+      const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ").toLowerCase();
+      return (
+        fullName.includes(term) ||
+        (u.email ?? "").toLowerCase().includes(term) ||
+        (u.phone ?? "").toLowerCase().includes(term)
+      );
+    });
+  }, [users, search]);
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg font-heading flex items-center gap-2">
           <Users className="h-5 w-5 text-primary" /> Utenti ({isLoading ? "…" : list.length})
-          {isFetching && !isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
