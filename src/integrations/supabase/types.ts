@@ -952,8 +952,13 @@ export type Database = {
           image_url: string
           last_heartbeat_at: string
           status: string
+          structure_address: string
+          structure_description: string
+          structure_geo_lat: number
+          structure_geo_lng: number
           structure_id: string
           structure_name: string
+          structure_owner_id: string
           type: string
           visibility: string
           washing_options: Json
