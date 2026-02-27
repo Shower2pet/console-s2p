@@ -32,9 +32,10 @@ const StationUsersList = ({ stationId }: { stationId: string }) => {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
 
-  const { data: users, isLoading } = useQuery({
+  const { data: users, isLoading, isFetching } = useQuery({
     queryKey: ["station-users", stationId, debouncedSearch],
     queryFn: () => fetchStationUsers(stationId, debouncedSearch),
+    placeholderData: (prev) => prev,
   });
 
   const list = users ?? [];
@@ -44,6 +45,7 @@ const StationUsersList = ({ stationId }: { stationId: string }) => {
       <CardHeader className="pb-3">
         <CardTitle className="text-lg font-heading flex items-center gap-2">
           <Users className="h-5 w-5 text-primary" /> Utenti ({isLoading ? "…" : list.length})
+          {isFetching && !isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
