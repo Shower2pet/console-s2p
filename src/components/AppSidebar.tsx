@@ -1,4 +1,4 @@
-import { Home, Monitor, Users, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText, Warehouse, Menu, X, Shield, Store, User } from "lucide-react";
+import { Home, Monitor, Users, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText, Warehouse, Menu, X, Shield, Store, User, UserCheck } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
@@ -11,6 +11,7 @@ import logoVertical from "@/assets/logo-vertical.png";
 const adminItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Gestione Partner", url: "/clients", icon: Users },
+  { title: "Gestione Utenti", url: "/end-users", icon: UserCheck },
   { title: "Tutte le Strutture", url: "/structures", icon: Building2 },
   { title: "Tutte le Stazioni", url: "/stations", icon: Monitor },
   { title: "Catalogo Prodotti", url: "/products", icon: Package },
@@ -24,6 +25,7 @@ const partnerItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Le Mie Strutture", url: "/structures", icon: Building2 },
   { title: "Le Mie Stazioni", url: "/stations", icon: Monitor },
+  { title: "Gestione Utenti", url: "/end-users", icon: UserCheck },
   { title: "Pacchetti Crediti", url: "/packages", icon: Package },
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
   { title: "Transazioni & Report", url: "/financials", icon: Euro },
@@ -34,6 +36,7 @@ const managerItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "La Mia Struttura", url: "/structures", icon: Building2 },
   { title: "Gestione Stazioni", url: "/stations", icon: Monitor },
+  { title: "Gestione Utenti", url: "/end-users", icon: UserCheck },
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
 ];
 

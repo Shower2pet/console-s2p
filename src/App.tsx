@@ -25,6 +25,8 @@ import AdminSettings from "@/pages/AdminSettings";
 import Revenue from "@/pages/Revenue";
 import ProductsCatalog from "@/pages/ProductsCatalog";
 import Inventory from "@/pages/Inventory";
+import EndUsersList from "@/pages/EndUsersList";
+import EndUserDetail from "@/pages/EndUserDetail";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
 import UpdatePassword from "@/pages/auth/UpdatePassword";
@@ -84,6 +86,8 @@ const AppRoutes = () => {
           <Route path="/products" element={<ProductsCatalog />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/inventory" element={<Inventory />} />
+          <Route path="/end-users" element={<EndUsersList />} />
+          <Route path="/end-users/:id" element={<EndUserDetail />} />
           <Route path="/admin-settings" element={<AdminSettings />} />
         </Route>
       </Route>
