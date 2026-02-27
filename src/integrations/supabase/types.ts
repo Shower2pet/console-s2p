@@ -971,8 +971,10 @@ export type Database = {
           email: string
           first_name: string
           id: string
+          is_guest: boolean
           last_name: string
           phone: string
+          total_washes: number
         }[]
       }
       get_public_stations: {

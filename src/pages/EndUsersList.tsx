@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Search, ArrowRight, Loader2 } from "lucide-react";
+import { Users, Search, ArrowRight, Loader2, ShowerHead } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
@@ -64,9 +64,18 @@ const EndUsersList = () => {
                     {initials}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground text-sm truncate">{displayName}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground text-sm truncate">{displayName}</p>
+                      {u.is_guest && (
+                        <span className="rounded-md bg-warning/20 px-1.5 py-0.5 text-[10px] font-medium text-warning-foreground">Guest</span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground truncate">{u.email ?? "—"}</p>
-                    {u.phone && <p className="text-xs text-muted-foreground">{u.phone}</p>}
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <ShowerHead className="h-3 w-3" /> {u.total_washes} lavaggi
+                      </span>
+                    </div>
                   </div>
                   <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 </div>
@@ -87,7 +96,8 @@ const EndUsersList = () => {
               <tr className="border-b text-left text-muted-foreground">
                 <th className="p-4 font-medium">Nome</th>
                 <th className="p-4 font-medium">Email</th>
-                <th className="p-4 font-medium">Telefono</th>
+                <th className="p-4 font-medium">Tipo</th>
+                <th className="p-4 font-medium">Lavaggi</th>
                 <th className="p-4 font-medium">Registrato il</th>
               </tr>
             </thead>
@@ -106,7 +116,19 @@ const EndUsersList = () => {
                       </div>
                     </td>
                     <td className="p-4 text-muted-foreground truncate max-w-[200px]">{u.email ?? "—"}</td>
-                    <td className="p-4 text-muted-foreground">{u.phone ?? "—"}</td>
+                    <td className="p-4">
+                      {u.is_guest ? (
+                        <span className="rounded-md bg-warning/20 px-2 py-0.5 text-xs font-medium text-warning-foreground">Guest</span>
+                      ) : (
+                        <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">Registrato</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-foreground font-medium">
+                      <div className="flex items-center gap-1">
+                        <ShowerHead className="h-3.5 w-3.5 text-muted-foreground" />
+                        {u.total_washes}
+                      </div>
+                    </td>
                     <td className="p-4 text-muted-foreground">
                       {u.created_at ? new Date(u.created_at).toLocaleDateString("it-IT") : "—"}
                     </td>
@@ -115,7 +137,7 @@ const EndUsersList = () => {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
                     Nessun utente trovato.
                   </td>
                 </tr>

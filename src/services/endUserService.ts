@@ -7,6 +7,8 @@ export interface ConsoleUser {
   last_name: string | null;
   phone: string | null;
   created_at: string | null;
+  is_guest: boolean;
+  total_washes: number;
 }
 
 export interface UserNote {

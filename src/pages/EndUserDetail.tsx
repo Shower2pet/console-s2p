@@ -108,8 +108,11 @@ const EndUserDetail = () => {
           <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground">
             <User className="inline mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             {displayName}
+            {userDetail.is_guest && (
+              <span className="ml-2 rounded-md bg-warning/20 px-2 py-0.5 text-xs font-medium text-warning-foreground align-middle">Guest</span>
+            )}
           </h1>
-          <p className="text-sm text-muted-foreground">{userDetail.email}</p>
+          <p className="text-sm text-muted-foreground">{userDetail.email} · {userDetail.total_washes} lavaggi</p>
         </div>
       </div>
 
