@@ -977,6 +977,19 @@ export type Database = {
           total_washes: number
         }[]
       }
+      get_console_users: {
+        Args: { search_query?: string }
+        Returns: {
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          is_guest: boolean
+          last_name: string
+          phone: string
+          total_washes: number
+        }[]
+      }
       get_public_stations: {
         Args: never
         Returns: {
