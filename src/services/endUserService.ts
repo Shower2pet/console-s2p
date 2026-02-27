@@ -46,18 +46,17 @@ export const fetchUserNotes = async (targetUserId: string): Promise<UserNote[]> 
     .order("created_at", { ascending: false });
   if (error) throw error;
 
-  // Fetch author profiles for display
+  // Fetch author profiles using security definer function (bypasses RLS)
   const authorIds = [...new Set((data ?? []).map((n: any) => n.author_id))];
 
-  // Fetch staff profiles for note authors
-  const { data: staffProfiles } = await supabase
-    .from("profiles")
-    .select("id, first_name, last_name, email")
-    .in("id", authorIds);
+  const { data: staffProfiles } = await (supabase.rpc as any)("get_note_authors", {
+    author_ids: authorIds,
+  });
 
   const authorMap = new Map<string, { name: string; email: string }>();
   (staffProfiles ?? []).forEach((p: any) => {
-    const name = [p.first_name, p.last_name].filter(Boolean).join(" ") || "Staff";
+    const roleSuffix = p.role === 'admin' ? ' (Admin)' : '';
+    const name = ([p.first_name, p.last_name].filter(Boolean).join(" ") || p.role || "Staff") + roleSuffix;
     authorMap.set(p.id, { name, email: p.email ?? "" });
   });
 
