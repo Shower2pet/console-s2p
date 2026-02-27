@@ -990,6 +990,16 @@ export type Database = {
           total_washes: number
         }[]
       }
+      get_note_authors: {
+        Args: { author_ids: string[] }
+        Returns: {
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          role: Database["public"]["Enums"]["user_role"]
+        }[]
+      }
       get_public_stations: {
         Args: never
         Returns: {
