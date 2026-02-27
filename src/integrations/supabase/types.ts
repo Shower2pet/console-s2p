@@ -794,6 +794,30 @@ export type Database = {
           },
         ]
       }
+      user_notes: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          target_user_id: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          target_user_id: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       user_subscriptions: {
         Row: {
           created_at: string | null
@@ -940,6 +964,17 @@ export type Database = {
       }
     }
     Functions: {
+      get_console_user_detail: {
+        Args: { target_id: string }
+        Returns: {
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string
+        }[]
+      }
       get_public_stations: {
         Args: never
         Returns: {
