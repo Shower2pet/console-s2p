@@ -23,6 +23,7 @@ import { invokeStationControl } from "@/services/stationService";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
 import MapPicker from "@/components/MapPicker";
+import StationUsersList from "@/components/StationUsersList";
 
 /** Numeric input that tracks raw string while editing to avoid "sticky 0" issues */
 const NumericInput = ({
@@ -585,6 +586,9 @@ const StationDetail = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Station Users */}
+      <StationUsersList stationId={station.id} />
 
       {/* Maintenance Ticket */}
       {canCommand && (

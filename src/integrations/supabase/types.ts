@@ -1024,6 +1024,19 @@ export type Database = {
           washing_options: Json
         }[]
       }
+      get_station_users: {
+        Args: { p_search?: string; p_station_id: string }
+        Returns: {
+          email: string
+          first_name: string
+          id: string
+          is_guest: boolean
+          last_name: string
+          last_wash_at: string
+          phone: string
+          total_washes: number
+        }[]
+      }
       handle_station_heartbeat: {
         Args: { p_station_id: string }
         Returns: undefined
