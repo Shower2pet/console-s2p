@@ -245,6 +245,10 @@ const Onboarding = () => {
                 Completa Configurazione
               </Button>
 
+              <Button variant="ghost" onClick={() => navigate("/", { replace: true })} className="w-full text-muted-foreground">
+                Salta per ora
+              </Button>
+
               {loadingStations && (
                 <div className="flex justify-center">
                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
