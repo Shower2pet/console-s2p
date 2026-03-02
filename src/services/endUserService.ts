@@ -91,3 +91,49 @@ export const updateWalletBalance = async (walletId: string, newBalance: number) 
     .eq("id", walletId);
   if (error) throw error;
 };
+
+export const deleteEndUser = async (userId: string, isGuest: boolean) => {
+  if (isGuest) {
+    // Guest users don't have auth accounts — just clean up wash sessions by guest_email
+    // We need the email to find sessions; the userId for guests is a deterministic UUID
+    // We delete notes linked to this virtual ID
+    await supabase.from("user_notes").delete().eq("target_user_id", userId);
+    // Guest wash sessions can't be deleted via client (no RLS policy for delete)
+    // So we call the edge function which handles it with service_role
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ userId, isGuest: true }),
+      }
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Errore durante l'eliminazione dell'utente guest");
+    }
+    return;
+  }
+
+  // Registered users — use the existing delete-user edge function
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({ userId }),
+    }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || "Errore durante l'eliminazione dell'utente");
+  }
+};

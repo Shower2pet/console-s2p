@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { userId } = await req.json();
+    const { userId, isGuest } = await req.json();
     if (!userId) {
       return new Response(JSON.stringify({ error: "userId obbligatorio" }), {
         status: 400,
@@ -61,6 +61,18 @@ Deno.serve(async (req) => {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Handle guest user deletion (no auth account)
+    if (isGuest) {
+      // For guest users, clean up notes and wash sessions by finding their email
+      await adminClient.from("user_notes").delete().eq("target_user_id", userId);
+      // Guest sessions are identified by guest_email; we can't easily reverse the UUID5
+      // but we can clean notes. Wash session data is kept for analytics.
+      return new Response(
+        JSON.stringify({ message: "Dati utente guest eliminati con successo" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Prevent self-deletion
@@ -138,6 +150,12 @@ Deno.serve(async (req) => {
     await adminClient.from("maintenance_logs").delete().eq("performed_by", userId);
     await adminClient.from("wash_sessions").delete().eq("user_id", userId);
     await adminClient.from("partners_fiscal_data").delete().eq("profile_id", userId);
+    await adminClient.from("user_notes").delete().eq("target_user_id", userId);
+    await adminClient.from("user_notes").delete().eq("author_id", userId);
+    await adminClient.from("station_access_logs").delete().eq("user_id", userId);
+    await adminClient.from("user_subscriptions").delete().eq("user_id", userId);
+    await adminClient.from("daily_corrispettivi_logs").delete().eq("partner_id", userId);
+    await adminClient.from("transaction_receipts").delete().eq("partner_id", userId);
 
     // Delete profile
     await adminClient.from("profiles").delete().eq("id", userId);

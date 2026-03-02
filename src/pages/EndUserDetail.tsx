@@ -1,10 +1,21 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, User, Wallet, MessageSquare, Send, Plus, Minus } from "lucide-react";
+import { ArrowLeft, Loader2, User, Wallet, MessageSquare, Send, Plus, Minus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,13 +25,14 @@ import {
   addUserNote,
   fetchUserWallets,
   updateWalletBalance,
+  deleteEndUser,
 } from "@/services/endUserService";
 
 const EndUserDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, isAdmin } = useAuth();
   const [noteContent, setNoteContent] = useState("");
   const [creditAdjustments, setCreditAdjustments] = useState<Record<string, string>>({});
 
@@ -63,6 +75,15 @@ const EndUserDetail = () => {
     onError: () => toast.error("Errore nell'aggiornamento crediti"),
   });
 
+  const deleteUserMutation = useMutation({
+    mutationFn: () => deleteEndUser(id!, userDetail?.is_guest ?? false),
+    onSuccess: () => {
+      toast.success("Utente eliminato con successo");
+      navigate("/end-users");
+    },
+    onError: (err: Error) => toast.error(err.message || "Errore nell'eliminazione dell'utente"),
+  });
+
   const handleCreditAdjust = (walletId: string, currentBalance: number, delta: number) => {
     const adjustment = parseFloat(creditAdjustments[walletId] || "0");
     if (isNaN(adjustment) || adjustment <= 0) {
@@ -100,20 +121,58 @@ const EndUserDetail = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/end-users")}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground">
-            <User className="inline mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-            {displayName}
-            {userDetail.is_guest && (
-              <span className="ml-2 rounded-md bg-warning/20 px-2 py-0.5 text-xs font-medium text-warning-foreground align-middle">Guest</span>
-            )}
-          </h1>
-          <p className="text-sm text-muted-foreground">{userDetail.email} · {userDetail.total_washes} lavaggi</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/end-users")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-heading font-bold text-foreground">
+              <User className="inline mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              {displayName}
+              {userDetail.is_guest && (
+                <span className="ml-2 rounded-md bg-warning/20 px-2 py-0.5 text-xs font-medium text-warning-foreground align-middle">Guest</span>
+              )}
+            </h1>
+            <p className="text-sm text-muted-foreground">{userDetail.email} · {userDetail.total_washes} lavaggi</p>
+          </div>
         </div>
+
+        {isAdmin && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" className="flex-shrink-0">
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                <span className="hidden sm:inline">Elimina</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Eliminare questo utente?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {userDetail.is_guest
+                    ? "Verranno eliminati tutti i dati associati a questo utente guest (note, ecc.). Le sessioni di lavaggio saranno mantenute per gli analytics."
+                    : "Verranno eliminati definitivamente l'account, il profilo, i wallet, le note e tutti i dati associati a questo utente. Questa azione è irreversibile."}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteUserMutation.mutate()}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={deleteUserMutation.isPending}
+                >
+                  {deleteUserMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-1.5" />
+                  )}
+                  Elimina definitivamente
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       {/* User Info */}
