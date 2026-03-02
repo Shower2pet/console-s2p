@@ -81,8 +81,10 @@ export const createStation = async (station: {
   product_id: string;
   description?: string | null;
   status?: string;
+  visibility?: string;
 }) => {
-  const { error } = await supabase.from("stations").insert(station as any);
+  const payload = { visibility: "PUBLIC", ...station };
+  const { error } = await supabase.from("stations").insert(payload as any);
   if (error) throw error;
 };
 
