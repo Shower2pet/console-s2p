@@ -30,6 +30,7 @@ import EndUserDetail from "@/pages/EndUserDetail";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
 import UpdatePassword from "@/pages/auth/UpdatePassword";
+import AccessDenied from "@/pages/AccessDenied";
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -68,6 +69,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/auth/update-password" element={<UpdatePassword />} />
+      <Route path="/access-denied" element={<AccessDenied />} />
       <Route element={<PrivateRoute />}>
         <Route path="/onboarding" element={<Onboarding />} />
         <Route element={<DashboardLayout />}>

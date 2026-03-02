@@ -28,7 +28,7 @@ export const PrivateRoute = () => {
 
   // Block users without an allowed role
   if (!role || !ALLOWED_ROLES.includes(role)) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/access-denied" replace />;
   }
 
   return <Outlet />;
