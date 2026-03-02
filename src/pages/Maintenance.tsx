@@ -145,6 +145,7 @@ const Maintenance = () => {
         logId: statusDialogLog.id,
         status: newTicketStatus,
         notes: statusNotes || undefined,
+        stationId: statusDialogLog.station_id ?? undefined,
       });
       toast.success("Stato aggiornato");
       setStatusDialogLog(null);

@@ -56,6 +56,11 @@ export const useCreateMaintenanceTicket = () => {
         performed_by: performedBy ?? null,
       });
       if (error) throw error;
+
+      // Send email notification (non-blocking)
+      supabase.functions.invoke("notify-maintenance", {
+        body: { type: "opened", station_id: stationId, reason, severity },
+      }).catch((e) => console.error("notify-maintenance email error:", e));
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["maintenance_logs"] });
@@ -71,10 +76,12 @@ export const useUpdateMaintenanceStatus = () => {
       logId,
       status,
       notes,
+      stationId,
     }: {
       logId: string;
       status: string;
       notes?: string;
+      stationId?: string;
     }) => {
       const updateData: Record<string, any> = { status };
       if (notes !== undefined) updateData.notes = notes;
@@ -83,6 +90,13 @@ export const useUpdateMaintenanceStatus = () => {
         .update(updateData)
         .eq("id", logId);
       if (error) throw error;
+
+      // Send close notification if resolved
+      if (status === "risolto" && stationId) {
+        supabase.functions.invoke("notify-maintenance", {
+          body: { type: "closed", station_id: stationId },
+        }).catch((e) => console.error("notify-maintenance email error:", e));
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["maintenance_logs"] });
