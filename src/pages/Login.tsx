@@ -6,16 +6,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const ALLOWED_ROLES = ["admin", "partner", "manager"];
 
 const Login = () => {
+  const { user, role, profile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // If already logged in with an allowed role, redirect to home
+  if (user && profile && role && ALLOWED_ROLES.includes(role)) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +30,6 @@ const Login = () => {
     setSubmitting(true);
 
     try {
-      // 1. Authenticate
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) {
         setError(authError.message);
@@ -31,22 +37,21 @@ const Login = () => {
         return;
       }
 
-      // 2. Check role BEFORE the auth state propagates
-      const { data: profile } = await supabase
+      const { data: profileData } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", data.user.id)
         .maybeSingle();
 
-      if (!profile || !ALLOWED_ROLES.includes(profile.role)) {
-        // Sign out immediately — user never reaches the dashboard
+      if (!profileData || !ALLOWED_ROLES.includes(profileData.role)) {
         await supabase.auth.signOut();
         setError("Questo account non è autorizzato ad accedere alla Console di gestione.");
         setSubmitting(false);
         return;
       }
 
-      // Auth state change will now propagate and redirect to /
+      // Role is valid — onAuthStateChange will propagate and this component
+      // will re-render with user+role set, triggering the Navigate above
     } catch {
       setError("Errore imprevisto durante il login.");
     }
