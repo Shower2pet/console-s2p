@@ -7,13 +7,16 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+const ALLOWED_ROLES = ["admin", "partner", "manager"];
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +25,27 @@ const Login = () => {
     const result = await login(email, password);
     if (!result.success) {
       setError(result.error || 'Errore di login');
+      setSubmitting(false);
+      return;
     }
+
+    // Check role after successful auth
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!profile || !ALLOWED_ROLES.includes(profile.role)) {
+        await logout();
+        setError("Questo account non è autorizzato ad accedere alla Console di gestione.");
+        setSubmitting(false);
+        return;
+      }
+    }
+
     setSubmitting(false);
   };
 
