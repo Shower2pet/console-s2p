@@ -101,13 +101,14 @@ Deno.serve(async (req) => {
 
     if (stationIds.length > 0) {
       await adminClient.from("maintenance_logs").delete().in("station_id", stationIds);
-      await adminClient.from("wash_sessions").delete().in("station_id", stationIds);
-      await adminClient.from("transactions").delete().in("station_id", stationIds);
+      // Preserve transactions & wash_sessions for revenue stats — just nullify station reference
+      await adminClient.from("wash_sessions").update({ station_id: null } as any).in("station_id", stationIds);
+      await adminClient.from("transactions").update({ station_id: null }).in("station_id", stationIds);
     }
 
     if (structureIds.length > 0) {
-      // Delete transactions linked to owned structures
-      await adminClient.from("transactions").delete().in("structure_id", structureIds);
+      // Preserve transactions for revenue stats — nullify structure reference
+      await adminClient.from("transactions").update({ structure_id: null }).in("structure_id", structureIds);
       // Delete credit_packages for owned structures
       await adminClient.from("credit_packages").delete().in("structure_id", structureIds);
       // Delete structure_wallets for owned structures
@@ -142,20 +143,21 @@ Deno.serve(async (req) => {
     // Delete gate_commands linked to this user (FK constraint on auth.users)
     await adminClient.from("gate_commands").delete().eq("user_id", userId);
 
-    // Delete remaining references to this user_id
+    // Nullify references in financial data (preserve for stats)
     await adminClient.from("structure_managers").delete().eq("user_id", userId);
     await adminClient.from("credit_packages").delete().eq("owner_id", userId);
     await adminClient.from("structure_wallets").delete().eq("user_id", userId);
-    await adminClient.from("transactions").delete().eq("user_id", userId);
+    await adminClient.from("transactions").update({ user_id: null }).eq("user_id", userId);
     await adminClient.from("maintenance_logs").delete().eq("performed_by", userId);
-    await adminClient.from("wash_sessions").delete().eq("user_id", userId);
+    await adminClient.from("wash_sessions").update({ user_id: null }).eq("user_id", userId);
     await adminClient.from("partners_fiscal_data").delete().eq("profile_id", userId);
     await adminClient.from("user_notes").delete().eq("target_user_id", userId);
     await adminClient.from("user_notes").delete().eq("author_id", userId);
     await adminClient.from("station_access_logs").delete().eq("user_id", userId);
     await adminClient.from("user_subscriptions").delete().eq("user_id", userId);
-    await adminClient.from("daily_corrispettivi_logs").delete().eq("partner_id", userId);
-    await adminClient.from("transaction_receipts").delete().eq("partner_id", userId);
+    // Preserve fiscal logs for accounting — nullify partner reference
+    await adminClient.from("daily_corrispettivi_logs").update({ partner_id: null } as any).eq("partner_id", userId);
+    await adminClient.from("transaction_receipts").update({ partner_id: null } as any).eq("partner_id", userId);
 
     // Delete profile
     await adminClient.from("profiles").delete().eq("id", userId);
