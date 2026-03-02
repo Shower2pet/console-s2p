@@ -107,7 +107,7 @@ export type Database = {
           error_details: string | null
           fiskaly_record_id: string | null
           id: string
-          partner_id: string
+          partner_id: string | null
           reference_date: string
           status: string
           tax_rate: number
@@ -119,7 +119,7 @@ export type Database = {
           error_details?: string | null
           fiskaly_record_id?: string | null
           id?: string
-          partner_id: string
+          partner_id?: string | null
           reference_date: string
           status?: string
           tax_rate?: number
@@ -131,7 +131,7 @@ export type Database = {
           error_details?: string | null
           fiskaly_record_id?: string | null
           id?: string
-          partner_id?: string
+          partner_id?: string | null
           reference_date?: string
           status?: string
           tax_rate?: number
@@ -659,7 +659,7 @@ export type Database = {
           error_details: string | null
           fiskaly_record_id: string | null
           id: string
-          partner_id: string
+          partner_id: string | null
           session_id: string | null
           status: string
           tax_rate: number
@@ -671,7 +671,7 @@ export type Database = {
           error_details?: string | null
           fiskaly_record_id?: string | null
           id?: string
-          partner_id: string
+          partner_id?: string | null
           session_id?: string | null
           status?: string
           tax_rate?: number
@@ -683,7 +683,7 @@ export type Database = {
           error_details?: string | null
           fiskaly_record_id?: string | null
           id?: string
-          partner_id?: string
+          partner_id?: string | null
           session_id?: string | null
           status?: string
           tax_rate?: number
@@ -874,7 +874,7 @@ export type Database = {
           option_id: number
           option_name: string
           started_at: string
-          station_id: string
+          station_id: string | null
           status: string
           step: string
           stripe_session_id: string | null
@@ -889,7 +889,7 @@ export type Database = {
           option_id: number
           option_name: string
           started_at?: string
-          station_id: string
+          station_id?: string | null
           status?: string
           step?: string
           stripe_session_id?: string | null
@@ -904,7 +904,7 @@ export type Database = {
           option_id?: number
           option_name?: string
           started_at?: string
-          station_id?: string
+          station_id?: string | null
           status?: string
           step?: string
           stripe_session_id?: string | null
