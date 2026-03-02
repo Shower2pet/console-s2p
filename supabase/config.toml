@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.fiskaly-explorer]
 verify_jwt = false
+
+[functions.notify-maintenance]
+verify_jwt = false
