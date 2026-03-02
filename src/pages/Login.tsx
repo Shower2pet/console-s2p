@@ -4,9 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { resetPasswordForEmail } from "@/services/authService";
@@ -15,22 +15,12 @@ const ALLOWED_ROLES = ["admin", "partner", "manager"];
 
 const Login = () => {
   const { user, role, profile, isPasswordRecovery } = useAuth();
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
-
-  useEffect(() => {
-    const hashParams = new URLSearchParams(window.location.hash.replace("#", ""));
-    const searchParams = new URLSearchParams(window.location.search);
-    const recoveryType = hashParams.get("type") ?? searchParams.get("type");
-    if (recoveryType === "recovery") {
-      navigate(`/auth/update-password${window.location.search}${window.location.hash}`, { replace: true });
-    }
-  }, [navigate]);
 
   // If in password recovery mode, redirect to update password page
   if (isPasswordRecovery && user) {
