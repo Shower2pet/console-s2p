@@ -16,36 +16,40 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { login, logout } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSubmitting(true);
-    const result = await login(email, password);
-    if (!result.success) {
-      setError(result.error || 'Errore di login');
-      setSubmitting(false);
-      return;
-    }
 
-    // Check role after successful auth
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    try {
+      // 1. Authenticate
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) {
+        setError(authError.message);
+        setSubmitting(false);
+        return;
+      }
+
+      // 2. Check role BEFORE the auth state propagates
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", user.id)
+        .eq("id", data.user.id)
         .maybeSingle();
 
       if (!profile || !ALLOWED_ROLES.includes(profile.role)) {
-        await logout();
+        // Sign out immediately — user never reaches the dashboard
+        await supabase.auth.signOut();
         setError("Questo account non è autorizzato ad accedere alla Console di gestione.");
         setSubmitting(false);
         return;
       }
-    }
 
+      // Auth state change will now propagate and redirect to /
+    } catch {
+      setError("Errore imprevisto durante il login.");
+    }
     setSubmitting(false);
   };
 
