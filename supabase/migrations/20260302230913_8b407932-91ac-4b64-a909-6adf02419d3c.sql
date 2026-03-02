@@ -1,0 +1,1 @@
+UPDATE stations SET visibility = 'PUBLIC' WHERE visibility = 'HIDDEN' OR visibility IS NULL;
