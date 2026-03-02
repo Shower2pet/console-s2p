@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
-import { onAuthStateChange, getSession, updatePassword } from "@/services/authService";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import logoHorizontal from "@/assets/logo-horizontal.png";
 import logoVertical from "@/assets/logo-vertical.png";
@@ -29,8 +29,7 @@ type FormValues = z.infer<typeof schema>;
 
 const UpdatePassword = () => {
   const navigate = useNavigate();
-  const { clearPasswordRecovery } = useAuth();
-  const [checking, setChecking] = useState(true);
+  const { user, loading, clearPasswordRecovery } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<FormValues>({
@@ -38,32 +37,11 @@ const UpdatePassword = () => {
     defaultValues: { password: "", confirmPassword: "" },
   });
 
-  useEffect(() => {
-    const { data: { subscription } } = onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-        setChecking(false);
-      }
-    });
-
-    getSession().then((session) => {
-      if (session) {
-        setChecking(false);
-      } else {
-        setTimeout(async () => {
-          const s = await getSession();
-          if (!s) navigate("/login", { replace: true });
-          else setChecking(false);
-        }, 2000);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
     try {
-      await updatePassword(values.password);
+      const { error } = await supabase.auth.updateUser({ password: values.password });
+      if (error) throw error;
       clearPasswordRecovery();
       toast.success("Password aggiornata con successo!");
       navigate("/", { replace: true });
@@ -74,10 +52,32 @@ const UpdatePassword = () => {
     }
   };
 
-  if (checking) {
+  // Show loader while auth is initializing
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // If there's no session at all (e.g., direct navigation without token), 
+  // show an informative message instead of redirecting to login
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Card className="max-w-md border-0 shadow-lg">
+          <CardContent className="p-8 text-center space-y-4">
+            <h2 className="text-xl font-heading font-bold text-foreground">Link non valido o scaduto</h2>
+            <p className="text-sm text-muted-foreground">
+              Il link di recupero password potrebbe essere scaduto o già utilizzato.
+              Richiedi un nuovo link dalla pagina di login.
+            </p>
+            <Button onClick={() => navigate("/login", { replace: true })} className="w-full">
+              Torna al Login
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -116,10 +116,10 @@ const UpdatePassword = () => {
             <CardContent className="p-8">
               <div className="text-center mb-8">
                 <h1 className="text-2xl font-heading font-bold text-foreground">
-                  Benvenuto! Imposta la tua password
+                  Imposta la nuova password
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Inserisci una password sicura per attivare il tuo account
+                  Inserisci una password sicura per il tuo account
                 </p>
               </div>
 
@@ -152,7 +152,7 @@ const UpdatePassword = () => {
                     )}
                   />
                   <Button type="submit" className="w-full h-11 text-base font-heading" disabled={submitting}>
-                    {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Imposta Password e Accedi"}
+                    {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Aggiorna Password"}
                   </Button>
                 </form>
               </Form>

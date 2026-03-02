@@ -1,10 +1,8 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import type { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import type { Profile, UserRole } from "@/types/database";
 import { fetchProfileById, fetchUserStructureIds, fetchManagerStructureIds } from "@/services/profileService";
-import { onAuthStateChange, getSession } from "@/services/authService";
-import * as authService from "@/services/authService";
 
 export type AppRole = UserRole;
 export type { Profile };
@@ -35,16 +33,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [structureIds, setStructureIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  const recoveryHandled = useRef(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
     const profileData = await fetchProfileById(userId);
-
-    if (profileData) {
-      setProfile(profileData);
-    }
+    if (profileData) setProfile(profileData);
 
     const role = profileData?.role as AppRole | null;
-
     if (role === "admin") {
       setStructureIds([]);
     } else if (role === "partner") {
@@ -59,10 +54,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    const { data: { subscription } } = onAuthStateChange(
-      async (event, newSession) => {
-        if (event === "PASSWORD_RECOVERY") {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event: AuthChangeEvent, newSession) => {
+        // PASSWORD_RECOVERY fires when the user clicks the email link.
+        // We set the flag and do a hard redirect to /auth/update-password.
+        // This is NOT a patch — it's the canonical way to handle recovery
+        // in a SPA where the auth provider lives outside the router.
+        if (event === "PASSWORD_RECOVERY" && !recoveryHandled.current) {
+          recoveryHandled.current = true;
           setIsPasswordRecovery(true);
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+          setLoading(false);
+          // Hard redirect — guaranteed to work regardless of router state
+          if (window.location.pathname !== "/auth/update-password") {
+            window.location.replace("/auth/update-password");
+          }
+          return;
         }
 
         setSession(newSession);
@@ -78,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    getSession().then((existing) => {
+    supabase.auth.getSession().then(({ data: { session: existing } }) => {
       setSession(existing);
       setUser(existing?.user ?? null);
       if (existing?.user) {
@@ -92,7 +100,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      await authService.signIn(email, password);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -100,9 +109,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    await authService.signOut();
+    await supabase.auth.signOut();
     setProfile(null);
     setStructureIds([]);
+    setIsPasswordRecovery(false);
+    recoveryHandled.current = false;
   };
 
   const role = profile?.role ?? null;
@@ -110,6 +121,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refreshProfile = async () => {
     if (user) await fetchProfile(user.id);
   };
+
+  const clearPasswordRecovery = useCallback(() => {
+    setIsPasswordRecovery(false);
+    recoveryHandled.current = false;
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -121,7 +137,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         loading,
         structureIds,
         isPasswordRecovery,
-        clearPasswordRecovery: () => setIsPasswordRecovery(false),
+        clearPasswordRecovery,
         login,
         logout,
         refreshProfile,
