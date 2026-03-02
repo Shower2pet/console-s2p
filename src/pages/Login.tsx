@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { resetPasswordForEmail } from "@/services/authService";
 
 const ALLOWED_ROLES = ["admin", "partner", "manager"];
 
@@ -17,7 +18,9 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
 
   // If already logged in with an allowed role, redirect to home
   if (user && profile && role && ALLOWED_ROLES.includes(role)) {
@@ -27,6 +30,7 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setSubmitting(true);
 
     try {
@@ -49,11 +53,26 @@ const Login = () => {
         setSubmitting(false);
         return;
       }
-
-      // Role is valid — onAuthStateChange will propagate and this component
-      // will re-render with user+role set, triggering the Navigate above
     } catch {
       setError("Errore imprevisto durante il login.");
+    }
+    setSubmitting(false);
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    if (!email.trim()) {
+      setError("Inserisci la tua email per recuperare la password.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await resetPasswordForEmail(email);
+      setSuccess("Ti abbiamo inviato un'email con le istruzioni per reimpostare la password.");
+    } catch (err: any) {
+      setError(err.message || "Errore nell'invio dell'email di recupero.");
     }
     setSubmitting(false);
   };
@@ -91,8 +110,14 @@ const Login = () => {
           <Card className="border-0 shadow-lg">
             <CardContent className="p-8">
               <div className="text-center mb-8">
-                <h1 className="text-2xl font-heading font-bold text-foreground">Accedi alla Console</h1>
-                <p className="text-sm text-muted-foreground mt-1">Inserisci le tue credenziali per continuare</p>
+                <h1 className="text-2xl font-heading font-bold text-foreground">
+                  {forgotMode ? "Recupera Password" : "Accedi alla Console"}
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {forgotMode
+                    ? "Inserisci la tua email per ricevere il link di reset"
+                    : "Inserisci le tue credenziali per continuare"}
+                </p>
               </div>
 
               {error && (
@@ -101,36 +126,80 @@ const Login = () => {
                 </div>
               )}
 
-              <form onSubmit={handleLogin} className="space-y-5">
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="email@esempio.com"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    className="mt-1.5"
-                    disabled={submitting}
-                  />
+              {success && (
+                <div className="mb-4 rounded-lg bg-primary/10 border border-primary/30 p-3 text-sm text-primary">
+                  {success}
                 </div>
-                <div>
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    className="mt-1.5"
-                    disabled={submitting}
-                  />
-                </div>
+              )}
 
-                <Button type="submit" className="w-full h-11 text-base font-heading" disabled={submitting}>
-                  {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Accedi'}
-                </Button>
-              </form>
+              {forgotMode ? (
+                <form onSubmit={handleForgotPassword} className="space-y-5">
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="email@esempio.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="mt-1.5"
+                      disabled={submitting}
+                    />
+                  </div>
+
+                  <Button type="submit" className="w-full h-11 text-base font-heading" disabled={submitting}>
+                    {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Invia link di recupero'}
+                  </Button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setForgotMode(false); setError(''); setSuccess(''); }}
+                    className="w-full text-sm text-primary hover:underline"
+                  >
+                    Torna al login
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleLogin} className="space-y-5">
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="email@esempio.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="mt-1.5"
+                      disabled={submitting}
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Password</Label>
+                      <button
+                        type="button"
+                        onClick={() => { setForgotMode(true); setError(''); setSuccess(''); }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Password dimenticata?
+                      </button>
+                    </div>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      className="mt-1.5"
+                      disabled={submitting}
+                    />
+                  </div>
+
+                  <Button type="submit" className="w-full h-11 text-base font-heading" disabled={submitting}>
+                    {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Accedi'}
+                  </Button>
+                </form>
+              )}
 
               <p className="mt-6 text-center text-xs text-muted-foreground">
                 © 2026 Shower2Pet — Tutti i diritti riservati
