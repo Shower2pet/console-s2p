@@ -67,7 +67,7 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/auth/update-password" element={<UpdatePassword />} />
       <Route path="/access-denied" element={<AccessDenied />} />
       <Route element={<PrivateRoute />}>
