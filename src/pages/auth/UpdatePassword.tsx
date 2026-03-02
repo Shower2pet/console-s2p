@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
 import { onAuthStateChange, getSession, updatePassword } from "@/services/authService";
+import { useAuth } from "@/contexts/AuthContext";
 import logoHorizontal from "@/assets/logo-horizontal.png";
 import logoVertical from "@/assets/logo-vertical.png";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +29,7 @@ type FormValues = z.infer<typeof schema>;
 
 const UpdatePassword = () => {
   const navigate = useNavigate();
+  const { clearPasswordRecovery } = useAuth();
   const [checking, setChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -62,7 +64,8 @@ const UpdatePassword = () => {
     setSubmitting(true);
     try {
       await updatePassword(values.password);
-      toast.success("Password impostata con successo!");
+      clearPasswordRecovery();
+      toast.success("Password aggiornata con successo!");
       navigate("/", { replace: true });
     } catch (error: any) {
       handleAppError(error, "UpdatePassword: impostazione password");

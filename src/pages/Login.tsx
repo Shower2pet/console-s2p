@@ -14,13 +14,18 @@ import { resetPasswordForEmail } from "@/services/authService";
 const ALLOWED_ROLES = ["admin", "partner", "manager"];
 
 const Login = () => {
-  const { user, role, profile } = useAuth();
+  const { user, role, profile, isPasswordRecovery } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
+
+  // If in password recovery mode, redirect to update password page
+  if (isPasswordRecovery && user) {
+    return <Navigate to="/auth/update-password" replace />;
+  }
 
   // If already logged in with an allowed role, redirect to home
   if (user && profile && role && ALLOWED_ROLES.includes(role)) {

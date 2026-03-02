@@ -16,6 +16,8 @@ export interface AuthContextValue {
   role: AppRole | null;
   loading: boolean;
   structureIds: string[];
+  isPasswordRecovery: boolean;
+  clearPasswordRecovery: () => void;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -32,6 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [structureIds, setStructureIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
     const profileData = await fetchProfileById(userId);
@@ -57,7 +60,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const { data: { subscription } } = onAuthStateChange(
-      async (_event, newSession) => {
+      async (event, newSession) => {
+        if (event === "PASSWORD_RECOVERY") {
+          setIsPasswordRecovery(true);
+        }
+
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
@@ -113,6 +120,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role,
         loading,
         structureIds,
+        isPasswordRecovery,
+        clearPasswordRecovery: () => setIsPasswordRecovery(false),
         login,
         logout,
         refreshProfile,
