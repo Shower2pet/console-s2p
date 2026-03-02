@@ -1,7 +1,8 @@
-import { Bell, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { MobileSidebarTrigger } from "@/components/AppSidebar";
+import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
@@ -43,10 +44,7 @@ export const AppHeader = () => {
         <div className="sm:hidden">
           <GlobalSearch mobileIcon />
         </div>
-        <button className="relative rounded-lg p-2 hover:bg-accent transition-colors">
-          <Bell className="h-5 w-5 text-muted-foreground" />
-          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-destructive" />
-        </button>
+        <NotificationsDropdown />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
