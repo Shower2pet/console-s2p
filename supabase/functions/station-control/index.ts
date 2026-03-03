@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const validCommands = ["PULSE", "ON", "OFF"];
+  const validCommands = ["PULSE", "ON", "OFF", "START_TIMED_WASH"];
   if (!command || typeof command !== "string" || !validCommands.includes(command)) {
     return new Response(JSON.stringify({ error: `Invalid command. Must be one of: ${validCommands.join(", ")}` }), {
       status: 400,
@@ -82,20 +82,46 @@ Deno.serve(async (req) => {
   }
 
   // --- RBAC ---
-  if (role === "user" && (command === "ON" || command === "OFF")) {
+  if (role === "user" && (command === "ON" || command === "OFF" || command === "START_TIMED_WASH")) {
     return new Response(JSON.stringify({ error: "Forbidden: users can only use PULSE command" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
+  // --- START_TIMED_WASH: heartbeat check ---
+  if (command === "START_TIMED_WASH") {
+    if (!duration_minutes || typeof duration_minutes !== "number" || duration_minutes < 1 || duration_minutes > 30) {
+      return new Response(JSON.stringify({ error: "duration_minutes is required for START_TIMED_WASH (1-30)" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // Check heartbeat freshness
+    const { data: stationRow } = await adminClient
+      .from("stations")
+      .select("last_heartbeat_at")
+      .eq("id", station_id)
+      .single();
+
+    const lastHb = stationRow?.last_heartbeat_at ? new Date(stationRow.last_heartbeat_at).getTime() : 0;
+    if (Date.now() - lastHb > 100_000) {
+      return new Response(JSON.stringify({ error: "STATION_OFFLINE", message: "La stazione non risponde — nessun heartbeat negli ultimi 100 secondi." }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
   // --- Build MQTT topic & payload ---
   let topic: string;
   let payload: string;
+  let endsAt: string | null = null;
 
-  if (command === "PULSE") {
-    if (!duration_minutes || typeof duration_minutes !== "number" || duration_minutes <= 0 || duration_minutes > 120) {
-      return new Response(JSON.stringify({ error: "duration_minutes is required for PULSE (1-120)" }), {
+  if (command === "START_TIMED_WASH" || command === "PULSE") {
+    const maxDur = command === "START_TIMED_WASH" ? 30 : 120;
+    if (!duration_minutes || typeof duration_minutes !== "number" || duration_minutes <= 0 || duration_minutes > maxDur) {
+      return new Response(JSON.stringify({ error: `duration_minutes is required (1-${maxDur})` }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -103,6 +129,7 @@ Deno.serve(async (req) => {
     const durationMs = Math.round(duration_minutes * 60 * 1000);
     topic = `shower2pet/${station_id}/relay1/pulse`;
     payload = durationMs.toString();
+    endsAt = new Date(Date.now() + durationMs).toISOString();
   } else if (command === "ON") {
     topic = `shower2pet/${station_id}/relay1/command`;
     payload = "1";
@@ -140,7 +167,10 @@ Deno.serve(async (req) => {
       status: "sent",
     });
 
-    return new Response(JSON.stringify({ success: true, topic, payload }), {
+    const responseBody: Record<string, any> = { success: true, topic, payload };
+    if (endsAt) responseBody.ends_at = endsAt;
+
+    return new Response(JSON.stringify(responseBody), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
