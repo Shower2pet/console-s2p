@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Play
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
@@ -85,6 +85,7 @@ const StationDetail = () => {
   const [stationLng, setStationLng] = useState<number | null>(null);
   const [hwBusy, setHwBusy] = useState(false);
   const [editHasAccessGate, setEditHasAccessGate] = useState(false);
+  const [testWashMinutes, setTestWashMinutes] = useState<string>("5");
   
 
   // Fetch structures for reassignment – filtered by station owner
@@ -378,6 +379,56 @@ const StationDetail = () => {
         </Card>
         );
       })()}
+
+      {/* Test Wash (PULSE) */}
+      {canCommand && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-heading flex items-center gap-2">
+              <Play className="h-5 w-5 text-primary" /> Avvia Lavaggio Manuale
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Invia un comando PULSE alla stazione per avviare un ciclo di lavaggio della durata specificata.
+            </p>
+            <div className="flex items-end gap-3">
+              <div className="flex-1 max-w-[200px]">
+                <Label className="text-xs">Durata (minuti)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={testWashMinutes}
+                  onChange={(e) => setTestWashMinutes(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <Button
+                onClick={() => {
+                  const mins = parseInt(testWashMinutes);
+                  if (!mins || mins < 1 || mins > 120) {
+                    toast.error("Inserisci una durata valida (1-120 minuti)");
+                    return;
+                  }
+                  invokeHardware("PULSE", mins);
+                }}
+                disabled={hwBusy || !heartbeatOkForHw}
+                className="gap-2"
+              >
+                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                Avvia Lavaggio
+              </Button>
+            </div>
+            {!heartbeatOkForHw && (
+              <p className="text-xs text-destructive flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                Stazione offline — comando non disponibile.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Info Card */}
       <Card>
