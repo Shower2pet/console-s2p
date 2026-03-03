@@ -270,6 +270,44 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_referents: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          partner_id: string
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          partner_id: string
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          partner_id?: string
+          phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_referents_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partners_fiscal_data: {
         Row: {
           business_name: string
