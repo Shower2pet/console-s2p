@@ -119,10 +119,6 @@ const StructuresList = () => {
                   <Input value={name} onChange={e => setName(e.target.value)} className="mt-1.5" placeholder="Es. PetShop Roma" />
                 </div>
                 <div>
-                  <Label>Indirizzo</Label>
-                  <Input value={address} onChange={e => setAddress(e.target.value)} className="mt-1.5" placeholder="Via Roma 1, Roma" />
-                </div>
-                <div>
                   <Label>Posizione sulla mappa</Label>
                   <div className="mt-1.5">
                     <MapPicker
