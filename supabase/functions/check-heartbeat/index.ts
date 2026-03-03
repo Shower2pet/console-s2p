@@ -93,46 +93,6 @@ Deno.serve(async (req) => {
         reason: "Stazione scollegata / Nessun segnale",
       });
       results.push({ station_id: station.id, action: "ticket_created" });
-
-      // ── Send email to partner/owner ───────────────────────────────────────
-      try {
-        let ownerEmail: string | null = null;
-        if (station.structure_id) {
-          const { data: struct } = await supabase
-            .from("structures")
-            .select("owner_id")
-            .eq("id", station.structure_id)
-            .single();
-          if (struct?.owner_id) {
-            const { data: ownerProfile } = await supabase
-              .from("profiles")
-              .select("email")
-              .eq("id", struct.owner_id)
-              .single();
-            ownerEmail = ownerProfile?.email ?? null;
-          }
-        }
-        if (ownerEmail) {
-          await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${serviceKey}`,
-            },
-            body: JSON.stringify({
-              to: ownerEmail,
-              type: "maintenance_ticket_opened",
-              data: {
-                station_id: station.id,
-                reason: "Stazione scollegata / Nessun segnale",
-                severity: "high",
-              },
-            }),
-          });
-        }
-      } catch (emailErr) {
-        console.error("Failed to send maintenance email:", emailErr);
-      }
     } else {
       results.push({ station_id: station.id, action: "already_has_ticket" });
     }
