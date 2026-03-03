@@ -10,14 +10,14 @@ import logoVertical from "@/assets/logo-vertical.png";
 
 const adminItems = [
   { title: "Dashboard", url: "/", icon: Home },
+  { title: "Resoconti Incassi", url: "/revenue", icon: Euro },
   { title: "Gestione Partner", url: "/clients", icon: Users },
-  { title: "Gestione Utenti", url: "/end-users", icon: UserCheck },
   { title: "Tutte le Strutture", url: "/structures", icon: Building2 },
   { title: "Tutte le Stazioni", url: "/stations", icon: Monitor },
-  { title: "Catalogo Prodotti", url: "/products", icon: Package },
-  { title: "Resoconto Incassi", url: "/revenue", icon: Euro },
+  { title: "Gestione Utenti", url: "/end-users", icon: UserCheck },
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
   { title: "Magazzino", url: "/inventory", icon: Warehouse },
+  { title: "Catalogo Prodotti", url: "/products", icon: Package },
   { title: "Impostazioni Sistema", url: "/admin-settings", icon: Settings },
 ];
 
