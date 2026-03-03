@@ -31,21 +31,13 @@ interface RevenueChartProps {
 const RevenueChart = ({ transactions, height = 300, className }: RevenueChartProps) => {
   const [period, setPeriod] = useState<PeriodKey>("3m");
   const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>({});
+  const [draftRange, setDraftRange] = useState<{ from?: Date; to?: Date }>({});
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   const handlePeriodClick = (key: PeriodKey) => {
     setPeriod(key);
     if (key !== "custom") {
       setCustomRange({});
-    }
-  };
-
-  const handleRangeSelect = (range: { from?: Date; to?: Date } | undefined) => {
-    const newRange = range ?? {};
-    setCustomRange(newRange);
-    if (newRange.from && newRange.to) {
-      setPeriod("custom");
-      setCalendarOpen(false);
     }
   };
 
@@ -102,6 +94,8 @@ const RevenueChart = ({ transactions, height = 300, className }: RevenueChartPro
     ? `${format(customRange.from, "dd/MM/yy")} – ${format(customRange.to, "dd/MM/yy")}`
     : "Personalizzato";
 
+  const activeRange = calendarOpen ? draftRange : customRange;
+
   return (
     <Card className={className}>
       <CardHeader className="pb-2">
@@ -126,7 +120,15 @@ const RevenueChart = ({ transactions, height = 300, className }: RevenueChartPro
                 {p.label}
               </Button>
             ))}
-            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <Popover
+              open={calendarOpen}
+              onOpenChange={(open) => {
+                setCalendarOpen(open);
+                if (open) {
+                  setDraftRange({});
+                }
+              }}
+            >
               <PopoverTrigger asChild>
                 <Button
                   variant={period === "custom" ? "default" : "ghost"}
@@ -141,27 +143,20 @@ const RevenueChart = ({ transactions, height = 300, className }: RevenueChartPro
                 <Calendar
                   mode="range"
                   defaultMonth={customRange.from ?? new Date()}
-                  selected={customRange.from ? { from: customRange.from, to: customRange.to } : undefined}
+                  selected={activeRange.from ? { from: activeRange.from, to: activeRange.to } : undefined}
                   onSelect={(range: { from?: Date; to?: Date } | undefined) => {
-                    if (!range?.from) {
-                      setCustomRange({});
-                      return;
-                    }
+                    const nextRange = range ?? {};
+                    setDraftRange(nextRange);
 
-                    setCustomRange({ from: range.from, to: range.to });
-
-                    const hasCompletedRange =
-                      !!range.to && startOfDay(range.from).getTime() !== startOfDay(range.to).getTime();
-
-                    if (hasCompletedRange) {
+                    if (nextRange.from && nextRange.to) {
+                      setCustomRange(nextRange);
                       setPeriod("custom");
-                      setTimeout(() => setCalendarOpen(false), 200);
+                      setTimeout(() => setCalendarOpen(false), 150);
                     }
                   }}
                   numberOfMonths={2}
-                  min={1}
                   disabled={(date) => date > new Date()}
-                  captionLayout="dropdown-buttons"
+                  captionLayout="dropdown"
                   fromYear={2020}
                   toYear={new Date().getFullYear()}
                   className={cn("p-3 pointer-events-auto")}
