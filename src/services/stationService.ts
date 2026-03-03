@@ -62,20 +62,6 @@ export const invokeStationControl = async (
   return data;
 };
 
-/** Invoke START_TIMED_WASH command — returns { success, ends_at, duration_minutes } */
-export const invokeStartTimedWash = async (
-  stationId: string,
-  durationMinutes: number
-): Promise<{ success: boolean; ends_at: string; duration_minutes: number }> => {
-  const { data, error } = await supabase.functions.invoke("station-control", {
-    body: { station_id: stationId, command: "START_TIMED_WASH", duration_minutes: durationMinutes },
-  });
-  if (error) throw new Error(error.message ?? "Errore di comunicazione con la stazione");
-  if (data?.error === "STATION_OFFLINE") throw new Error("STATION_OFFLINE");
-  if (data?.error) throw new Error(data.error);
-  return data;
-};
-
 /** Fetch stock stations (no owner, no structure) with product join */
 export const fetchStockStations = async () => {
   const { data, error } = await supabase

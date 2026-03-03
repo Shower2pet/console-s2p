@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Play
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { fetchStructuresForOwner } from "@/services/structureService";
 import { fetchPartnersList } from "@/services/profileService";
-import { invokeStationControl, invokeStartTimedWash } from "@/services/stationService";
+import { invokeStationControl } from "@/services/stationService";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
 import MapPicker from "@/components/MapPicker";
@@ -86,8 +85,6 @@ const StationDetail = () => {
   const [stationLng, setStationLng] = useState<number | null>(null);
   const [hwBusy, setHwBusy] = useState(false);
   const [editHasAccessGate, setEditHasAccessGate] = useState(false);
-  const [manualWashMinutes, setManualWashMinutes] = useState<number>(5);
-  const [manualWashBusy, setManualWashBusy] = useState(false);
   
 
   // Fetch structures for reassignment – filtered by station owner
@@ -381,66 +378,6 @@ const StationDetail = () => {
         </Card>
         );
       })()}
-
-      {/* Avvia Lavaggio Manuale (START_TIMED_WASH) */}
-      {canCommand && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-heading flex items-center gap-2">
-              <Play className="h-5 w-5 text-primary" /> Avvia Lavaggio Manuale
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Avvia un ciclo di lavaggio manuale sulla stazione specificando la durata.
-            </p>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Durata: {manualWashMinutes} minut{manualWashMinutes === 1 ? "o" : "i"}</Label>
-              <Slider
-                min={1}
-                max={30}
-                step={1}
-                value={[manualWashMinutes]}
-                onValueChange={([v]) => setManualWashMinutes(v)}
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>1 min</span>
-                <span>30 min</span>
-              </div>
-            </div>
-            <Button
-              onClick={async () => {
-                if (!station) return;
-                setManualWashBusy(true);
-                try {
-                  const res = await invokeStartTimedWash(station.id, manualWashMinutes);
-                  const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-                  toast.success(`Lavaggio avviato — ${res.duration_minutes} minuti. Fine prevista: ${endsAtFormatted}`);
-                } catch (e: any) {
-                  if (e.message === "STATION_OFFLINE") {
-                    toast.error("Stazione offline: nessun heartbeat ricevuto negli ultimi 100 secondi. Verificare che il dispositivo sia acceso e connesso.");
-                  } else {
-                    handleAppError(e, "StationDetail: avvio lavaggio manuale");
-                  }
-                } finally {
-                  setManualWashBusy(false);
-                }
-              }}
-              disabled={manualWashBusy || !heartbeatOkForHw}
-              className="gap-2 w-full sm:w-auto"
-            >
-              {manualWashBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-              Avvia Lavaggio ({manualWashMinutes} min)
-            </Button>
-            {!heartbeatOkForHw && (
-              <p className="text-xs text-destructive flex items-center gap-1.5">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                Stazione offline — comando non disponibile.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Info Card */}
       <Card>
