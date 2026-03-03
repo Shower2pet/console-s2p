@@ -138,26 +138,23 @@ const RevenueChart = ({ transactions, height = 300, className }: RevenueChartPro
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
+                <Calendar
                   mode="range"
+                  defaultMonth={customRange.from ?? new Date()}
                   selected={customRange.from ? { from: customRange.from, to: customRange.to } : undefined}
                   onSelect={(range: any) => {
                     if (!range) {
                       setCustomRange({});
                       return;
                     }
-                    const newRange = { from: range.from, to: range.to };
-                    setCustomRange(newRange);
-                    if (newRange.from && newRange.to) {
+                    setCustomRange({ from: range.from, to: range.to });
+                    if (range.from && range.to) {
                       setPeriod("custom");
-                      setCalendarOpen(false);
+                      setTimeout(() => setCalendarOpen(false), 250);
                     }
                   }}
                   numberOfMonths={2}
                   disabled={(date) => date > new Date()}
-                  captionLayout="dropdown-buttons"
-                  fromYear={2020}
-                  toYear={new Date().getFullYear()}
                   className={cn("p-3 pointer-events-auto")}
                   locale={it}
                 />
