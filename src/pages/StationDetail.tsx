@@ -382,6 +382,64 @@ const StationDetail = () => {
         );
       })()}
 
+      {/* Manual Wash */}
+      {canCommand && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-heading flex items-center gap-2">
+              <Wrench className="h-5 w-5 text-primary" /> Avvia Lavaggio Manuale
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Durata: {manualWashMinutes} min</Label>
+              <Slider
+                min={1}
+                max={30}
+                step={1}
+                value={[manualWashMinutes]}
+                onValueChange={([v]) => setManualWashMinutes(v)}
+                disabled={!heartbeatOkForHw || washBusy}
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1 min</span>
+                <span>30 min</span>
+              </div>
+            </div>
+            <Button
+              onClick={async () => {
+                if (!station) return;
+                setWashBusy(true);
+                try {
+                  const res = await invokeStartTimedWash(station.id, manualWashMinutes);
+                  const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+                  toast.success(`Lavaggio avviato (${manualWashMinutes} min) — termine previsto: ${endsAtFormatted}`);
+                } catch (e: any) {
+                  if (e.message === "STATION_OFFLINE") {
+                    toast.error("Stazione offline: nessun heartbeat recente. Impossibile avviare il lavaggio.");
+                  } else {
+                    handleAppError(e, "StationDetail: lavaggio manuale");
+                  }
+                } finally {
+                  setWashBusy(false);
+                }
+              }}
+              disabled={!heartbeatOkForHw || washBusy}
+              className="gap-2"
+            >
+              {washBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
+              Avvia Lavaggio
+            </Button>
+            {!heartbeatOkForHw && (
+              <div className="text-xs text-destructive flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>Stazione offline — il lavaggio manuale è disabilitato.</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Info Card */}
       <Card>
         <CardHeader className="pb-3">
