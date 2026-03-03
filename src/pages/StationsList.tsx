@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Monitor, Search, Filter, Loader2, Lock, EyeOff } from "lucide-react";
+import { Monitor, Search, Filter, Loader2, Lock, EyeOff, MapPin } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { StatusBadge } from "@/components/StatusBadge";
 import { useStations } from "@/hooks/useStations";
 import { useAuth } from "@/contexts/AuthContext";
+import StationsMap from "@/components/StationsMap";
 
 const StationsList = () => {
   const { role, structureIds } = useAuth();
@@ -68,6 +69,45 @@ const StationsList = () => {
           </div>
         </CardContent>
       </Card>
+      {/* Map */}
+      {(() => {
+        const mapPins = filtered.filter(s => {
+          const lat = s.geo_lat ?? (s as any).structures?.geo_lat;
+          const lng = s.geo_lng ?? (s as any).structures?.geo_lng;
+          return lat && lng;
+        }).map(s => ({
+          id: s.id,
+          lat: Number(s.geo_lat ?? (s as any).structures?.geo_lat),
+          lng: Number(s.geo_lng ?? (s as any).structures?.geo_lng),
+          status: s.status ?? "OFFLINE",
+        }));
+
+        return mapPins.length > 0 ? (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-heading flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" /> Mappa Stazioni
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-3 mb-3 flex-wrap">
+                {[
+                  { label: "Libera", color: "#22c55e" },
+                  { label: "In uso", color: "#3b82f6" },
+                  { label: "Manutenzione", color: "#ef4444" },
+                  { label: "Offline", color: "#6b7280" },
+                ].map(l => (
+                  <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: l.color }} />
+                    {l.label}
+                  </div>
+                ))}
+              </div>
+              <StationsMap stations={mapPins} height="350px" />
+            </CardContent>
+          </Card>
+        ) : null;
+      })()}
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map(s => (
