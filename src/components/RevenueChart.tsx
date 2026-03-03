@@ -1,12 +1,15 @@
 import { useState, useMemo } from "react";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, CalendarIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { subMonths, subDays, format, isAfter, eachDayOfInterval, startOfDay } from "date-fns";
+import { subMonths, format, isAfter, isBefore, eachDayOfInterval, startOfDay } from "date-fns";
 import { it } from "date-fns/locale";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
-type PeriodKey = "3m" | "6m" | "1y" | "all";
+type PeriodKey = "3m" | "6m" | "1y" | "all" | "custom";
 const PERIODS: { key: PeriodKey; label: string }[] = [
   { key: "3m", label: "3 mesi" },
   { key: "6m", label: "6 mesi" },
@@ -27,23 +30,47 @@ interface RevenueChartProps {
 
 const RevenueChart = ({ transactions, height = 300, className }: RevenueChartProps) => {
   const [period, setPeriod] = useState<PeriodKey>("3m");
+  const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>({});
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
-  const periodStart = useMemo(() => {
-    const now = new Date();
-    switch (period) {
-      case "3m": return subMonths(now, 3);
-      case "6m": return subMonths(now, 6);
-      case "1y": return subMonths(now, 12);
-      default: return null;
+  const handlePeriodClick = (key: PeriodKey) => {
+    setPeriod(key);
+    if (key !== "custom") {
+      setCustomRange({});
     }
-  }, [period]);
+  };
+
+  const handleRangeSelect = (range: { from?: Date; to?: Date } | undefined) => {
+    const newRange = range ?? {};
+    setCustomRange(newRange);
+    if (newRange.from && newRange.to) {
+      setPeriod("custom");
+      setCalendarOpen(false);
+    }
+  };
+
+  const { rangeStart, rangeEnd } = useMemo(() => {
+    const now = new Date();
+    if (period === "custom" && customRange.from && customRange.to) {
+      return { rangeStart: startOfDay(customRange.from), rangeEnd: startOfDay(customRange.to) };
+    }
+    switch (period) {
+      case "3m": return { rangeStart: subMonths(now, 3), rangeEnd: null };
+      case "6m": return { rangeStart: subMonths(now, 6), rangeEnd: null };
+      case "1y": return { rangeStart: subMonths(now, 12), rangeEnd: null };
+      default: return { rangeStart: null, rangeEnd: null };
+    }
+  }, [period, customRange]);
 
   const chartData = useMemo(() => {
-    const filtered = periodStart
-      ? transactions.filter(t => t.created_at && isAfter(new Date(t.created_at), periodStart))
-      : transactions;
+    const filtered = transactions.filter(t => {
+      if (!t.created_at) return false;
+      const d = new Date(t.created_at);
+      if (rangeStart && !isAfter(d, rangeStart)) return false;
+      if (rangeEnd && isBefore(d, rangeEnd) === false && startOfDay(d) > startOfDay(rangeEnd)) return false;
+      return true;
+    });
 
-    // Aggregate by day
     const map: Record<string, number> = {};
     filtered.forEach(t => {
       if (!t.created_at) return;
@@ -51,13 +78,13 @@ const RevenueChart = ({ transactions, height = 300, className }: RevenueChartPro
       map[day] = (map[day] ?? 0) + Number(t.total_value ?? 0);
     });
 
-    // Fill empty days so chart isn't just one bar
     const now = new Date();
-    const start = periodStart ?? (filtered.length > 0
+    const start = rangeStart ?? (filtered.length > 0
       ? new Date(filtered.reduce((min, t) => t.created_at && t.created_at < min ? t.created_at : min, filtered[0]?.created_at ?? now.toISOString()))
       : subMonths(now, 1));
+    const end = rangeEnd ?? now;
 
-    const days = eachDayOfInterval({ start: startOfDay(start), end: startOfDay(now) });
+    const days = eachDayOfInterval({ start: startOfDay(start), end: startOfDay(end) });
 
     return days.map(day => {
       const key = format(day, "yyyy-MM-dd");
@@ -67,9 +94,13 @@ const RevenueChart = ({ transactions, height = 300, className }: RevenueChartPro
         ricavi: Number((map[key] ?? 0).toFixed(2)),
       };
     });
-  }, [transactions, periodStart]);
+  }, [transactions, rangeStart, rangeEnd]);
 
   const totalPeriod = chartData.reduce((s, d) => s + d.ricavi, 0);
+
+  const customLabel = customRange.from && customRange.to
+    ? `${format(customRange.from, "dd/MM/yy")} – ${format(customRange.to, "dd/MM/yy")}`
+    : "Personalizzato";
 
   return (
     <Card className={className}>
@@ -90,11 +121,34 @@ const RevenueChart = ({ transactions, height = 300, className }: RevenueChartPro
                 variant={period === p.key ? "default" : "ghost"}
                 size="sm"
                 className={`h-7 px-2.5 text-xs font-medium ${period === p.key ? "" : "text-muted-foreground hover:text-foreground"}`}
-                onClick={() => setPeriod(p.key)}
+                onClick={() => handlePeriodClick(p.key)}
               >
                 {p.label}
               </Button>
             ))}
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={period === "custom" ? "default" : "ghost"}
+                  size="sm"
+                  className={`h-7 px-2.5 text-xs font-medium gap-1 ${period === "custom" ? "" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {period === "custom" ? customLabel : "Periodo"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customRange.from && customRange.to ? { from: customRange.from, to: customRange.to } : undefined}
+                  onSelect={handleRangeSelect as any}
+                  numberOfMonths={2}
+                  disabled={(date) => date > new Date()}
+                  className={cn("p-3 pointer-events-auto")}
+                  locale={it}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </CardHeader>
