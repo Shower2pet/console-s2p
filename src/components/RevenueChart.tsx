@@ -2,8 +2,9 @@ import { useState, useMemo } from "react";
 import { TrendingUp, CalendarIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { subMonths, format, isAfter, isBefore, eachDayOfInterval, startOfDay } from "date-fns";
+import { subMonths, format, isAfter, isBefore, eachDayOfInterval, startOfDay, setYear } from "date-fns";
 import { it } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -33,6 +34,7 @@ const RevenueChart = ({ transactions, height = 300, className }: RevenueChartPro
   const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>({});
   const [draftRange, setDraftRange] = useState<{ from?: Date; to?: Date }>({});
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
 
   const handlePeriodClick = (key: PeriodKey) => {
     setPeriod(key);
@@ -126,6 +128,7 @@ const RevenueChart = ({ transactions, height = 300, className }: RevenueChartPro
                 setCalendarOpen(open);
                 if (open) {
                   setDraftRange({});
+                  setCalendarMonth(customRange.from ?? new Date());
                 }
               }}
             >
@@ -140,9 +143,28 @@ const RevenueChart = ({ transactions, height = 300, className }: RevenueChartPro
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
+                <div className="flex items-center justify-center gap-2 px-3 pt-3 pb-1">
+                  <span className="text-sm text-muted-foreground">Anno:</span>
+                  <Select
+                    value={String(calendarMonth.getFullYear())}
+                    onValueChange={(val) => {
+                      setCalendarMonth(setYear(calendarMonth, Number(val)));
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[90px] text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="pointer-events-auto">
+                      {Array.from({ length: new Date().getFullYear() - 2019 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Calendar
                   mode="range"
-                  defaultMonth={customRange.from ?? new Date()}
+                  month={calendarMonth}
+                  onMonthChange={setCalendarMonth}
                   selected={activeRange.from ? { from: activeRange.from, to: activeRange.to } : undefined}
                   onSelect={(range: { from?: Date; to?: Date } | undefined) => {
                     const nextRange = range ?? {};
@@ -156,9 +178,6 @@ const RevenueChart = ({ transactions, height = 300, className }: RevenueChartPro
                   }}
                   numberOfMonths={2}
                   disabled={(date) => date > new Date()}
-                  captionLayout="dropdown"
-                  fromYear={2020}
-                  toYear={new Date().getFullYear()}
                   className={cn("p-3 pointer-events-auto")}
                   locale={it}
                 />
