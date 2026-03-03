@@ -1,25 +1,18 @@
-import { useState } from "react";
 import { Euro, Monitor, TrendingUp, ArrowRight, Loader2, Droplets, MapPin } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTransactionsByDate } from "@/hooks/useTransactions";
 import { useStations } from "@/hooks/useStations";
 import { useStructures } from "@/hooks/useStructures";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { format, subDays, startOfMonth } from "date-fns";
-import { it } from "date-fns/locale";
+import { format } from "date-fns";
 import StationsMap from "@/components/StationsMap";
 import RevenueChart from "@/components/RevenueChart";
-
-type Period = "today" | "7d" | "month";
 
 const ClientHome = () => {
   const { profile, role, structureIds } = useAuth();
   const displayName = profile?.legal_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Partner";
-  const [period, setPeriod] = useState<Period>("month");
 
   const structureId = role === "manager" && structureIds.length === 1 ? structureIds[0] : undefined;
   const { chartData, transactions, isLoading: txLoading } = useTransactionsByDate(structureId);
@@ -34,14 +27,6 @@ const ClientHome = () => {
   const todayRevenue = (transactions ?? []).filter(t => t.created_at?.startsWith(today)).reduce((s, t) => s + Number(t.total_value ?? 0), 0);
   const todayWashes = (transactions ?? []).filter(t => t.created_at?.startsWith(today) && (t.transaction_type === "WASH_SERVICE" || t.transaction_type === "GUEST_WASH")).length;
   const totalWashes = (transactions ?? []).filter(t => t.transaction_type === "WASH_SERVICE" || t.transaction_type === "GUEST_WASH").length;
-
-  // Chart period filtering
-  const now = new Date();
-  const periodStart = period === "today" ? today
-    : period === "7d" ? subDays(now, 7).toISOString().slice(0, 10)
-    : startOfMonth(now).toISOString().slice(0, 10);
-
-  const filteredChart = chartData.filter(d => d.date >= periodStart);
 
   // Map pins
   const mapPins = (stations ?? []).filter(s => {
@@ -80,45 +65,7 @@ const ClientHome = () => {
       </div>
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2 animate-fade-in">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-lg font-heading">Ricavi per Giorno</CardTitle>
-              <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-                <SelectTrigger className="w-[160px] h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Oggi</SelectItem>
-                  <SelectItem value="7d">Ultimi 7 giorni</SelectItem>
-                  <SelectItem value="month">Questo Mese</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={filteredChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(210, 20%, 90%)" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 11 }}
-                  stroke="hsl(207, 20%, 46%)"
-                  tickFormatter={(v) => {
-                    try { return format(new Date(v), "dd MMM", { locale: it }); } catch { return v; }
-                  }}
-                />
-                <YAxis tick={{ fontSize: 12 }} stroke="hsl(207, 20%, 46%)" />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "hsl(0,0%,100%)", border: "1px solid hsl(210,20%,90%)", borderRadius: "0.75rem", fontFamily: "Outfit" }}
-                  formatter={(value: number) => [`€${value.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`, "Ricavi"]}
-                  labelFormatter={(v) => { try { return format(new Date(v), "dd MMMM yyyy", { locale: it }); } catch { return v; } }}
-                />
-                <Bar dataKey="revenue" fill="hsl(207, 100%, 29%)" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        <RevenueChart transactions={transactions ?? []} height={240} className="lg:col-span-2 animate-fade-in" />
 
         {role === "partner" && (
           <Card className="animate-fade-in">
@@ -163,8 +110,6 @@ const ClientHome = () => {
           </Card>
         )}
       </div>
-
-      <RevenueChart transactions={transactions ?? []} height={280} className="animate-fade-in" />
 
       {/* Stations Map */}
       {mapPins.length > 0 && (
