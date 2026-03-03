@@ -142,19 +142,28 @@ const RevenueChart = ({ transactions, height = 300, className }: RevenueChartPro
                   mode="range"
                   defaultMonth={customRange.from ?? new Date()}
                   selected={customRange.from ? { from: customRange.from, to: customRange.to } : undefined}
-                  onSelect={(range: any) => {
-                    if (!range) {
+                  onSelect={(range: { from?: Date; to?: Date } | undefined) => {
+                    if (!range?.from) {
                       setCustomRange({});
                       return;
                     }
+
                     setCustomRange({ from: range.from, to: range.to });
-                    if (range.from && range.to) {
+
+                    const hasCompletedRange =
+                      !!range.to && startOfDay(range.from).getTime() !== startOfDay(range.to).getTime();
+
+                    if (hasCompletedRange) {
                       setPeriod("custom");
-                      setTimeout(() => setCalendarOpen(false), 250);
+                      setTimeout(() => setCalendarOpen(false), 200);
                     }
                   }}
                   numberOfMonths={2}
+                  min={1}
                   disabled={(date) => date > new Date()}
+                  captionLayout="dropdown-buttons"
+                  fromYear={2020}
+                  toYear={new Date().getFullYear()}
                   className={cn("p-3 pointer-events-auto")}
                   locale={it}
                 />
