@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
+import { useNavigate } from "react-router-dom";
 
 type TicketStatus = "open" | "in_progress" | "risolto";
 type SortField = "created_at" | "severity" | "status";
@@ -44,6 +45,7 @@ const Maintenance = () => {
   const { user, isAdmin } = useAuth();
   const createTicket = useCreateMaintenanceTicket();
   const updateStatus = useUpdateMaintenanceStatus();
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -265,7 +267,7 @@ const Maintenance = () => {
                     : "Sistema";
 
                   return (
-                    <TableRow key={log.id}>
+                    <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/maintenance/${log.id}`)}>
                       <TableCell className="font-medium text-foreground max-w-[200px] truncate">
                         {title}
                       </TableCell>
@@ -292,7 +294,8 @@ const Maintenance = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setStatusDialogLog(log);
                               setNewTicketStatus(log.status === "open" ? "in_progress" : "risolto");
                               setStatusNotes(log.notes ?? "");

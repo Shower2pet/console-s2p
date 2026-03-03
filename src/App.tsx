@@ -19,6 +19,7 @@ import ClientsList from "@/pages/ClientsList";
 import ClientDetail from "@/pages/ClientDetail";
 import CreatePartner from "@/pages/CreatePartner";
 import Maintenance from "@/pages/Maintenance";
+import MaintenanceDetail from "@/pages/MaintenanceDetail";
 import Financials from "@/pages/Financials";
 import Settings from "@/pages/Settings";
 import AdminSettings from "@/pages/AdminSettings";
@@ -83,6 +84,7 @@ const AppRoutes = () => {
           <Route path="/clients/new" element={<CreatePartner />} />
           <Route path="/clients/:id" element={<ClientDetail />} />
           <Route path="/maintenance" element={<Maintenance />} />
+          <Route path="/maintenance/:id" element={<MaintenanceDetail />} />
           <Route path="/financials" element={<Financials />} />
           <Route path="/revenue" element={<Revenue />} />
           <Route path="/packages" element={<Packages />} />
