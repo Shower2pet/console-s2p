@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
     if (type === "opened") {
       const resendApiKey = Deno.env.get("RESEND_API_KEY");
       if (resendApiKey) {
-        const supportEmail = "supporto@shower2pet.com";
+        const supportEmail = "info@shower2pet.com";
 
         // Get station details for richer email
         const { data: stationInfo } = await adminClient
