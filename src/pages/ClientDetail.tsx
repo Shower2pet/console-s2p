@@ -18,6 +18,7 @@ import { fetchStructuresByOwner } from "@/services/structureService";
 import { fetchStationsByOwner } from "@/services/stationService";
 import { deleteUser } from "@/services/userService";
 import { FiskalySetupCard } from "@/components/FiskalySetupCard";
+import PartnerReferents from "@/components/PartnerReferents";
 
 const ClientDetail = () => {
   const { id } = useParams();
@@ -107,6 +108,9 @@ const ClientDetail = () => {
         invalidateKeys={[["client-profile", id!]]}
         isAdmin
       />
+
+      {/* Referenti */}
+      <PartnerReferents partnerId={id!} />
 
       {/* Structures */}
       <div>
