@@ -201,7 +201,6 @@ const StructureDetail = () => {
                       </CardHeader>
                       <CardContent>
                         <p className="text-xs text-muted-foreground capitalize">Tipo: {s.type}</p>
-                        <p className="text-xs text-muted-foreground capitalize">Tipo: {s.type}</p>
                       </CardContent>
                     </Card>
                   </Link>
