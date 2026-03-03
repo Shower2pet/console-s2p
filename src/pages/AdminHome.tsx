@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format, subDays, startOfMonth } from "date-fns";
 import { it } from "date-fns/locale";
 import StationsMap from "@/components/StationsMap";
+import RevenueChart from "@/components/RevenueChart";
 
 type Period = "today" | "7d" | "month";
 
@@ -131,6 +132,8 @@ const AdminHome = () => {
           </CardContent>
         </Card>
       </div>
+
+      <RevenueChart transactions={transactions ?? []} height={280} className="animate-fade-in" />
 
       {mapPins.length > 0 && (
         <Card className="animate-fade-in">
