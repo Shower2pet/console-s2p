@@ -178,7 +178,8 @@ const Settings = () => {
         <PartnerReferents partnerId={user.id} />
       )}
 
-      {role === "partner" && <SubscriptionPlansSection userId={user!.id} />}
+      {/* Abbonamenti nascosti per ora */}
+      {/* {role === "partner" && <SubscriptionPlansSection userId={user!.id} />} */}
     </div>
   );
 };
