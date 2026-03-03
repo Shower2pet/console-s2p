@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Send to structure owner
     await fetch(`${supabaseUrl}/functions/v1/send-email`, {
       method: "POST",
       headers: {
@@ -119,7 +120,62 @@ Deno.serve(async (req) => {
       body: JSON.stringify({ to: ownerEmail, type: emailType, data: emailData }),
     });
 
-    return new Response(JSON.stringify({ ok: true, sent_to: ownerEmail }), {
+    const sentTo = [ownerEmail];
+
+    // Send support email when a ticket is opened
+    if (type === "opened") {
+      const resendApiKey = Deno.env.get("RESEND_API_KEY");
+      if (resendApiKey) {
+        const supportEmail = "supporto@shower2pet.com";
+
+        // Get station details for richer email
+        const { data: stationInfo } = await adminClient
+          .from("stations")
+          .select("type, structure_id, structures(name)")
+          .eq("id", station_id)
+          .single();
+
+        const structureName = (stationInfo as any)?.structures?.name ?? "N/A";
+        const stationType = stationInfo?.type ?? "N/A";
+
+        const htmlBody = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+            <div style="background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 12px; padding: 24px;">
+              <h2 style="margin: 0 0 16px; color: #991B1B; font-size: 20px;">🔧 Nuovo Ticket di Manutenzione</h2>
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #374151;">
+                <tr><td style="padding: 6px 0; font-weight: bold;">Stazione:</td><td>${station_id}</td></tr>
+                <tr><td style="padding: 6px 0; font-weight: bold;">Tipo:</td><td>${stationType}</td></tr>
+                <tr><td style="padding: 6px 0; font-weight: bold;">Struttura:</td><td>${structureName}</td></tr>
+                <tr><td style="padding: 6px 0; font-weight: bold;">Gravità:</td><td style="color: ${severity === 'high' ? '#DC2626' : '#D97706'}; font-weight: bold;">${severity === 'high' ? 'ALTA' : 'BASSA'}</td></tr>
+                <tr><td style="padding: 6px 0; font-weight: bold;">Motivo:</td><td>${reason ?? 'N/A'}</td></tr>
+              </table>
+            </div>
+            <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 20px 0;" />
+            <p style="color: #9CA3AF; font-size: 11px; margin: 0;">Shower2Pet — Notifica automatica ticket</p>
+          </div>`;
+
+        try {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${resendApiKey}`,
+            },
+            body: JSON.stringify({
+              from: "Shower2Pet <noreply@shower2pet.com>",
+              to: supportEmail,
+              subject: `🔧 Nuovo Ticket ${severity === 'high' ? '[ALTA]' : '[BASSA]'} — Stazione ${station_id}`,
+              html: htmlBody,
+            }),
+          });
+          sentTo.push(supportEmail);
+        } catch (e) {
+          console.error("Failed to send support email:", e);
+        }
+      }
+    }
+
+    return new Response(JSON.stringify({ ok: true, sent_to: sentTo }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
