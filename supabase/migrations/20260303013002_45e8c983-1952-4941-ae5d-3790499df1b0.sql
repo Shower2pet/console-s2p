@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS on_station_status_change ON public.stations;
