@@ -24,6 +24,8 @@ import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
 import MapPicker from "@/components/MapPicker";
 import StationUsersList from "@/components/StationUsersList";
+import StationWashLogs from "@/components/StationWashLogs";
+import StationMaintenanceHistory from "@/components/StationMaintenanceHistory";
 
 /** Numeric input that tracks raw string while editing to avoid "sticky 0" issues */
 const NumericInput = ({
@@ -589,6 +591,12 @@ const StationDetail = () => {
 
       {/* Station Users */}
       <StationUsersList stationId={station.id} />
+
+      {/* Wash Session Logs */}
+      <StationWashLogs stationId={station.id} />
+
+      {/* Maintenance History */}
+      <StationMaintenanceHistory stationId={station.id} />
 
       {/* Maintenance Ticket */}
       {canCommand && (
