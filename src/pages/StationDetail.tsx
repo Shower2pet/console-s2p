@@ -285,6 +285,8 @@ const StationDetail = () => {
   const canRemoveFromClient = isAdmin;
   const canChangeOwner = isAdmin;
 
+  const isTubStation = ((station as any).products?.type ?? "").toLowerCase() === "vasca" || station.type?.toLowerCase() === "vasca";
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -443,7 +445,7 @@ const StationDetail = () => {
       )}
 
       {/* Tub Clean — only for vasca-type stations */}
-      {canCommand && station.type?.toLowerCase() === "vasca" && (
+      {canCommand && isTubStation && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-heading flex items-center gap-2">
