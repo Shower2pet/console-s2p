@@ -86,7 +86,7 @@ const StationDetail = () => {
   const [stationLng, setStationLng] = useState<number | null>(null);
   const [hwBusy, setHwBusy] = useState(false);
   const [editHasAccessGate, setEditHasAccessGate] = useState(false);
-  const [manualWashSeconds, setManualWashSeconds] = useState(10);
+  const [manualWashMinutes, setManualWashMinutes] = useState(5);
   const [washBusy, setWashBusy] = useState(false);
   
 
@@ -390,20 +390,20 @@ const StationDetail = () => {
               <Wrench className="h-5 w-5 text-primary" /> Avvia Lavaggio Manuale
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Durata: {manualWashSeconds} sec</Label>
+              <Label className="text-sm font-medium">Durata: {manualWashMinutes} min</Label>
               <Slider
                 min={1}
-                max={25}
+                max={60}
                 step={1}
-                value={[manualWashSeconds]}
-                onValueChange={([v]) => setManualWashSeconds(v)}
+                value={[manualWashMinutes]}
+                onValueChange={([v]) => setManualWashMinutes(v)}
                 disabled={!heartbeatOkForHw || washBusy}
               />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>1 sec</span>
-                <span>25 sec</span>
+                <span>1 min</span>
+                <span>60 min</span>
               </div>
             </div>
             <Button
@@ -411,9 +411,9 @@ const StationDetail = () => {
                 if (!station) return;
                 setWashBusy(true);
                 try {
-                  const res = await invokeStartTimedWash(station.id, manualWashSeconds);
-                  const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-                  toast.success(`Lavaggio avviato (${manualWashSeconds} sec) — termine previsto: ${endsAtFormatted}`);
+                  const res = await invokeStartTimedWash(station.id, manualWashMinutes * 60);
+                  const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+                  toast.success(`Lavaggio avviato (${manualWashMinutes} min) — termine previsto: ${endsAtFormatted}`);
                 } catch (e: any) {
                   if (e.message === "STATION_OFFLINE") {
                     toast.error("Stazione offline: nessun heartbeat recente. Impossibile avviare il lavaggio.");
@@ -428,7 +428,7 @@ const StationDetail = () => {
               className="gap-2"
             >
               {washBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
-              Avvia Lavaggio
+              Avvia Lavaggio ({manualWashMinutes} min)
             </Button>
             {!heartbeatOkForHw && (
               <div className="text-xs text-destructive flex items-center gap-1.5">
@@ -658,28 +658,28 @@ const StationDetail = () => {
               <Power className="h-5 w-5 text-primary" /> Avvia Lavaggio Manuale
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Durata: {manualWashSeconds} secondi</Label>
+              <Label>Durata: {manualWashMinutes} minuti</Label>
               <Slider
                 min={1}
-                max={25}
+                max={60}
                 step={1}
-                value={[manualWashSeconds]}
-                onValueChange={([v]) => setManualWashSeconds(v)}
+                value={[manualWashMinutes]}
+                onValueChange={([v]) => setManualWashMinutes(v)}
               />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>1 sec</span>
-                <span>25 sec</span>
+                <span>1 min</span>
+                <span>60 min</span>
               </div>
             </div>
             <Button
               onClick={async () => {
                 setWashBusy(true);
                 try {
-                  const res = await invokeStartTimedWash(station.id, manualWashSeconds);
-                  const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-                  toast.success(`Lavaggio avviato (${manualWashSeconds} sec) — Fine prevista: ${endsAtFormatted}`);
+                  const res = await invokeStartTimedWash(station.id, manualWashMinutes * 60);
+                  const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+                  toast.success(`Lavaggio avviato (${manualWashMinutes} min) — Fine prevista: ${endsAtFormatted}`);
                 } catch (e: any) {
                   if (e.message === "STATION_OFFLINE") {
                     toast.error("Stazione offline — nessun heartbeat negli ultimi 100 secondi.");
@@ -694,7 +694,7 @@ const StationDetail = () => {
               className="w-full gap-2"
             >
               {washBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
-              Avvia Lavaggio ({manualWashSeconds} sec)
+              Avvia Lavaggio ({manualWashMinutes} min)
             </Button>
             {!heartbeatOkForHw && (
               <p className="text-xs text-destructive flex items-center gap-1.5">
