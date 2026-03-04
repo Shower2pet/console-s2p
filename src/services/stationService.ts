@@ -77,6 +77,21 @@ export const invokeStartTimedWash = async (
   return data;
 };
 
+/** Invoke START_TUB_CLEAN — returns { success, ends_at } */
+export const invokeStartTubClean = async (
+  stationId: string,
+  durationSeconds: number
+): Promise<{ success: boolean; ends_at: string }> => {
+  const body = { station_id: stationId, command: "START_TUB_CLEAN", duration_seconds: durationSeconds };
+  const { data, error } = await supabase.functions.invoke("station-control", { body });
+  if (error) throw new Error(error.message ?? "Errore di comunicazione con la stazione");
+  if (data?.error === "STATION_OFFLINE") {
+    throw new Error("STATION_OFFLINE");
+  }
+  if (data?.error) throw new Error(data.message || data.error);
+  return data;
+};
+
 /** Fetch stock stations (no owner, no structure) with product join */
 export const fetchStockStations = async () => {
   const { data, error } = await supabase

@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const validCommands = ["PULSE", "ON", "OFF", "START_TIMED_WASH"];
+  const validCommands = ["PULSE", "ON", "OFF", "START_TIMED_WASH", "START_TUB_CLEAN"];
   if (!command || typeof command !== "string" || !validCommands.includes(command)) {
     return new Response(JSON.stringify({ error: `Invalid command. Must be one of: ${validCommands.join(", ")}` }), {
       status: 400,
@@ -84,15 +84,15 @@ Deno.serve(async (req) => {
   }
 
   // --- RBAC ---
-  if (role === "user" && (command === "ON" || command === "OFF" || command === "START_TIMED_WASH")) {
+  if (role === "user" && (command === "ON" || command === "OFF" || command === "START_TIMED_WASH" || command === "START_TUB_CLEAN")) {
     return new Response(JSON.stringify({ error: "Forbidden: users can only use PULSE command" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // --- START_TIMED_WASH: heartbeat check ---
-  if (command === "START_TIMED_WASH") {
+  // --- START_TIMED_WASH / START_TUB_CLEAN: heartbeat check ---
+  if (command === "START_TIMED_WASH" || command === "START_TUB_CLEAN") {
     if (!effectiveSeconds || typeof effectiveSeconds !== "number" || effectiveSeconds < 1 || effectiveSeconds > 3600) {
       return new Response(JSON.stringify({ error: "duration_seconds is required for START_TIMED_WASH (1-3600)" }), {
         status: 400,
@@ -120,15 +120,16 @@ Deno.serve(async (req) => {
   let payload: string;
   let endsAt: string | null = null;
 
-  if (command === "START_TIMED_WASH") {
-    // Long-duration timed wash: turn relay ON, server-side cleanup turns it OFF at ends_at
+  if (command === "START_TIMED_WASH" || command === "START_TUB_CLEAN") {
+    // Timed relay activation: relay1 for wash, relay2 for tub clean
     if (!effectiveSeconds || typeof effectiveSeconds !== "number" || effectiveSeconds < 1 || effectiveSeconds > 3600) {
-      return new Response(JSON.stringify({ error: "duration_seconds is required for START_TIMED_WASH (1-3600)" }), {
+      return new Response(JSON.stringify({ error: "duration_seconds is required (1-3600)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    topic = `shower2pet/${station_id}/relay1/command`;
+    const relay = command === "START_TUB_CLEAN" ? "relay2" : "relay1";
+    topic = `shower2pet/${station_id}/${relay}/command`;
     payload = "1";
     endsAt = new Date(Date.now() + effectiveSeconds * 1000).toISOString();
   } else if (command === "PULSE") {
@@ -182,12 +183,13 @@ Deno.serve(async (req) => {
       status: "sent",
     });
 
-    // Persist timed manual wash so server-side cleanup can turn relay OFF at ends_at
-    if (command === "START_TIMED_WASH" && endsAt && effectiveSeconds) {
+    // Persist timed session so server-side cleanup can turn relay OFF at ends_at
+    if ((command === "START_TIMED_WASH" || command === "START_TUB_CLEAN") && endsAt && effectiveSeconds) {
+      const optionName = command === "START_TUB_CLEAN" ? "Manual Tub Clean" : "Manual Console Wash";
       const { error: sessionInsertError } = await adminClient.from("wash_sessions").insert({
         station_id,
         option_id: 0,
-        option_name: "Manual Console Wash",
+        option_name: optionName,
         total_seconds: effectiveSeconds,
         step: "timer",
         status: "ACTIVE",

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
@@ -19,7 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { fetchStructuresForOwner } from "@/services/structureService";
 import { fetchPartnersList } from "@/services/profileService";
-import { invokeStationControl, invokeStartTimedWash } from "@/services/stationService";
+import { invokeStationControl, invokeStartTimedWash, invokeStartTubClean } from "@/services/stationService";
 import { toast } from "sonner";
 import { Slider } from "@/components/ui/slider";
 import { handleAppError } from "@/lib/globalErrorHandler";
@@ -88,6 +88,8 @@ const StationDetail = () => {
   const [editHasAccessGate, setEditHasAccessGate] = useState(false);
   const [manualWashMinutes, setManualWashMinutes] = useState(5);
   const [washBusy, setWashBusy] = useState(false);
+  const [tubCleanMinutes, setTubCleanMinutes] = useState(5);
+  const [tubCleanBusy, setTubCleanBusy] = useState(false);
   
 
   // Fetch structures for reassignment – filtered by station owner
@@ -434,6 +436,65 @@ const StationDetail = () => {
               <div className="text-xs text-destructive flex items-center gap-1.5">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                 <span>Stazione offline — il lavaggio manuale è disabilitato.</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tub Clean — only for vasca-type stations */}
+      {canCommand && station.type?.toLowerCase() === "vasca" && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-heading flex items-center gap-2">
+              <Droplets className="h-5 w-5 text-primary" /> Pulizia Automatica Vasca
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Durata: {tubCleanMinutes} min</Label>
+              <Slider
+                min={1}
+                max={60}
+                step={1}
+                value={[tubCleanMinutes]}
+                onValueChange={([v]) => setTubCleanMinutes(v)}
+                disabled={!heartbeatOkForHw || tubCleanBusy}
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1 min</span>
+                <span>60 min</span>
+              </div>
+            </div>
+            <Button
+              onClick={async () => {
+                if (!station) return;
+                setTubCleanBusy(true);
+                try {
+                  const res = await invokeStartTubClean(station.id, tubCleanMinutes * 60);
+                  const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+                  toast.success(`Pulizia vasca avviata (${tubCleanMinutes} min) — termine previsto: ${endsAtFormatted}`);
+                } catch (e: any) {
+                  if (e.message === "STATION_OFFLINE") {
+                    toast.error("Stazione offline: nessun heartbeat recente. Impossibile avviare la pulizia.");
+                  } else {
+                    handleAppError(e, "StationDetail: pulizia vasca");
+                  }
+                } finally {
+                  setTubCleanBusy(false);
+                }
+              }}
+              disabled={!heartbeatOkForHw || tubCleanBusy}
+              variant="secondary"
+              className="gap-2"
+            >
+              {tubCleanBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Droplets className="h-4 w-4" />}
+              Avvia Pulizia ({tubCleanMinutes} min)
+            </Button>
+            {!heartbeatOkForHw && (
+              <div className="text-xs text-destructive flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>Stazione offline — la pulizia vasca è disabilitata.</span>
               </div>
             )}
           </CardContent>
