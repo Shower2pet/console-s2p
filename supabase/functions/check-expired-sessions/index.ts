@@ -9,6 +9,7 @@ const corsHeaders = {
 type ExpiredSession = {
   id: string;
   station_id: string | null;
+  option_name: string;
 };
 
 Deno.serve(async (req) => {
@@ -32,7 +33,7 @@ Deno.serve(async (req) => {
 
   const { data: expiredSessions, error: expiredErr } = await adminClient
     .from("wash_sessions")
-    .select("id, station_id")
+    .select("id, station_id, option_name")
     .eq("status", "ACTIVE")
     .lte("ends_at", nowIso)
     .limit(500);
@@ -52,7 +53,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  const sessionsByStation = new Map<string, string[]>();
+  // Group sessions by station+relay
+  type StationRelay = { stationId: string; relay: string };
+  const sessionsByStationRelay = new Map<string, { sessionIds: string[]; relay: string; stationId: string }>();
   const orphanSessionIds: string[] = [];
 
   for (const session of sessions) {
@@ -60,9 +63,11 @@ Deno.serve(async (req) => {
       orphanSessionIds.push(session.id);
       continue;
     }
-    const list = sessionsByStation.get(session.station_id) ?? [];
-    list.push(session.id);
-    sessionsByStation.set(session.station_id, list);
+    const relay = session.option_name === "Manual Tub Clean" ? "relay2" : "relay1";
+    const key = `${session.station_id}::${relay}`;
+    const entry = sessionsByStationRelay.get(key) ?? { sessionIds: [], relay, stationId: session.station_id };
+    entry.sessionIds.push(session.id);
+    sessionsByStationRelay.set(key, entry);
   }
 
   const completedSessionIds = [...orphanSessionIds];
@@ -83,7 +88,7 @@ Deno.serve(async (req) => {
   const cleanHost = rawHost.replace(/^(wss?|mqtts?):\/\//, "").replace(/:\d+.*$/, "").replace(/\/.*$/, "");
   const mqttHost = `wss://${cleanHost}:8084/mqtt`;
 
-  for (const [stationId, stationSessionIds] of sessionsByStation.entries()) {
+  for (const [_key, { stationId, relay, sessionIds: stationSessionIds }] of sessionsByStationRelay.entries()) {
     const { count: stillActiveCount, error: activeErr } = await adminClient
       .from("wash_sessions")
       .select("id", { count: "exact", head: true })
@@ -102,12 +107,12 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    const topic = `shower2pet/${stationId}/relay1/command`;
+    const topic = `shower2pet/${stationId}/${relay}/command`;
     const payload = "0";
 
     const published = await mqttPublishNative(mqttHost, mqttUser, mqttPass, topic, payload);
     if (!published) {
-      console.error(`[check-expired-sessions] MQTT OFF timed out for station ${stationId}`);
+      console.error(`[check-expired-sessions] MQTT OFF timed out for station ${stationId} ${relay}`);
       continue;
     }
 
@@ -116,7 +121,7 @@ Deno.serve(async (req) => {
 
     const { error: gateInsertErr } = await adminClient.from("gate_commands").insert({
       station_id: stationId,
-      command: "OFF",
+      command: `OFF_${relay.toUpperCase()}`,
       user_id: null,
       status: "sent",
     });
