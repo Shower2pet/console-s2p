@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.send-station-alert]
 verify_jwt = false
+
+[functions.check-expired-sessions]
+verify_jwt = false
