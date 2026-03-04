@@ -182,6 +182,29 @@ Deno.serve(async (req) => {
       status: "sent",
     });
 
+    // Persist timed manual wash so server-side cleanup can turn relay OFF at ends_at
+    if (command === "START_TIMED_WASH" && endsAt && effectiveSeconds) {
+      const { error: sessionInsertError } = await adminClient.from("wash_sessions").insert({
+        station_id,
+        option_id: 0,
+        option_name: "Manual Console Wash",
+        total_seconds: effectiveSeconds,
+        step: "timer",
+        status: "ACTIVE",
+        started_at: new Date().toISOString(),
+        ends_at: endsAt,
+        user_id: null,
+      });
+
+      if (sessionInsertError) {
+        console.error("Failed to insert manual timed wash session:", sessionInsertError);
+        return new Response(JSON.stringify({ error: "SESSION_PERSIST_FAILED", details: sessionInsertError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const responseBody: Record<string, any> = { success: true, topic, payload };
     if (endsAt) responseBody.ends_at = endsAt;
 
