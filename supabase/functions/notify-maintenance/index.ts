@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supportEmail = "alberto.c@shower2pet.com";
+    const supportEmail = "supporto@shower2pet.com";
     const sentTo: string[] = [];
 
     const sendEmail = async (to: string, subject: string, html: string) => {
