@@ -93,8 +93,8 @@ Deno.serve(async (req) => {
 
   // --- START_TIMED_WASH: heartbeat check ---
   if (command === "START_TIMED_WASH") {
-    if (!effectiveSeconds || typeof effectiveSeconds !== "number" || effectiveSeconds < 1 || effectiveSeconds > 25) {
-      return new Response(JSON.stringify({ error: "duration_seconds is required for START_TIMED_WASH (1-25)" }), {
+    if (!effectiveSeconds || typeof effectiveSeconds !== "number" || effectiveSeconds < 1 || effectiveSeconds > 3600) {
+      return new Response(JSON.stringify({ error: "duration_seconds is required for START_TIMED_WASH (1-3600)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -120,17 +120,27 @@ Deno.serve(async (req) => {
   let payload: string;
   let endsAt: string | null = null;
 
-  if (command === "START_TIMED_WASH" || command === "PULSE") {
-    // Hardware supports max 255 units of 100ms (25.5 sec)
-    const maxSec = 25;
-    const secs = effectiveSeconds;
-    if (!secs || typeof secs !== "number" || secs <= 0 || secs > maxSec) {
-      return new Response(JSON.stringify({ error: `duration_seconds is required (1-${maxSec})` }), {
+  if (command === "START_TIMED_WASH") {
+    // Long-duration timed wash: turn relay ON, server-side cleanup turns it OFF at ends_at
+    if (!effectiveSeconds || typeof effectiveSeconds !== "number" || effectiveSeconds < 1 || effectiveSeconds > 3600) {
+      return new Response(JSON.stringify({ error: "duration_seconds is required for START_TIMED_WASH (1-3600)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    // Convert to 100ms units, cap at 255 to prevent overflow
+    topic = `shower2pet/${station_id}/relay1/command`;
+    payload = "1";
+    endsAt = new Date(Date.now() + effectiveSeconds * 1000).toISOString();
+  } else if (command === "PULSE") {
+    // Hardware pulse: max 255 units of 100ms (25.5 sec)
+    const maxSec = 25;
+    const secs = effectiveSeconds;
+    if (!secs || typeof secs !== "number" || secs <= 0 || secs > maxSec) {
+      return new Response(JSON.stringify({ error: `duration_seconds is required for PULSE (1-${maxSec})` }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const units100ms = Math.min(Math.round(secs * 10), 255);
     topic = `shower2pet/${station_id}/relay1/pulse`;
     payload = units100ms.toString();
