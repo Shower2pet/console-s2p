@@ -691,61 +691,7 @@ const StationDetail = () => {
         </Card>
       )}
 
-      {/* Manual Wash */}
-      {canCommand && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-heading flex items-center gap-2">
-              <Power className="h-5 w-5 text-primary" /> Avvia Lavaggio Manuale
-            </CardTitle>
-          </CardHeader>
-           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Durata: {manualWashMinutes} minuti</Label>
-              <Slider
-                min={1}
-                max={60}
-                step={1}
-                value={[manualWashMinutes]}
-                onValueChange={([v]) => setManualWashMinutes(v)}
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>1 min</span>
-                <span>60 min</span>
-              </div>
-            </div>
-            <Button
-              onClick={async () => {
-                setWashBusy(true);
-                try {
-                  const res = await invokeStartTimedWash(station.id, manualWashMinutes * 60);
-                  const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-                  toast.success(`Lavaggio avviato (${manualWashMinutes} min) — Fine prevista: ${endsAtFormatted}`);
-                } catch (e: any) {
-                  if (e.message === "STATION_OFFLINE") {
-                    toast.error("Stazione offline — nessun heartbeat negli ultimi 100 secondi.");
-                  } else {
-                    handleAppError(e, "StationDetail: avvio lavaggio manuale");
-                  }
-                } finally {
-                  setWashBusy(false);
-                }
-              }}
-              disabled={washBusy || !heartbeatOkForHw}
-              className="w-full gap-2"
-            >
-              {washBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
-              Avvia Lavaggio ({manualWashMinutes} min)
-            </Button>
-            {!heartbeatOkForHw && (
-              <p className="text-xs text-destructive flex items-center gap-1.5">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                Stazione offline — comando disabilitato.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* Station Users */}
       <StationUsersList stationId={station.id} />
