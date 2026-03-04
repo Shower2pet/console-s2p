@@ -65,9 +65,9 @@ export const invokeStationControl = async (
 /** Invoke START_TIMED_WASH — returns { success, ends_at } */
 export const invokeStartTimedWash = async (
   stationId: string,
-  durationMinutes: number
+  durationSeconds: number
 ): Promise<{ success: boolean; ends_at: string }> => {
-  const body = { station_id: stationId, command: "START_TIMED_WASH", duration_minutes: durationMinutes };
+  const body = { station_id: stationId, command: "START_TIMED_WASH", duration_seconds: durationSeconds };
   const { data, error } = await supabase.functions.invoke("station-control", { body });
   if (error) throw new Error(error.message ?? "Errore di comunicazione con la stazione");
   if (data?.error === "STATION_OFFLINE") {

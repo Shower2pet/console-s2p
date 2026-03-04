@@ -64,7 +64,9 @@ Deno.serve(async (req) => {
   }
 
   // --- Parse & validate body ---
-  const { station_id, command, duration_minutes } = await req.json();
+  const { station_id, command, duration_minutes, duration_seconds } = await req.json();
+  // Support both duration_seconds (preferred) and legacy duration_minutes
+  const effectiveSeconds = duration_seconds != null ? duration_seconds : (duration_minutes != null ? duration_minutes * 60 : null);
 
   if (!station_id || typeof station_id !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(station_id)) {
     return new Response(JSON.stringify({ error: "Invalid or missing station_id" }), {
@@ -91,8 +93,8 @@ Deno.serve(async (req) => {
 
   // --- START_TIMED_WASH: heartbeat check ---
   if (command === "START_TIMED_WASH") {
-    if (!duration_minutes || typeof duration_minutes !== "number" || duration_minutes < 1 || duration_minutes > 30) {
-      return new Response(JSON.stringify({ error: "duration_minutes is required for START_TIMED_WASH (1-30)" }), {
+    if (!effectiveSeconds || typeof effectiveSeconds !== "number" || effectiveSeconds < 1 || effectiveSeconds > 25) {
+      return new Response(JSON.stringify({ error: "duration_seconds is required for START_TIMED_WASH (1-25)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -119,17 +121,20 @@ Deno.serve(async (req) => {
   let endsAt: string | null = null;
 
   if (command === "START_TIMED_WASH" || command === "PULSE") {
-    const maxDur = command === "START_TIMED_WASH" ? 30 : 120;
-    if (!duration_minutes || typeof duration_minutes !== "number" || duration_minutes <= 0 || duration_minutes > maxDur) {
-      return new Response(JSON.stringify({ error: `duration_minutes is required (1-${maxDur})` }), {
+    // Hardware supports max 255 units of 100ms (25.5 sec)
+    const maxSec = 25;
+    const secs = effectiveSeconds;
+    if (!secs || typeof secs !== "number" || secs <= 0 || secs > maxSec) {
+      return new Response(JSON.stringify({ error: `duration_seconds is required (1-${maxSec})` }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const durationMs = Math.round(duration_minutes * 60 * 1000);
+    // Convert to 100ms units, cap at 255 to prevent overflow
+    const units100ms = Math.min(Math.round(secs * 10), 255);
     topic = `shower2pet/${station_id}/relay1/pulse`;
-    payload = durationMs.toString();
-    endsAt = new Date(Date.now() + durationMs).toISOString();
+    payload = units100ms.toString();
+    endsAt = new Date(Date.now() + units100ms * 100).toISOString();
   } else if (command === "ON") {
     topic = `shower2pet/${station_id}/relay1/command`;
     payload = "1";
