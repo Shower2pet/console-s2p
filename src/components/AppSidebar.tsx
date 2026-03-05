@@ -128,7 +128,7 @@ export const AppSidebar = () => {
     <>
       {/* Desktop sidebar */}
       <aside className={cn(
-        "hidden md:flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 min-h-screen relative",
+        "hidden md:flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 relative",
         collapsed ? "w-16" : "w-64"
       )}>
         <SidebarNav
