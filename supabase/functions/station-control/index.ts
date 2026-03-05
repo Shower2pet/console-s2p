@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
   // Support both duration_seconds (preferred) and legacy duration_minutes
   const effectiveSeconds = duration_seconds != null ? duration_seconds : (duration_minutes != null ? duration_minutes * 60 : null);
 
+  console.log(`[STATION-CONTROL] Request - ${JSON.stringify({ station_id, command, duration_seconds: effectiveSeconds })}`);
   if (!station_id || typeof station_id !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(station_id)) {
     return new Response(JSON.stringify({ error: "Invalid or missing station_id" }), {
       status: 400,
@@ -164,7 +165,7 @@ Deno.serve(async (req) => {
   const cleanHost = rawHost.replace(/^(wss?|mqtts?):\/\//, "").replace(/:\d+.*$/, "").replace(/\/.*$/, "");
   const mqttHost = `wss://${cleanHost}:8084/mqtt`;
 
-  console.log(`[station-control] MQTT target: ${mqttHost}, topic: ${topic}, payload: ${payload}`);
+  console.log(`[STATION-CONTROL] MQTT connecting - ${JSON.stringify({ wsUrl: mqttHost, clientId: `s2p-edge-${Date.now()}` })}`);
 
   try {
     const published = await mqttPublishNative(mqttHost, mqttUser, mqttPass, topic, payload);
