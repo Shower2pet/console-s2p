@@ -92,6 +92,24 @@ export const invokeStartTubClean = async (
   return data;
 };
 
+/** Stop an active timed wash (relay1 OFF + cancel session) */
+export const invokeStopWash = async (stationId: string): Promise<{ success: boolean }> => {
+  const body = { station_id: stationId, command: "STOP_WASH" };
+  const { data, error } = await supabase.functions.invoke("station-control", { body });
+  if (error) throw new Error(error.message ?? "Errore di comunicazione con la stazione");
+  if (data?.error) throw new Error(data.message || data.error);
+  return data;
+};
+
+/** Stop an active tub clean (relay2 OFF + cancel session) */
+export const invokeStopTubClean = async (stationId: string): Promise<{ success: boolean }> => {
+  const body = { station_id: stationId, command: "STOP_TUB_CLEAN" };
+  const { data, error } = await supabase.functions.invoke("station-control", { body });
+  if (error) throw new Error(error.message ?? "Errore di comunicazione con la stazione");
+  if (data?.error) throw new Error(data.message || data.error);
+  return data;
+};
+
 /** Fetch stock stations (no owner, no structure) with product join */
 export const fetchStockStations = async () => {
   const { data, error } = await supabase

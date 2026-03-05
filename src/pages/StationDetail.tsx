@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets, Square
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
@@ -19,7 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { fetchStructuresForOwner } from "@/services/structureService";
 import { fetchPartnersList } from "@/services/profileService";
-import { invokeStationControl, invokeStartTimedWash, invokeStartTubClean } from "@/services/stationService";
+import { invokeStationControl, invokeStartTimedWash, invokeStartTubClean, invokeStopWash, invokeStopTubClean } from "@/services/stationService";
 import { toast } from "sonner";
 import { Slider } from "@/components/ui/slider";
 import { handleAppError } from "@/lib/globalErrorHandler";
@@ -403,30 +403,52 @@ const StationDetail = () => {
                 <Slider min={1} max={60} step={1} value={[manualWashMinutes]} onValueChange={([v]) => setManualWashMinutes(v)} disabled={!heartbeatOkForHw || washBusy} />
                 <div className="flex justify-between text-xs text-muted-foreground"><span>1 min</span><span>60 min</span></div>
               </div>
-              <Button
-                onClick={async () => {
-                  if (!station) return;
-                  setWashBusy(true);
-                  try {
-                    const res = await invokeStartTimedWash(station.id, manualWashMinutes * 60);
-                    const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-                    toast.success(`Lavaggio avviato (${manualWashMinutes} min) — termine previsto: ${endsAtFormatted}`);
-                  } catch (e: any) {
-                    if (e.message === "STATION_OFFLINE") {
-                      toast.error("Stazione offline: nessun heartbeat recente. Impossibile avviare il lavaggio.");
-                    } else {
-                      handleAppError(e, "StationDetail: lavaggio manuale");
+              <div className="flex gap-2">
+                <Button
+                  onClick={async () => {
+                    if (!station) return;
+                    setWashBusy(true);
+                    try {
+                      const res = await invokeStartTimedWash(station.id, manualWashMinutes * 60);
+                      const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+                      toast.success(`Lavaggio avviato (${manualWashMinutes} min) — termine previsto: ${endsAtFormatted}`);
+                    } catch (e: any) {
+                      if (e.message === "STATION_OFFLINE") {
+                        toast.error("Stazione offline: nessun heartbeat recente. Impossibile avviare il lavaggio.");
+                      } else {
+                        handleAppError(e, "StationDetail: lavaggio manuale");
+                      }
+                    } finally {
+                      setWashBusy(false);
                     }
-                  } finally {
-                    setWashBusy(false);
-                  }
-                }}
-                disabled={!heartbeatOkForHw || washBusy}
-                className="gap-2"
-              >
-                {washBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
-                Avvia Lavaggio ({manualWashMinutes} min)
-              </Button>
+                  }}
+                  disabled={!heartbeatOkForHw || washBusy}
+                  className="gap-2"
+                >
+                  {washBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
+                  Avvia Lavaggio ({manualWashMinutes} min)
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    if (!station) return;
+                    setWashBusy(true);
+                    try {
+                      await invokeStopWash(station.id);
+                      toast.success("Lavaggio interrotto.");
+                    } catch (e: any) {
+                      handleAppError(e, "StationDetail: stop lavaggio");
+                    } finally {
+                      setWashBusy(false);
+                    }
+                  }}
+                  disabled={!heartbeatOkForHw || washBusy}
+                  className="gap-2"
+                >
+                  {washBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
+                  Ferma
+                </Button>
+              </div>
             </div>
 
             {/* Pulizia Vasca (relay2) — solo vasche */}
@@ -442,31 +464,53 @@ const StationDetail = () => {
                     <Slider min={1} max={60} step={1} value={[tubCleanMinutes]} onValueChange={([v]) => setTubCleanMinutes(v)} disabled={!heartbeatOkForHw || tubCleanBusy} />
                     <div className="flex justify-between text-xs text-muted-foreground"><span>1 min</span><span>60 min</span></div>
                   </div>
-                  <Button
-                    onClick={async () => {
-                      if (!station) return;
-                      setTubCleanBusy(true);
-                      try {
-                        const res = await invokeStartTubClean(station.id, tubCleanMinutes * 60);
-                        const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-                        toast.success(`Pulizia vasca avviata (${tubCleanMinutes} min) — termine previsto: ${endsAtFormatted}`);
-                      } catch (e: any) {
-                        if (e.message === "STATION_OFFLINE") {
-                          toast.error("Stazione offline: nessun heartbeat recente. Impossibile avviare la pulizia.");
-                        } else {
-                          handleAppError(e, "StationDetail: pulizia vasca");
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={async () => {
+                        if (!station) return;
+                        setTubCleanBusy(true);
+                        try {
+                          const res = await invokeStartTubClean(station.id, tubCleanMinutes * 60);
+                          const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+                          toast.success(`Pulizia vasca avviata (${tubCleanMinutes} min) — termine previsto: ${endsAtFormatted}`);
+                        } catch (e: any) {
+                          if (e.message === "STATION_OFFLINE") {
+                            toast.error("Stazione offline: nessun heartbeat recente. Impossibile avviare la pulizia.");
+                          } else {
+                            handleAppError(e, "StationDetail: pulizia vasca");
+                          }
+                        } finally {
+                          setTubCleanBusy(false);
                         }
-                      } finally {
-                        setTubCleanBusy(false);
-                      }
-                    }}
-                    disabled={!heartbeatOkForHw || tubCleanBusy}
-                    variant="secondary"
-                    className="gap-2"
-                  >
-                    {tubCleanBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Droplets className="h-4 w-4" />}
-                    Avvia Pulizia ({tubCleanMinutes} min)
-                  </Button>
+                      }}
+                      disabled={!heartbeatOkForHw || tubCleanBusy}
+                      variant="secondary"
+                      className="gap-2"
+                    >
+                      {tubCleanBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Droplets className="h-4 w-4" />}
+                      Avvia Pulizia ({tubCleanMinutes} min)
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={async () => {
+                        if (!station) return;
+                        setTubCleanBusy(true);
+                        try {
+                          await invokeStopTubClean(station.id);
+                          toast.success("Pulizia vasca interrotta.");
+                        } catch (e: any) {
+                          handleAppError(e, "StationDetail: stop pulizia vasca");
+                        } finally {
+                          setTubCleanBusy(false);
+                        }
+                      }}
+                      disabled={!heartbeatOkForHw || tubCleanBusy}
+                      className="gap-2"
+                    >
+                      {tubCleanBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
+                      Ferma
+                    </Button>
+                  </div>
                 </div>
               </>
             )}

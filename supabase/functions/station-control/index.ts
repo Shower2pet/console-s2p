@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const validCommands = ["PULSE", "ON", "OFF", "START_TIMED_WASH", "START_TUB_CLEAN"];
+  const validCommands = ["PULSE", "ON", "OFF", "START_TIMED_WASH", "START_TUB_CLEAN", "STOP_WASH", "STOP_TUB_CLEAN"];
   if (!command || typeof command !== "string" || !validCommands.includes(command)) {
     return new Response(JSON.stringify({ error: `Invalid command. Must be one of: ${validCommands.join(", ")}` }), {
       status: 400,
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
   }
 
   // --- RBAC ---
-  if (role === "user" && (command === "ON" || command === "OFF" || command === "START_TIMED_WASH" || command === "START_TUB_CLEAN")) {
+  if (role === "user" && (command === "ON" || command === "OFF" || command === "START_TIMED_WASH" || command === "START_TUB_CLEAN" || command === "STOP_WASH" || command === "STOP_TUB_CLEAN")) {
     return new Response(JSON.stringify({ error: "Forbidden: users can only use PULSE command" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -147,6 +147,12 @@ Deno.serve(async (req) => {
     topic = `shower2pet/${station_id}/relay1/pulse`;
     payload = units100ms.toString();
     endsAt = new Date(Date.now() + units100ms * 100).toISOString();
+  } else if (command === "STOP_WASH") {
+    topic = `shower2pet/${station_id}/relay1/command`;
+    payload = "0";
+  } else if (command === "STOP_TUB_CLEAN") {
+    topic = `shower2pet/${station_id}/relay2/command`;
+    payload = "0";
   } else if (command === "ON") {
     topic = `shower2pet/${station_id}/relay1/command`;
     payload = "1";
@@ -205,6 +211,20 @@ Deno.serve(async (req) => {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+    }
+
+    // Cancel active sessions when stopping
+    if (command === "STOP_WASH" || command === "STOP_TUB_CLEAN") {
+      const optionName = command === "STOP_TUB_CLEAN" ? "Manual Tub Clean" : "Manual Console Wash";
+      const { error: cancelErr } = await adminClient
+        .from("wash_sessions")
+        .update({ status: "CANCELLED" })
+        .eq("station_id", station_id)
+        .eq("status", "ACTIVE")
+        .eq("option_name", optionName);
+      if (cancelErr) {
+        console.error("Failed to cancel session:", cancelErr);
       }
     }
 
