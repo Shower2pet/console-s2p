@@ -181,13 +181,23 @@ const Inventory = () => {
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Eliminare la stazione?</AlertDialogTitle>
-            <AlertDialogDescription>La stazione "{deleteId}" verrà rimossa definitivamente.</AlertDialogDescription>
+            <AlertDialogTitle>Eliminare la stazione {deleteId}?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">Questa azione è <strong>irreversibile</strong>. Verranno eliminati definitivamente anche:</span>
+              <ul className="list-disc list-inside text-sm space-y-0.5">
+                <li>Sessioni di lavaggio associate</li>
+                <li>Log di manutenzione</li>
+                <li>Comandi cancello</li>
+                <li>Log di accesso</li>
+                <li>Transazioni collegate</li>
+              </ul>
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Elimina
+              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Elimina definitivamente
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
