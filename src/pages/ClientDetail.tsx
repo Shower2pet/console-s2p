@@ -204,7 +204,7 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
         vat_number: vatNumber.trim() || null,
         fiscal_code: fiscalCode.trim() || null,
         legal_rep_fiscal_code: legalRepFiscalCode.trim().toUpperCase() || null,
-        fiskaly_system_id: fiskalySystemId.trim() || null,
+        // fiskaly_system_id is managed automatically by fiskaly-setup
         address_street: addressStreet.trim() || null,
         address_number: addressNumber.trim() || null,
         zip_code: zipCode.trim() || null,
