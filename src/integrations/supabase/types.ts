@@ -56,6 +56,38 @@ export type Database = {
         }
         Relationships: []
       }
+      boards: {
+        Row: {
+          created_at: string
+          id: string
+          model: string
+          station_id: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          model?: string
+          station_id?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          model?: string
+          station_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boards_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: true
+            referencedRelation: "stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_packages: {
         Row: {
           credits_value: number
@@ -1043,6 +1075,7 @@ export type Database = {
       }
     }
     Functions: {
+      generate_board_id: { Args: { board_type: string }; Returns: string }
       get_console_user_detail: {
         Args: { target_id: string }
         Returns: {
