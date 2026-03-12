@@ -230,6 +230,12 @@ const StationDetail = () => {
       return;
     }
 
+    // Blocca attivazione se nessuna scheda associata
+    if (editStatus === "AVAILABLE" && !currentBoard) {
+      toast.error("Impossibile attivare la stazione: nessuna scheda hardware associata. Associare prima una scheda dalla sezione dedicata.");
+      return;
+    }
+
     // Blocca attivazione se Fiskaly non configurato
     if (editStatus === "AVAILABLE" && !ownerHasFiskaly) {
       if (isAdmin) {
