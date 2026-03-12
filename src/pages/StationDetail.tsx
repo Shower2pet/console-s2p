@@ -18,6 +18,7 @@ import { useCreateMaintenanceTicket } from "@/hooks/useMaintenanceLogs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { fetchStructuresForOwner } from "@/services/structureService";
+import { supabase } from "@/integrations/supabase/client";
 import { fetchPartnersList } from "@/services/profileService";
 import { invokeStationControl, invokeStartTimedWash, invokeStartTubClean, invokeStopWash, invokeStopTubClean } from "@/services/stationService";
 import { toast } from "sonner";
