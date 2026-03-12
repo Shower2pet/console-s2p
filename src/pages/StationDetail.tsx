@@ -411,7 +411,7 @@ const StationDetail = () => {
                 <span>Stazione offline — nessun heartbeat negli ultimi 100 secondi. I comandi ON/OFF sono disabilitati.</span>
               </div>
             )}
-            {missingReqs && (
+            {(missingReqs || !ownerHasFiskaly) && (
               <div className="text-xs text-muted-foreground space-y-0.5 border-t pt-2">
                 <p className="font-medium text-foreground text-sm">Per attivare la stazione servono:</p>
                 <p className={hasStructure ? "text-success-foreground" : "text-destructive"}>
@@ -422,6 +422,9 @@ const StationDetail = () => {
                 </p>
                 <p className={hasPricing ? "text-success-foreground" : "text-destructive"}>
                   {hasPricing ? "✓" : "✗"} Almeno un'opzione di lavaggio configurata
+                </p>
+                <p className={ownerHasFiskaly ? "text-success-foreground" : "text-destructive"}>
+                  {ownerHasFiskaly ? "✓" : "✗"} Configurazione fiscale (Fiskaly)
                 </p>
               </div>
             )}
