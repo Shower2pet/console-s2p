@@ -1149,6 +1149,10 @@ export type Database = {
           total_washes: number
         }[]
       }
+      handle_board_heartbeat: {
+        Args: { p_board_id: string }
+        Returns: undefined
+      }
       handle_station_heartbeat: {
         Args: { p_station_id: string }
         Returns: undefined
