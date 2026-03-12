@@ -57,19 +57,24 @@ const Inventory = () => {
     mutationFn: async () => {
       const product = (products ?? []).find(p => p.id === productId);
       if (!product) throw new Error("Seleziona un prodotto");
+      const stationId = serialNumber.trim();
       await createStation({
-        id: serialNumber.trim(),
+        id: stationId,
         type: product.name,
         product_id: productId,
         description: stationDescription.trim() || null,
         status: "OFFLINE",
       });
+      if (selectedBoardId) {
+        await assignBoardToStation(selectedBoardId, stationId);
+      }
     },
     onSuccess: () => {
       toast.success("Stazione registrata nel magazzino");
       setCreateOpen(false);
       resetForm();
       invalidate();
+      qc.invalidateQueries({ queryKey: ["boards"] });
     },
     onError: (err: any) => {
       handleAppError(err, "Inventory: creazione stazione");
