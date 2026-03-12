@@ -204,7 +204,7 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
         vat_number: vatNumber.trim() || null,
         fiscal_code: fiscalCode.trim() || null,
         legal_rep_fiscal_code: legalRepFiscalCode.trim().toUpperCase() || null,
-        fiskaly_system_id: fiskalySystemId.trim() || null,
+        // fiskaly_system_id is managed automatically by fiskaly-setup
         address_street: addressStreet.trim() || null,
         address_number: addressNumber.trim() || null,
         zip_code: zipCode.trim() || null,
@@ -236,8 +236,8 @@ const PartnerInfoCard = ({ profileId, profile }: { profileId: string; profile: a
         <div className="border-t border-border pt-4 space-y-4">
           <div>
             <Label>Fiskaly System ID</Label>
-            <Input value={fiskalySystemId} onChange={(e) => setFiskalySystemId(e.target.value)} className="mt-1.5 font-mono text-sm" placeholder="ID sistema Fiskaly" />
-            <p className="text-xs text-muted-foreground mt-1">Necessario per l'invio dei corrispettivi elettronici</p>
+            <Input value={fiskalySystemId || "Non configurato"} readOnly disabled className="mt-1.5 font-mono text-sm bg-muted" />
+            <p className="text-xs text-muted-foreground mt-1">Gestito automaticamente dal setup Fiskaly</p>
           </div>
           <div>
             <Label>Ragione Sociale *</Label>
