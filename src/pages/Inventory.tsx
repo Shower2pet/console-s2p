@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { fetchStockStations, createStation, deleteStation } from "@/services/stationService";
 import { fetchActiveProducts } from "@/services/productService";
+import { fetchAvailableBoards, assignBoardToStation } from "@/services/boardService";
 
 const Inventory = () => {
   const qc = useQueryClient();
@@ -31,17 +32,23 @@ const Inventory = () => {
     queryKey: ["products"],
     queryFn: fetchActiveProducts,
   });
+  const { data: availableBoards } = useQuery({
+    queryKey: ["boards", "available"],
+    queryFn: fetchAvailableBoards,
+  });
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [serialNumber, setSerialNumber] = useState("");
   const [productId, setProductId] = useState("");
   const [stationDescription, setStationDescription] = useState("");
+  const [selectedBoardId, setSelectedBoardId] = useState("");
 
   const resetForm = () => {
     setSerialNumber("");
     setProductId("");
     setStationDescription("");
+    setSelectedBoardId("");
   };
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["stations"] });
@@ -50,19 +57,24 @@ const Inventory = () => {
     mutationFn: async () => {
       const product = (products ?? []).find(p => p.id === productId);
       if (!product) throw new Error("Seleziona un prodotto");
+      const stationId = serialNumber.trim();
       await createStation({
-        id: serialNumber.trim(),
+        id: stationId,
         type: product.name,
         product_id: productId,
         description: stationDescription.trim() || null,
         status: "OFFLINE",
       });
+      if (selectedBoardId) {
+        await assignBoardToStation(selectedBoardId, stationId);
+      }
     },
     onSuccess: () => {
       toast.success("Stazione registrata nel magazzino");
       setCreateOpen(false);
       resetForm();
       invalidate();
+      qc.invalidateQueries({ queryKey: ["boards"] });
     },
     onError: (err: any) => {
       handleAppError(err, "Inventory: creazione stazione");
@@ -167,6 +179,21 @@ const Inventory = () => {
             <div>
               <Label>Descrizione (opzionale)</Label>
               <Textarea value={stationDescription} onChange={e => setStationDescription(e.target.value)} placeholder="Note aggiuntive..." className="mt-1.5" />
+            </div>
+            <div>
+              <Label>Scheda Hardware (opzionale)</Label>
+              <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
+                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Nessuna scheda" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nessuna</SelectItem>
+                  {(availableBoards ?? []).map(b => (
+                    <SelectItem key={b.id} value={b.id}>{b.id} — {b.type === "wifi" ? "WiFi" : "Ethernet"} ({b.model})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(availableBoards ?? []).length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Nessuna scheda disponibile. Creane una nella sezione Schede.</p>
+              )}
             </div>
           </div>
           <DialogFooter>

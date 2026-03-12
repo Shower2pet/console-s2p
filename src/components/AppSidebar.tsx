@@ -1,4 +1,4 @@
-import { Home, Monitor, Users, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText, Warehouse, Menu, X, Shield, Store, User, UserCheck } from "lucide-react";
+import { Home, Monitor, Users, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText, Warehouse, Menu, X, Shield, Store, User, UserCheck, Cpu } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
@@ -17,6 +17,7 @@ const adminItems = [
   { title: "Gestione Utenti", url: "/end-users", icon: UserCheck },
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
   { title: "Magazzino", url: "/inventory", icon: Warehouse },
+  { title: "Schede", url: "/boards", icon: Cpu },
   { title: "Catalogo Prodotti", url: "/products", icon: Package },
   { title: "Impostazioni Sistema", url: "/admin-settings", icon: Settings },
 ];

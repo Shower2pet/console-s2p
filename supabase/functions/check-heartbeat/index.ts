@@ -53,6 +53,10 @@ Deno.serve(async (req) => {
   // Find stations whose last_heartbeat_at is older than 2 minutes and are not already OFFLINE
   const threshold = new Date(Date.now() - 2 * 60 * 1000).toISOString();
 
+  // Also check boards: if a board sent heartbeat, update the associated station
+  // The handle_station_heartbeat DB function handles direct station heartbeats
+  // Here we only handle the cron-based offline detection
+
   const { data: staleStations, error } = await supabase
     .from("stations")
     .select("id, structure_id, status, last_heartbeat_at")
