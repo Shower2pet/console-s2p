@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
     if (role === "partner" && Array.isArray(stationIds) && stationIds.length > 0) {
       const { error: stationError } = await adminClient
         .from("stations")
-        .update({ owner_id: newUser.user.id })
+        .update({ owner_id: userId })
         .in("id", stationIds);
 
       if (stationError) {
