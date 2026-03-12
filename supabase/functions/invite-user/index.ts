@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
     if (role === "manager" && structureId) {
       const { error: managerError } = await adminClient
         .from("structure_managers")
-        .insert({ user_id: newUser.user.id, structure_id: structureId });
+        .insert({ user_id: userId, structure_id: structureId });
 
       if (managerError) {
         console.error("Manager assignment error:", managerError);
