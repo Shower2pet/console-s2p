@@ -65,7 +65,7 @@ const Inventory = () => {
         description: stationDescription.trim() || null,
         status: "OFFLINE",
       });
-      if (selectedBoardId) {
+      if (selectedBoardId && selectedBoardId !== "__none__") {
         await assignBoardToStation(selectedBoardId, stationId);
       }
     },
