@@ -56,3 +56,18 @@ export const useUpdateStation = () => {
     },
   });
 };
+
+export const useShowcaseStations = () => {
+  return useQuery({
+    queryKey: ["stations", "showcase"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stations")
+        .select("*")
+        .eq("is_showcase", true)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+};
