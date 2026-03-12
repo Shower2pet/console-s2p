@@ -180,6 +180,21 @@ const Inventory = () => {
               <Label>Descrizione (opzionale)</Label>
               <Textarea value={stationDescription} onChange={e => setStationDescription(e.target.value)} placeholder="Note aggiuntive..." className="mt-1.5" />
             </div>
+            <div>
+              <Label>Scheda Hardware (opzionale)</Label>
+              <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
+                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Nessuna scheda" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nessuna</SelectItem>
+                  {(availableBoards ?? []).map(b => (
+                    <SelectItem key={b.id} value={b.id}>{b.id} — {b.type === "wifi" ? "WiFi" : "Ethernet"} ({b.model})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(availableBoards ?? []).length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Nessuna scheda disponibile. Creane una nella sezione Schede.</p>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !serialNumber.trim() || !productId}>
