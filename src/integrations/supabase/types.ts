@@ -514,10 +514,12 @@ export type Database = {
           has_access_gate: boolean | null
           id: string
           image_url: string | null
+          is_showcase: boolean
           last_heartbeat_at: string | null
           manual_offline: boolean
           owner_id: string | null
           product_id: string | null
+          showcase_title: string | null
           status: Database["public"]["Enums"]["station_status"] | null
           structure_id: string | null
           type: string
@@ -534,10 +536,12 @@ export type Database = {
           has_access_gate?: boolean | null
           id: string
           image_url?: string | null
+          is_showcase?: boolean
           last_heartbeat_at?: string | null
           manual_offline?: boolean
           owner_id?: string | null
           product_id?: string | null
+          showcase_title?: string | null
           status?: Database["public"]["Enums"]["station_status"] | null
           structure_id?: string | null
           type: string
@@ -554,10 +558,12 @@ export type Database = {
           has_access_gate?: boolean | null
           id?: string
           image_url?: string | null
+          is_showcase?: boolean
           last_heartbeat_at?: string | null
           manual_offline?: boolean
           owner_id?: string | null
           product_id?: string | null
+          showcase_title?: string | null
           status?: Database["public"]["Enums"]["station_status"] | null
           structure_id?: string | null
           type?: string

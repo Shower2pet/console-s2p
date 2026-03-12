@@ -159,3 +159,22 @@ export const assignStationsToStructure = async (stationIds: string[], structureI
     .in("id", stationIds);
   if (error) throw error;
 };
+
+/** Create a showcase station (display-only, admin only) */
+export const createShowcaseStation = async (station: {
+  id: string;
+  type: string;
+  showcase_title: string;
+  description?: string | null;
+  geo_lat: number;
+  geo_lng: number;
+}) => {
+  const payload = {
+    ...station,
+    is_showcase: true,
+    status: "AVAILABLE" as const,
+    visibility: "PUBLIC" as const,
+  };
+  const { error } = await supabase.from("stations").insert(payload as any);
+  if (error) throw error;
+};
