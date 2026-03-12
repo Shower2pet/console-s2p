@@ -65,7 +65,7 @@ const Inventory = () => {
         description: stationDescription.trim() || null,
         status: "OFFLINE",
       });
-      if (selectedBoardId) {
+      if (selectedBoardId && selectedBoardId !== "__none__") {
         await assignBoardToStation(selectedBoardId, stationId);
       }
     },
@@ -185,7 +185,7 @@ const Inventory = () => {
               <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
                 <SelectTrigger className="mt-1.5"><SelectValue placeholder="Nessuna scheda" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nessuna</SelectItem>
+                  <SelectItem value="__none__">Nessuna</SelectItem>
                   {(availableBoards ?? []).map(b => (
                     <SelectItem key={b.id} value={b.id}>{b.id} — {b.type === "wifi" ? "WiFi" : "Ethernet"} ({b.model})</SelectItem>
                   ))}
