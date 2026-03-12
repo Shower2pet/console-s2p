@@ -16,7 +16,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { useStation, useUpdateStation, type WashingOption } from "@/hooks/useStations";
 import { useCreateMaintenanceTicket } from "@/hooks/useMaintenanceLogs";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchStructuresForOwner } from "@/services/structureService";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchPartnersList } from "@/services/profileService";
