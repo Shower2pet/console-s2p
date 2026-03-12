@@ -129,7 +129,62 @@ const StationDetail = () => {
   });
   const ownerHasFiskaly = !!ownerProfile?.fiskaly_system_id;
 
-  // Initialize form state from station data
+  // Board associated with this station (admin only)
+  const { data: currentBoard } = useQuery({
+    queryKey: ["board-for-station", id],
+    enabled: isAdmin && !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("boards")
+        .select("id, type, model")
+        .eq("station_id", id!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // All unassigned boards (for reassignment)
+  const { data: availableBoards } = useQuery({
+    queryKey: ["available-boards"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("boards")
+        .select("id, type, model")
+        .is("station_id", null)
+        .order("id");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const updateBoardMutation = useMutation({
+    mutationFn: async ({ newBoardId }: { newBoardId: string | null }) => {
+      // Unlink current board if any
+      if (currentBoard) {
+        const { error } = await supabase
+          .from("boards")
+          .update({ station_id: null })
+          .eq("id", currentBoard.id);
+        if (error) throw error;
+      }
+      // Link new board
+      if (newBoardId) {
+        const { error } = await supabase
+          .from("boards")
+          .update({ station_id: id! })
+          .eq("id", newBoardId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["board-for-station", id] });
+      qc.invalidateQueries({ queryKey: ["available-boards"] });
+      toast.success("Scheda aggiornata con successo");
+    },
+    onError: (e: any) => handleAppError(e, "StationDetail: aggiornamento scheda"),
+  });
   useEffect(() => {
     if (station && !initialized) {
       setEditStatus(station.status ?? "AVAILABLE");
