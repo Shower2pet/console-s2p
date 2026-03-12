@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ message: "Utente creato con successo", userId: newUser.user.id, tempPassword }),
+      JSON.stringify({ message: "Utente creato con successo", userId, tempPassword }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
