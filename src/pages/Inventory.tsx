@@ -32,12 +32,17 @@ const Inventory = () => {
     queryKey: ["products"],
     queryFn: fetchActiveProducts,
   });
+  const { data: availableBoards } = useQuery({
+    queryKey: ["boards", "available"],
+    queryFn: fetchAvailableBoards,
+  });
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [serialNumber, setSerialNumber] = useState("");
   const [productId, setProductId] = useState("");
   const [stationDescription, setStationDescription] = useState("");
+  const [selectedBoardId, setSelectedBoardId] = useState("");
 
   const resetForm = () => {
     setSerialNumber("");
