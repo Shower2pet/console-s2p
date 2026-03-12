@@ -18,6 +18,7 @@ import { useCreateMaintenanceTicket } from "@/hooks/useMaintenanceLogs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { fetchStructuresForOwner } from "@/services/structureService";
+import { supabase } from "@/integrations/supabase/client";
 import { fetchPartnersList } from "@/services/profileService";
 import { invokeStationControl, invokeStartTimedWash, invokeStartTubClean, invokeStopWash, invokeStopTubClean } from "@/services/stationService";
 import { toast } from "sonner";
@@ -108,6 +109,24 @@ const StationDetail = () => {
     queryFn: fetchPartnersList,
   });
 
+  // Check if station owner has Fiskaly configured
+  const ownerIdForFiskaly = station?.owner_id ?? (station?.structure_id ? undefined : undefined);
+  const { data: ownerProfile } = useQuery({
+    queryKey: ["owner-fiskaly-check", station?.owner_id],
+    enabled: !!station?.owner_id,
+    queryFn: async () => {
+      // Admin can read any profile; partner can read own
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, fiskaly_system_id")
+        .eq("id", station!.owner_id!)
+        .single();
+      if (error) return null;
+      return data;
+    },
+  });
+  const ownerHasFiskaly = !!ownerProfile?.fiskaly_system_id;
+
   // Initialize form state from station data
   useEffect(() => {
     if (station && !initialized) {
@@ -151,6 +170,16 @@ const StationDetail = () => {
     // Blocca attivazione se heartbeat non recente (per tutti, incluso admin)
     if (editStatus === "AVAILABLE" && !isHeartbeatRecent(station.last_heartbeat_at)) {
       toast.error("Impossibile attivare la stazione: nessun heartbeat recente. Verificare che il dispositivo sia acceso e connesso.");
+      return;
+    }
+
+    // Blocca attivazione se Fiskaly non configurato
+    if (editStatus === "AVAILABLE" && !ownerHasFiskaly) {
+      if (isAdmin) {
+        toast.error("Impossibile attivare la stazione: configurare prima Fiskaly per il partner proprietario dalla sezione Impostazioni Sistema → Partner Fiscali.");
+      } else {
+        toast.error("Impossibile attivare la stazione: i dati fiscali non sono ancora configurati. Contattare l'amministratore per completare la configurazione.");
+      }
       return;
     }
 
@@ -289,6 +318,21 @@ const StationDetail = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Fiskaly not configured warning */}
+      {station.owner_id && !ownerHasFiskaly && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-4">
+          <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-amber-800 dark:text-amber-300">Configurazione fiscale mancante</p>
+            <p className="text-amber-700 dark:text-amber-400 mt-0.5">
+              {isAdmin
+                ? "Il partner proprietario non ha Fiskaly configurato. La stazione non può essere attivata. Vai in Impostazioni Sistema → Partner Fiscali per completare il setup."
+                : "I dati fiscali non sono ancora stati configurati per il tuo account. La stazione non può essere attivata finché l'amministratore non completa la configurazione."}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
         <button onClick={() => navigate(-1)} className="rounded-lg p-2 hover:bg-accent transition-colors self-start">
@@ -367,7 +411,7 @@ const StationDetail = () => {
                 <span>Stazione offline — nessun heartbeat negli ultimi 100 secondi. I comandi ON/OFF sono disabilitati.</span>
               </div>
             )}
-            {missingReqs && (
+            {(missingReqs || !ownerHasFiskaly) && (
               <div className="text-xs text-muted-foreground space-y-0.5 border-t pt-2">
                 <p className="font-medium text-foreground text-sm">Per attivare la stazione servono:</p>
                 <p className={hasStructure ? "text-success-foreground" : "text-destructive"}>
@@ -378,6 +422,9 @@ const StationDetail = () => {
                 </p>
                 <p className={hasPricing ? "text-success-foreground" : "text-destructive"}>
                   {hasPricing ? "✓" : "✗"} Almeno un'opzione di lavaggio configurata
+                </p>
+                <p className={ownerHasFiskaly ? "text-success-foreground" : "text-destructive"}>
+                  {ownerHasFiskaly ? "✓" : "✗"} Configurazione fiscale (Fiskaly)
                 </p>
               </div>
             )}
