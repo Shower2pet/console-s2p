@@ -128,8 +128,8 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      // If user already exists in auth.users, reuse them (e.g. after DB cleanup)
       if (createError.message?.includes("already been registered")) {
+        // Look up the existing auth user
         const { data: { users }, error: listErr } = await adminClient.auth.admin.listUsers();
         const existingUser = users?.find((u: any) => u.email === email);
         if (listErr || !existingUser) {
@@ -138,7 +138,23 @@ Deno.serve(async (req) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        // Update password and metadata for the existing user
+
+        // Security check: only reuse if the profile is missing (post-DB cleanup scenario)
+        const { data: existingProfile } = await adminClient
+          .from("profiles")
+          .select("id")
+          .eq("id", existingUser.id)
+          .maybeSingle();
+
+        if (existingProfile) {
+          // Profile exists → this is an active user, block re-creation
+          return new Response(JSON.stringify({ error: "Un utente con questa email è già registrato nel sistema." }), {
+            status: 409,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // No profile → safe to reuse (orphan auth user after DB cleanup)
         await adminClient.auth.admin.updateUserById(existingUser.id, {
           password: tempPassword,
           email_confirm: true,
