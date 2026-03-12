@@ -26,6 +26,7 @@ import AdminSettings from "@/pages/AdminSettings";
 import Revenue from "@/pages/Revenue";
 import ProductsCatalog from "@/pages/ProductsCatalog";
 import Inventory from "@/pages/Inventory";
+import Boards from "@/pages/Boards";
 import EndUsersList from "@/pages/EndUsersList";
 import EndUserDetail from "@/pages/EndUserDetail";
 import Login from "@/pages/Login";
