@@ -101,13 +101,20 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // If another valid active session exists, avoid turning relay OFF now.
     if ((stillActiveCount ?? 0) > 0) {
       completedSessionIds.push(...stationSessionIds);
       continue;
     }
 
-    const topic = `shower2pet/${stationId}/${relay}/command`;
+    // Resolve board_id for MQTT topic
+    const { data: boardRow } = await adminClient
+      .from("boards")
+      .select("id")
+      .eq("station_id", stationId)
+      .maybeSingle();
+    const mqttTargetId = boardRow?.id ?? stationId;
+
+    const topic = `shower2pet/${mqttTargetId}/${relay}/command`;
     const payload = "0";
 
     const published = await mqttPublishNative(mqttHost, mqttUser, mqttPass, topic, payload);

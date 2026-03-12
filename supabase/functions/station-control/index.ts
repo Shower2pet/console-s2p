@@ -116,13 +116,21 @@ Deno.serve(async (req) => {
     }
   }
 
+  // --- Resolve board_id for MQTT topic ---
+  const { data: boardRow } = await adminClient
+    .from("boards")
+    .select("id")
+    .eq("station_id", station_id)
+    .maybeSingle();
+
+  const mqttTargetId = boardRow?.id ?? station_id; // fallback to station_id if no board assigned
+
   // --- Build MQTT topic & payload ---
   let topic: string;
   let payload: string;
   let endsAt: string | null = null;
 
   if (command === "START_TIMED_WASH" || command === "START_TUB_CLEAN") {
-    // Timed relay activation: relay1 for wash, relay2 for tub clean
     if (!effectiveSeconds || typeof effectiveSeconds !== "number" || effectiveSeconds < 1 || effectiveSeconds > 3600) {
       return new Response(JSON.stringify({ error: "duration_seconds is required (1-3600)" }), {
         status: 400,
@@ -130,11 +138,10 @@ Deno.serve(async (req) => {
       });
     }
     const relay = command === "START_TUB_CLEAN" ? "relay2" : "relay1";
-    topic = `shower2pet/${station_id}/${relay}/command`;
+    topic = `shower2pet/${mqttTargetId}/${relay}/command`;
     payload = "1";
     endsAt = new Date(Date.now() + effectiveSeconds * 1000).toISOString();
   } else if (command === "PULSE") {
-    // Hardware pulse: max 255 units of 100ms (25.5 sec)
     const maxSec = 25;
     const secs = effectiveSeconds;
     if (!secs || typeof secs !== "number" || secs <= 0 || secs > maxSec) {
@@ -144,21 +151,21 @@ Deno.serve(async (req) => {
       });
     }
     const units100ms = Math.min(Math.round(secs * 10), 255);
-    topic = `shower2pet/${station_id}/relay1/pulse`;
+    topic = `shower2pet/${mqttTargetId}/relay1/pulse`;
     payload = units100ms.toString();
     endsAt = new Date(Date.now() + units100ms * 100).toISOString();
   } else if (command === "STOP_WASH") {
-    topic = `shower2pet/${station_id}/relay1/command`;
+    topic = `shower2pet/${mqttTargetId}/relay1/command`;
     payload = "0";
   } else if (command === "STOP_TUB_CLEAN") {
-    topic = `shower2pet/${station_id}/relay2/command`;
+    topic = `shower2pet/${mqttTargetId}/relay2/command`;
     payload = "0";
   } else if (command === "ON") {
-    topic = `shower2pet/${station_id}/relay1/command`;
+    topic = `shower2pet/${mqttTargetId}/relay1/command`;
     payload = "1";
   } else {
     // OFF
-    topic = `shower2pet/${station_id}/relay1/command`;
+    topic = `shower2pet/${mqttTargetId}/relay1/command`;
     payload = "0";
   }
 
