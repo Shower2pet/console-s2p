@@ -318,6 +318,21 @@ const StationDetail = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Fiskaly not configured warning */}
+      {station.owner_id && !ownerHasFiskaly && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-4">
+          <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-semibold text-amber-800 dark:text-amber-300">Configurazione fiscale mancante</p>
+            <p className="text-amber-700 dark:text-amber-400 mt-0.5">
+              {isAdmin
+                ? "Il partner proprietario non ha Fiskaly configurato. La stazione non può essere attivata. Vai in Impostazioni Sistema → Partner Fiscali per completare il setup."
+                : "I dati fiscali non sono ancora stati configurati per il tuo account. La stazione non può essere attivata finché l'amministratore non completa la configurazione."}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
         <button onClick={() => navigate(-1)} className="rounded-lg p-2 hover:bg-accent transition-colors self-start">
