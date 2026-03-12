@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
     const { error: profileError } = await adminClient
       .from("profiles")
       .update(profileUpdate)
-      .eq("id", newUser.user.id);
+      .eq("id", userId);
 
     if (profileError) {
       console.error("Profile update error:", profileError);
