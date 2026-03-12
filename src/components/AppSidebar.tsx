@@ -17,6 +17,7 @@ const adminItems = [
   { title: "Gestione Utenti", url: "/end-users", icon: UserCheck },
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
   { title: "Magazzino", url: "/inventory", icon: Warehouse },
+  { title: "Schede", url: "/boards", icon: Cpu },
   { title: "Catalogo Prodotti", url: "/products", icon: Package },
   { title: "Impostazioni Sistema", url: "/admin-settings", icon: Settings },
 ];
