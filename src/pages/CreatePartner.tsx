@@ -110,7 +110,13 @@ const CreatePartner = () => {
       setCreatedUser({ email: values.email, password: result.tempPassword });
       reset();
     } catch (err: any) {
-      handleAppError(err, "CreatePartner: creazione utente");
+      const msg = err?.message || "";
+      // Show specific message for known business errors
+      if (msg.includes("già registrat") || msg.includes("already been registered")) {
+        toast.error("Un utente con questa email è già registrato.");
+      } else {
+        handleAppError(err, "CreatePartner: creazione utente");
+      }
     } finally {
       setIsSubmitting(false);
     }
