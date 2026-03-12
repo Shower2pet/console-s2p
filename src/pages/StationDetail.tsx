@@ -230,6 +230,12 @@ const StationDetail = () => {
       return;
     }
 
+    // Blocca attivazione se nessuna scheda associata
+    if (editStatus === "AVAILABLE" && !currentBoard) {
+      toast.error("Impossibile attivare la stazione: nessuna scheda hardware associata. Associare prima una scheda dalla sezione dedicata.");
+      return;
+    }
+
     // Blocca attivazione se Fiskaly non configurato
     if (editStatus === "AVAILABLE" && !ownerHasFiskaly) {
       if (isAdmin) {
@@ -468,9 +474,12 @@ const StationDetail = () => {
                 <span>Stazione offline — nessun heartbeat negli ultimi 100 secondi. I comandi ON/OFF sono disabilitati.</span>
               </div>
             )}
-            {(missingReqs || !ownerHasFiskaly) && (
+            {(missingReqs || !ownerHasFiskaly || !currentBoard) && (
               <div className="text-xs text-muted-foreground space-y-0.5 border-t pt-2">
                 <p className="font-medium text-foreground text-sm">Per attivare la stazione servono:</p>
+                <p className={!!currentBoard ? "text-success-foreground" : "text-destructive"}>
+                  {!!currentBoard ? "✓" : "✗"} Scheda hardware associata
+                </p>
                 <p className={hasStructure ? "text-success-foreground" : "text-destructive"}>
                   {hasStructure ? "✓" : "✗"} Assegnata a una struttura
                 </p>
