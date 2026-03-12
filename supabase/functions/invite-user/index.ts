@@ -118,6 +118,8 @@ Deno.serve(async (req) => {
 
     // Create user with temporary password
     const tempPassword = crypto.randomUUID().slice(0, 8) + "A1!";
+    let userId: string;
+
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password: tempPassword,
@@ -126,14 +128,32 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      console.error("Create user error:", createError);
-      const msg = createError.message?.includes("already been registered")
-        ? "Un utente con questa email è già registrato."
-        : createError.message;
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // If user already exists in auth.users, reuse them (e.g. after DB cleanup)
+      if (createError.message?.includes("already been registered")) {
+        const { data: { users }, error: listErr } = await adminClient.auth.admin.listUsers();
+        const existingUser = users?.find((u: any) => u.email === email);
+        if (listErr || !existingUser) {
+          return new Response(JSON.stringify({ error: "Un utente con questa email è già registrato e non è stato possibile recuperarlo." }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        // Update password and metadata for the existing user
+        await adminClient.auth.admin.updateUserById(existingUser.id, {
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: { first_name: firstName, last_name: lastName },
+        });
+        userId = existingUser.id;
+      } else {
+        console.error("Create user error:", createError);
+        return new Response(JSON.stringify({ error: createError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      userId = newUser.user.id;
     }
 
     // Update profile with role and partner data
@@ -153,7 +173,7 @@ Deno.serve(async (req) => {
     const { error: profileError } = await adminClient
       .from("profiles")
       .update(profileUpdate)
-      .eq("id", newUser.user.id);
+      .eq("id", userId);
 
     if (profileError) {
       console.error("Profile update error:", profileError);
@@ -163,7 +183,7 @@ Deno.serve(async (req) => {
     if (role === "manager" && structureId) {
       const { error: managerError } = await adminClient
         .from("structure_managers")
-        .insert({ user_id: newUser.user.id, structure_id: structureId });
+        .insert({ user_id: userId, structure_id: structureId });
 
       if (managerError) {
         console.error("Manager assignment error:", managerError);
@@ -174,7 +194,7 @@ Deno.serve(async (req) => {
     if (role === "partner" && Array.isArray(stationIds) && stationIds.length > 0) {
       const { error: stationError } = await adminClient
         .from("stations")
-        .update({ owner_id: newUser.user.id })
+        .update({ owner_id: userId })
         .in("id", stationIds);
 
       if (stationError) {
@@ -209,7 +229,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ message: "Utente creato con successo", userId: newUser.user.id, tempPassword }),
+      JSON.stringify({ message: "Utente creato con successo", userId, tempPassword }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
