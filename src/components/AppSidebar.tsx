@@ -1,4 +1,4 @@
-import { Home, Monitor, Users, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText, Warehouse, Menu, X, Shield, Store, User, UserCheck } from "lucide-react";
+import { Home, Monitor, Users, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText, Warehouse, Menu, X, Shield, Store, User, UserCheck, Cpu } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
