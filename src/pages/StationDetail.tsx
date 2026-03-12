@@ -91,6 +91,8 @@ const StationDetail = () => {
   const [washBusy, setWashBusy] = useState(false);
   const [tubCleanMinutes, setTubCleanMinutes] = useState(5);
   const [tubCleanBusy, setTubCleanBusy] = useState(false);
+  const [editBoardId, setEditBoardId] = useState<string>("__none__");
+  const qc = useQueryClient();
   
 
   // Fetch structures for reassignment – filtered by station owner
