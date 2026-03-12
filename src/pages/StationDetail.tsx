@@ -660,7 +660,73 @@ const StationDetail = () => {
         </CardContent>
       </Card>
 
-      {/* Map Position */}
+      {/* Board Association - Admin only */}
+      {isAdmin && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-heading flex items-center gap-2">
+              <Cpu className="h-5 w-5 text-primary" /> Scheda Associata
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {currentBoard ? (
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium font-mono">{currentBoard.id}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{currentBoard.type}{currentBoard.model ? ` — ${currentBoard.model}` : ""}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => updateBoardMutation.mutate({ newBoardId: null })}
+                  disabled={updateBoardMutation.isPending}
+                  className="gap-1 text-destructive hover:text-destructive"
+                >
+                  {updateBoardMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                  Scollega
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">Nessuna scheda associata.</p>
+            )}
+
+            <div>
+              <Label>Associa una scheda</Label>
+              <div className="flex gap-2 mt-1.5">
+                <Select value={editBoardId} onValueChange={setEditBoardId}>
+                  <SelectTrigger><SelectValue placeholder="Seleziona scheda" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Seleziona —</SelectItem>
+                    {(availableBoards ?? []).map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.id} ({b.type}{b.model ? ` — ${b.model}` : ""})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={() => {
+                    if (editBoardId && editBoardId !== "__none__") {
+                      updateBoardMutation.mutate({ newBoardId: editBoardId });
+                      setEditBoardId("__none__");
+                    }
+                  }}
+                  disabled={editBoardId === "__none__" || updateBoardMutation.isPending}
+                  size="default"
+                  className="gap-1 shrink-0"
+                >
+                  {updateBoardMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Associa
+                </Button>
+              </div>
+              {(availableBoards ?? []).length === 0 && !currentBoard && (
+                <p className="text-xs text-muted-foreground mt-1">Nessuna scheda libera disponibile.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-heading flex items-center gap-2">
