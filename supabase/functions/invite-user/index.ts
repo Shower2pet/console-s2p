@@ -118,6 +118,8 @@ Deno.serve(async (req) => {
 
     // Create user with temporary password
     const tempPassword = crypto.randomUUID().slice(0, 8) + "A1!";
+    let userId: string;
+
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password: tempPassword,
@@ -126,14 +128,32 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      console.error("Create user error:", createError);
-      const msg = createError.message?.includes("already been registered")
-        ? "Un utente con questa email è già registrato."
-        : createError.message;
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // If user already exists in auth.users, reuse them (e.g. after DB cleanup)
+      if (createError.message?.includes("already been registered")) {
+        const { data: { users }, error: listErr } = await adminClient.auth.admin.listUsers();
+        const existingUser = users?.find((u: any) => u.email === email);
+        if (listErr || !existingUser) {
+          return new Response(JSON.stringify({ error: "Un utente con questa email è già registrato e non è stato possibile recuperarlo." }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        // Update password and metadata for the existing user
+        await adminClient.auth.admin.updateUserById(existingUser.id, {
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: { first_name: firstName, last_name: lastName },
+        });
+        userId = existingUser.id;
+      } else {
+        console.error("Create user error:", createError);
+        return new Response(JSON.stringify({ error: createError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      userId = newUser.user.id;
     }
 
     // Update profile with role and partner data
