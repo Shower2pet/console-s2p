@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { fetchStockStations, createStation, deleteStation } from "@/services/stationService";
 import { fetchActiveProducts } from "@/services/productService";
+import { fetchAvailableBoards, assignBoardToStation } from "@/services/boardService";
 
 const Inventory = () => {
   const qc = useQueryClient();
