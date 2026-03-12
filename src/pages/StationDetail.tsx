@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets, Square
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets, Square, Cpu
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
@@ -16,7 +16,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { useStation, useUpdateStation, type WashingOption } from "@/hooks/useStations";
 import { useCreateMaintenanceTicket } from "@/hooks/useMaintenanceLogs";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchStructuresForOwner } from "@/services/structureService";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchPartnersList } from "@/services/profileService";
@@ -91,6 +91,8 @@ const StationDetail = () => {
   const [washBusy, setWashBusy] = useState(false);
   const [tubCleanMinutes, setTubCleanMinutes] = useState(5);
   const [tubCleanBusy, setTubCleanBusy] = useState(false);
+  const [editBoardId, setEditBoardId] = useState<string>("__none__");
+  const qc = useQueryClient();
   
 
   // Fetch structures for reassignment – filtered by station owner
@@ -127,7 +129,62 @@ const StationDetail = () => {
   });
   const ownerHasFiskaly = !!ownerProfile?.fiskaly_system_id;
 
-  // Initialize form state from station data
+  // Board associated with this station (admin only)
+  const { data: currentBoard } = useQuery({
+    queryKey: ["board-for-station", id],
+    enabled: isAdmin && !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("boards")
+        .select("id, type, model")
+        .eq("station_id", id!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // All unassigned boards (for reassignment)
+  const { data: availableBoards } = useQuery({
+    queryKey: ["available-boards"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("boards")
+        .select("id, type, model")
+        .is("station_id", null)
+        .order("id");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const updateBoardMutation = useMutation({
+    mutationFn: async ({ newBoardId }: { newBoardId: string | null }) => {
+      // Unlink current board if any
+      if (currentBoard) {
+        const { error } = await supabase
+          .from("boards")
+          .update({ station_id: null })
+          .eq("id", currentBoard.id);
+        if (error) throw error;
+      }
+      // Link new board
+      if (newBoardId) {
+        const { error } = await supabase
+          .from("boards")
+          .update({ station_id: id! })
+          .eq("id", newBoardId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["board-for-station", id] });
+      qc.invalidateQueries({ queryKey: ["available-boards"] });
+      toast.success("Scheda aggiornata con successo");
+    },
+    onError: (e: any) => handleAppError(e, "StationDetail: aggiornamento scheda"),
+  });
   useEffect(() => {
     if (station && !initialized) {
       setEditStatus(station.status ?? "AVAILABLE");
@@ -603,7 +660,73 @@ const StationDetail = () => {
         </CardContent>
       </Card>
 
-      {/* Map Position */}
+      {/* Board Association - Admin only */}
+      {isAdmin && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-heading flex items-center gap-2">
+              <Cpu className="h-5 w-5 text-primary" /> Scheda Associata
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {currentBoard ? (
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium font-mono">{currentBoard.id}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{currentBoard.type}{currentBoard.model ? ` — ${currentBoard.model}` : ""}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => updateBoardMutation.mutate({ newBoardId: null })}
+                  disabled={updateBoardMutation.isPending}
+                  className="gap-1 text-destructive hover:text-destructive"
+                >
+                  {updateBoardMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                  Scollega
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">Nessuna scheda associata.</p>
+            )}
+
+            <div>
+              <Label>Associa una scheda</Label>
+              <div className="flex gap-2 mt-1.5">
+                <Select value={editBoardId} onValueChange={setEditBoardId}>
+                  <SelectTrigger><SelectValue placeholder="Seleziona scheda" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Seleziona —</SelectItem>
+                    {(availableBoards ?? []).map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.id} ({b.type}{b.model ? ` — ${b.model}` : ""})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={() => {
+                    if (editBoardId && editBoardId !== "__none__") {
+                      updateBoardMutation.mutate({ newBoardId: editBoardId });
+                      setEditBoardId("__none__");
+                    }
+                  }}
+                  disabled={editBoardId === "__none__" || updateBoardMutation.isPending}
+                  size="default"
+                  className="gap-1 shrink-0"
+                >
+                  {updateBoardMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Associa
+                </Button>
+              </div>
+              {(availableBoards ?? []).length === 0 && !currentBoard && (
+                <p className="text-xs text-muted-foreground mt-1">Nessuna scheda libera disponibile.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-heading flex items-center gap-2">
