@@ -48,6 +48,7 @@ const Inventory = () => {
     setSerialNumber("");
     setProductId("");
     setStationDescription("");
+    setSelectedBoardId("");
   };
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["stations"] });
