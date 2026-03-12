@@ -109,6 +109,24 @@ const StationDetail = () => {
     queryFn: fetchPartnersList,
   });
 
+  // Check if station owner has Fiskaly configured
+  const ownerIdForFiskaly = station?.owner_id ?? (station?.structure_id ? undefined : undefined);
+  const { data: ownerProfile } = useQuery({
+    queryKey: ["owner-fiskaly-check", station?.owner_id],
+    enabled: !!station?.owner_id,
+    queryFn: async () => {
+      // Admin can read any profile; partner can read own
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, fiskaly_system_id")
+        .eq("id", station!.owner_id!)
+        .single();
+      if (error) return null;
+      return data;
+    },
+  });
+  const ownerHasFiskaly = !!ownerProfile?.fiskaly_system_id;
+
   // Initialize form state from station data
   useEffect(() => {
     if (station && !initialized) {
