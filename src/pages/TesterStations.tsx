@@ -128,10 +128,7 @@ const TesterStations = () => {
       setPromoteId(null);
       invalidateAll();
     },
-    onError: (err: any) => {
-      console.error("[PROMOTE ERROR]", err, JSON.stringify(err));
-      handleAppError(err, "TesterStations: promozione a stock");
-    },
+    onError: (err: any) => handleAppError(err, "TesterStations: promozione a stock"),
   });
 
   const assignBoardMutation = useMutation({
