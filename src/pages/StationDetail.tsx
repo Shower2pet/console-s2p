@@ -643,7 +643,7 @@ const StationDetail = () => {
               </>
             )}
 
-            {!heartbeatOkForHw && (
+            {!hwEnabled && (
               <div className="text-xs text-destructive flex items-center gap-1.5 border-t pt-2">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                 <span>Stazione offline — i comandi manuali sono disabilitati.</span>
