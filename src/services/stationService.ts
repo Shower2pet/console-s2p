@@ -225,7 +225,8 @@ export const takeForTesting = async (stationId: string, testerId: string) => {
 
 /** Tester promotes a TESTING station to STOCK (tested & ready) */
 export const promoteToStock = async (stationId: string) => {
-  const { error } = await (supabase
+  console.log("[promoteToStock] Attempting to promote station:", stationId);
+  const { error, data, count } = await (supabase
     .from("stations")
     .update({
       phase: "STOCK",
@@ -233,8 +234,13 @@ export const promoteToStock = async (stationId: string) => {
       status: "OFFLINE",
     } as any) as any)
     .eq("id", stationId)
-    .eq("phase", "TESTING");
+    .eq("phase", "TESTING")
+    .select();
+  console.log("[promoteToStock] Result:", { error, data, count });
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Nessuna stazione aggiornata — la stazione potrebbe non essere in fase TESTING o non hai i permessi.");
+  }
 };
 
 /** Admin deploys a STOCK station to a partner */
