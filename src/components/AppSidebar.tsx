@@ -167,7 +167,7 @@ export const MobileSidebarTrigger = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const items = role === "admin" ? adminItems : role === "partner" ? partnerItems : managerItems;
+  const items = role === "admin" ? adminItems : role === "partner" ? partnerItems : role === "tester" ? testerItems : managerItems;
   const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || profile?.email || "Utente";
 
   // Close on navigation
