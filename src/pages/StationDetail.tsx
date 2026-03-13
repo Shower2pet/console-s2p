@@ -632,7 +632,7 @@ const StationDetail = () => {
                           setTubCleanBusy(false);
                         }
                       }}
-                      disabled={!heartbeatOkForHw || tubCleanBusy}
+                      disabled={!hwEnabled || tubCleanBusy}
                       className="gap-2"
                     >
                       {tubCleanBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
