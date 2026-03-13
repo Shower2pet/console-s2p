@@ -19,12 +19,16 @@ interface TesterStation {
   owner_id: string | null;
   last_heartbeat_at: string | null;
   product_id: string | null;
+  products?: {
+    type: string | null;
+    name: string | null;
+  } | null;
 }
 
 const fetchTesterStations = async (userId: string): Promise<TesterStation[]> => {
   const { data, error } = await (supabase
     .from("stations")
-    .select("id, type, status, description, owner_id, last_heartbeat_at, product_id") as any)
+    .select("id, type, status, description, owner_id, last_heartbeat_at, product_id, products:product_id(type, name)") as any)
     .eq("phase", "TESTING")
     .eq("owner_id", userId)
     .order("id");
@@ -46,7 +50,11 @@ const TesterHome = () => {
   });
 
   const currentStation = stations.find((s) => s.id === selectedStation);
-  const isTub = currentStation?.type?.toLowerCase().includes("vasca") || currentStation?.type?.toLowerCase().includes("tub");
+  const tubSignature = [currentStation?.type, currentStation?.products?.type, currentStation?.products?.name]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const isTub = /vasca|tub/.test(tubSignature);
 
   const sendCommand = async (command: string, extras: Record<string, any> = {}) => {
     if (!selectedStation) {
