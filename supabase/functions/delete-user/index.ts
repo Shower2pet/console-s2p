@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { userId, isGuest } = await req.json();
+    const { userId, isGuest, selfDelete } = await req.json();
     if (!userId) {
       return new Response(JSON.stringify({ error: "userId obbligatorio" }), {
         status: 400,
@@ -49,14 +49,57 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Only admins can delete users
+    // Get caller profile
     const { data: callerProfile } = await adminClient
       .from("profiles")
       .select("role")
       .eq("id", caller.id)
       .single();
 
-    if (callerProfile?.role !== "admin") {
+    const callerRole = callerProfile?.role;
+
+    // Self-deletion logic
+    const isSelfDelete = selfDelete === true && userId === caller.id;
+
+    if (isSelfDelete) {
+      // Only role 'user' can self-delete
+      if (callerRole !== "user") {
+        return new Response(JSON.stringify({ error: "Solo gli utenti finali possono eliminare il proprio account. Admin, Partner e Manager devono essere eliminati da un amministratore." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Clean up user data (preserve financial records)
+      await adminClient.from("gate_commands").delete().eq("user_id", userId);
+      await adminClient.from("station_access_logs").delete().eq("user_id", userId);
+      await adminClient.from("user_notes").delete().eq("target_user_id", userId);
+      await adminClient.from("user_notes").delete().eq("author_id", userId);
+      await adminClient.from("user_subscriptions").delete().eq("user_id", userId);
+      await adminClient.from("structure_wallets").delete().eq("user_id", userId);
+      // Nullify references in financial data (preserve for stats)
+      await adminClient.from("transactions").update({ user_id: null }).eq("user_id", userId);
+      await adminClient.from("wash_sessions").update({ user_id: null }).eq("user_id", userId);
+      // Delete profile
+      await adminClient.from("profiles").delete().eq("id", userId);
+      // Delete auth user
+      const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
+      if (deleteError) {
+        console.error("Self-delete auth error:", deleteError);
+        return new Response(JSON.stringify({ error: "Errore durante l'eliminazione dell'account.", detail: deleteError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ message: "Account eliminato con successo" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Admin-only deletion (existing logic)
+    if (callerRole !== "admin") {
       return new Response(JSON.stringify({ error: "Solo gli admin possono eliminare utenti" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -65,17 +108,14 @@ Deno.serve(async (req) => {
 
     // Handle guest user deletion (no auth account)
     if (isGuest) {
-      // For guest users, clean up notes and wash sessions by finding their email
       await adminClient.from("user_notes").delete().eq("target_user_id", userId);
-      // Guest sessions are identified by guest_email; we can't easily reverse the UUID5
-      // but we can clean notes. Wash session data is kept for analytics.
       return new Response(
         JSON.stringify({ message: "Dati utente guest eliminati con successo" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Prevent self-deletion
+    // Prevent admin self-deletion
     if (userId === caller.id) {
       return new Response(JSON.stringify({ error: "Non puoi eliminare il tuo stesso account" }), {
         status: 400,
@@ -101,23 +141,18 @@ Deno.serve(async (req) => {
 
     if (stationIds.length > 0) {
       await adminClient.from("maintenance_logs").delete().in("station_id", stationIds);
-      // Preserve transactions & wash_sessions for revenue stats — just nullify station reference
       await adminClient.from("wash_sessions").update({ station_id: null } as any).in("station_id", stationIds);
       await adminClient.from("transactions").update({ station_id: null }).in("station_id", stationIds);
     }
 
     if (structureIds.length > 0) {
-      // Preserve transactions for revenue stats — nullify structure reference
       await adminClient.from("transactions").update({ structure_id: null }).in("structure_id", structureIds);
-      // Delete credit_packages for owned structures
       await adminClient.from("credit_packages").delete().in("structure_id", structureIds);
-      // Delete structure_wallets for owned structures
       await adminClient.from("structure_wallets").delete().in("structure_id", structureIds);
-      // Delete structure_managers for owned structures
       await adminClient.from("structure_managers").delete().in("structure_id", structureIds);
     }
 
-    // Reset stations back to inventory (clear ALL user-specific data)
+    // Reset stations back to inventory
     if (stationIds.length > 0) {
       const { error: resetError } = await adminClient.from("stations").update({ 
         owner_id: null, 
@@ -140,7 +175,7 @@ Deno.serve(async (req) => {
       await adminClient.from("structures").delete().in("id", structureIds);
     }
 
-    // Delete gate_commands linked to this user (FK constraint on auth.users)
+    // Delete gate_commands linked to this user
     await adminClient.from("gate_commands").delete().eq("user_id", userId);
 
     // Nullify references in financial data (preserve for stats)
@@ -162,7 +197,7 @@ Deno.serve(async (req) => {
     // Delete profile
     await adminClient.from("profiles").delete().eq("id", userId);
 
-    // 11. Delete auth user
+    // Delete auth user
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
     if (deleteError) {
       console.error("Delete user error:", deleteError);

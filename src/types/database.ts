@@ -67,3 +67,17 @@ export type PartnerFiscalData = Tables<"partners_fiscal_data">;
 export type DailyCorrispettivoLog = Tables<"daily_corrispettivi_logs">;
 export type GateCommand = Tables<"gate_commands">;
 export type StationAccessLog = Tables<"station_access_logs">;
+
+/* ------------------------------------------------------------------ */
+/*  Station Ratings (from station_ratings table)                      */
+/* ------------------------------------------------------------------ */
+
+export interface StationRating {
+  id: string;
+  station_id: string;
+  user_id: string;
+  session_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+}

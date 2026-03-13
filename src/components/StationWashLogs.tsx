@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Droplets } from "lucide-react";
+import { Loader2, Droplets, Star } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 
