@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { takeForTesting, promoteToStock } from "@/services/stationService";
+import { takeForTesting, promoteToStock, deleteStation } from "@/services/stationService";
 import { fetchAvailableBoards, assignBoardToStation, unassignBoard } from "@/services/boardService";
 
 const TesterStations = () => {
