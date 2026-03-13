@@ -129,7 +129,7 @@ export const AppSidebar = () => {
     <>
       {/* Desktop sidebar */}
       <aside className={cn(
-        "hidden md:flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 relative sticky top-0 h-screen overflow-y-auto",
+        "hidden md:flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 sticky top-0 h-screen overflow-y-auto overflow-x-hidden scrollbar-none",
         collapsed ? "w-16" : "w-64"
       )}>
         <SidebarNav
@@ -143,7 +143,8 @@ export const AppSidebar = () => {
         {/* Collapse button */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-sm hover:bg-accent transition-colors"
+          className="fixed top-20 z-50 flex h-6 w-6 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-sm hover:bg-accent transition-all duration-300"
+          style={{ left: collapsed ? 'calc(4rem - 12px)' : 'calc(16rem - 12px)' }}
         >
           {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
         </button>
