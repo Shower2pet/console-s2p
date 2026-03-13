@@ -88,7 +88,7 @@ const TesterHome = () => {
           {isLoading ? (
             <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
           ) : stations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nessuna stazione creata. Vai alla sezione "Stazioni" per crearne una.</p>
+            <p className="text-sm text-muted-foreground">Nessuna stazione in fase di test. Vai alla sezione "Stazioni" per prenderne una in carico.</p>
           ) : (
             <div className="flex items-center gap-4 flex-wrap">
               <Select value={selectedStation} onValueChange={setSelectedStation}>
