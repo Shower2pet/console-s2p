@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets, Square, Cpu, Star
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets, Square, Cpu, Star, Clock
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
@@ -141,10 +141,10 @@ const StationDetail = () => {
   });
   const ownerHasFiskaly = !!ownerProfile?.fiskaly_system_id;
 
-  // Board associated with this station (admin only)
+  // Board associated with this station
   const { data: currentBoard } = useQuery({
     queryKey: ["board-for-station", id],
-    enabled: isAdmin && !!id,
+    enabled: !!id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("boards")
@@ -229,6 +229,20 @@ const StationDetail = () => {
     if (!lastHeartbeat) return false;
     const diff = Date.now() - new Date(lastHeartbeat).getTime();
     return diff < thresholdMs;
+  };
+
+  const formatHeartbeatAgo = (lastHeartbeat: string | null | undefined): string => {
+    if (!lastHeartbeat) return "Mai ricevuto";
+    const diffMs = Date.now() - new Date(lastHeartbeat).getTime();
+    if (diffMs < 0) return "Adesso";
+    const seconds = Math.floor(diffMs / 1000);
+    if (seconds < 60) return `${seconds}s fa`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}min fa`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h fa`;
+    const days = Math.floor(hours / 24);
+    return `${days}g fa`;
   };
 
   const heartbeatOkForHw = station ? isHeartbeatRecent(station.last_heartbeat_at, 100_000) : false;
@@ -422,6 +436,9 @@ const StationDetail = () => {
           </h1>
           <p className="text-muted-foreground capitalize">
             {station.type}
+          </p>
+          <p className={`text-xs flex items-center gap-1 mt-1 ${heartbeatOkForHw ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+            <Clock className="h-3 w-3" /> Ultimo heartbeat: {formatHeartbeatAgo(station.last_heartbeat_at)}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
