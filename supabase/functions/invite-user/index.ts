@@ -47,8 +47,9 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!firstName || typeof firstName !== "string" || firstName.length > 100) {
-      return new Response(JSON.stringify({ error: "Nome obbligatorio (max 100 caratteri)" }), {
+    // firstName is optional for tester role
+    if (firstName && (typeof firstName !== "string" || firstName.length > 100)) {
+      return new Response(JSON.stringify({ error: "Nome non valido (max 100 caratteri)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -59,9 +60,9 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const validRoles = ["partner", "manager"];
+    const validRoles = ["partner", "manager", "tester"];
     if (!role || !validRoles.includes(role)) {
-      return new Response(JSON.stringify({ error: "Ruolo non valido. Deve essere: partner o manager" }), {
+      return new Response(JSON.stringify({ error: "Ruolo non valido. Deve essere: partner, manager o tester" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -111,6 +112,13 @@ Deno.serve(async (req) => {
 
     if (role === "manager" && !["admin", "partner"].includes(callerProfile?.role ?? "")) {
       return new Response(JSON.stringify({ error: "Permesso negato" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (role === "tester" && callerProfile?.role !== "admin") {
+      return new Response(JSON.stringify({ error: "Solo gli admin possono creare account tester" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -218,8 +226,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Send onboarding email for partners ──────────────────────────────────
-    if (role === "partner") {
+    // ── Send onboarding email for partners and testers ─────────────────────
+    if (role === "partner" || role === "tester") {
       try {
         await fetch(`${supabaseUrl}/functions/v1/send-email`, {
           method: "POST",
@@ -233,13 +241,15 @@ Deno.serve(async (req) => {
             data: {
               email,
               temp_password: tempPassword,
-              partner_name: legalName || `${firstName} ${lastName}`.trim(),
+              partner_name: role === "tester"
+                ? `${firstName || ""} ${lastName || ""}`.trim() || "Tester"
+                : legalName || `${firstName} ${lastName}`.trim(),
               console_url: "https://console-s2p.lovable.app",
             },
           }),
         });
       } catch (emailErr) {
-        console.error("Failed to send partner credentials email:", emailErr);
+        console.error("Failed to send credentials email:", emailErr);
         // Non-blocking: account is created even if email fails
       }
     }

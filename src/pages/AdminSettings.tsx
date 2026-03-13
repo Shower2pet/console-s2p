@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Settings, Search, CheckCircle, XCircle, AlertTriangle, RefreshCw, Save,
   Zap, Trash2, Building2, Globe, ChevronDown, ChevronRight, PenLine, Ban,
-  ShieldCheck, ShieldAlert, Link2, RotateCcw, Bug,
+  ShieldCheck, ShieldAlert, Link2, RotateCcw, Bug, FlaskConical, Plus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Profile } from "@/types/database";
 import { AdminErrorLogs } from "@/components/AdminErrorLogs";
+import InviteUserDialog from "@/components/InviteUserDialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const FISKALY_REQUIRED_FIELDS = [
@@ -616,6 +617,8 @@ const FiskalyExplorer = () => {
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 const AdminSettings = () => {
+  const [inviteTesterOpen, setInviteTesterOpen] = useState(false);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -625,6 +628,33 @@ const AdminSettings = () => {
         </h1>
         <p className="text-muted-foreground">Configurazione globale della piattaforma</p>
       </div>
+
+      {/* Gestione Tester */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-heading flex items-center gap-2">
+            <FlaskConical className="h-5 w-5 text-primary" />
+            Gestione Tester
+          </CardTitle>
+          <CardDescription>
+            Crea account tester per il testing di schede e stazioni hardware.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => setInviteTesterOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> Crea Account Tester
+          </Button>
+        </CardContent>
+      </Card>
+
+      <InviteUserDialog
+        open={inviteTesterOpen}
+        onOpenChange={setInviteTesterOpen}
+        role="tester"
+        title="Crea Account Tester"
+        description="Inserisci l'email del nuovo tester. Nome e cognome sono opzionali."
+        requireName={false}
+      />
 
       <Card>
         <CardHeader>

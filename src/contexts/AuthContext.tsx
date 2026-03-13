@@ -22,6 +22,7 @@ export interface AuthContextValue {
   isAdmin: boolean;
   isPartner: boolean;
   isManager: boolean;
+  isTester: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -144,6 +145,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAdmin: role === "admin",
         isPartner: role === "partner",
         isManager: role === "manager",
+        isTester: role === "tester",
       }}
     >
       {children}

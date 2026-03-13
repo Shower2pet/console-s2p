@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const validCommands = ["PULSE", "ON", "OFF", "START_TIMED_WASH", "START_TUB_CLEAN", "STOP_WASH", "STOP_TUB_CLEAN"];
+  const validCommands = ["PULSE", "ON", "OFF", "START_TIMED_WASH", "START_TUB_CLEAN", "STOP_WASH", "STOP_TUB_CLEAN", "OPEN_GATE"];
   if (!command || typeof command !== "string" || !validCommands.includes(command)) {
     return new Response(JSON.stringify({ error: `Invalid command. Must be one of: ${validCommands.join(", ")}` }), {
       status: 400,
@@ -92,6 +92,8 @@ Deno.serve(async (req) => {
     });
   }
 
+  const isTester = role === "tester";
+
   // --- START_TIMED_WASH / START_TUB_CLEAN: heartbeat check ---
   if (command === "START_TIMED_WASH" || command === "START_TUB_CLEAN") {
     if (!effectiveSeconds || typeof effectiveSeconds !== "number" || effectiveSeconds < 1 || effectiveSeconds > 3600) {
@@ -100,19 +102,22 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    // Check heartbeat freshness
-    const { data: stationRow } = await adminClient
-      .from("stations")
-      .select("last_heartbeat_at")
-      .eq("id", station_id)
-      .single();
+    // Tester bypasses heartbeat check
+    if (!isTester) {
+      // Check heartbeat freshness
+      const { data: stationRow } = await adminClient
+        .from("stations")
+        .select("last_heartbeat_at")
+        .eq("id", station_id)
+        .single();
 
-    const lastHb = stationRow?.last_heartbeat_at ? new Date(stationRow.last_heartbeat_at).getTime() : 0;
-    if (Date.now() - lastHb > 100_000) {
-      return new Response(JSON.stringify({ error: "STATION_OFFLINE", message: "La stazione non risponde — nessun heartbeat negli ultimi 100 secondi." }), {
-        status: 409,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const lastHb = stationRow?.last_heartbeat_at ? new Date(stationRow.last_heartbeat_at).getTime() : 0;
+      if (Date.now() - lastHb > 100_000) {
+        return new Response(JSON.stringify({ error: "STATION_OFFLINE", message: "La stazione non risponde — nessun heartbeat negli ultimi 100 secondi." }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
   }
 
@@ -160,6 +165,10 @@ Deno.serve(async (req) => {
   } else if (command === "STOP_TUB_CLEAN") {
     topic = `shower2pet/${mqttTargetId}/relay2/command`;
     payload = "0";
+  } else if (command === "OPEN_GATE") {
+    // Relay 3 — gate pulse (5 seconds)
+    topic = `shower2pet/${mqttTargetId}/relay3/pulse`;
+    payload = "50"; // 50 * 100ms = 5s
   } else if (command === "ON") {
     topic = `shower2pet/${mqttTargetId}/relay1/command`;
     payload = "1";

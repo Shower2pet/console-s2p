@@ -15,8 +15,8 @@ import { fetchFreeStations, type FreeStation } from "@/services/stationService";
 import { inviteUser } from "@/services/userService";
 
 const inviteSchema = z.object({
-  firstName: z.string().trim().min(1, "Nome obbligatorio").max(50),
-  lastName: z.string().trim().min(1, "Cognome obbligatorio").max(50),
+  firstName: z.string().trim().max(50).optional().or(z.literal("")),
+  lastName: z.string().trim().max(50).optional().or(z.literal("")),
   email: z.string().trim().email("Email non valida").max(255),
 });
 
@@ -25,14 +25,15 @@ type InviteFormValues = z.infer<typeof inviteSchema>;
 interface InviteUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  role: "partner" | "manager";
+  role: "partner" | "manager" | "tester";
   structureId?: string;
   onSuccess?: () => void;
   title: string;
   description?: string;
+  requireName?: boolean;
 }
 
-const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, title, description }: InviteUserDialogProps) => {
+const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, title, description, requireName = true }: InviteUserDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdUser, setCreatedUser] = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -70,8 +71,8 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
     try {
       const result = await inviteUser({
         email: values.email,
-        firstName: values.firstName,
-        lastName: values.lastName,
+        firstName: values.firstName || "",
+        lastName: values.lastName || "",
         role,
         structureId: role === "manager" ? structureId : undefined,
         stationIds: role === "partner" && selectedStationIds.length > 0 ? selectedStationIds : undefined,

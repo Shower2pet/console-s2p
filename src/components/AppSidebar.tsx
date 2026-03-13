@@ -1,4 +1,4 @@
-import { Home, Monitor, Users, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText, Warehouse, Menu, X, Shield, Store, User, UserCheck, Cpu } from "lucide-react";
+import { Home, Monitor, Users, LogOut, ChevronLeft, ChevronRight, Wrench, Euro, Building2, Package, UserCog, Settings, FileText, Warehouse, Menu, X, Shield, Store, User, UserCheck, Cpu, FlaskConical } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
@@ -41,10 +41,17 @@ const managerItems = [
   { title: "Manutenzione", url: "/maintenance", icon: Wrench },
 ];
 
+const testerItems = [
+  { title: "Test Hardware", url: "/", icon: FlaskConical },
+  { title: "Schede", url: "/boards", icon: Cpu },
+  { title: "Stazioni", url: "/tester/stations", icon: Monitor },
+];
+
 const roleConfig: Record<string, { label: string; icon: typeof Shield }> = {
   admin: { label: "Admin", icon: Shield },
   partner: { label: "Partner", icon: Store },
   manager: { label: "Manager", icon: Wrench },
+  tester: { label: "Tester", icon: FlaskConical },
   user: { label: "Utente", icon: User },
 };
 
@@ -117,7 +124,7 @@ export const AppSidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const items = role === "admin" ? adminItems : role === "partner" ? partnerItems : managerItems;
+  const items = role === "admin" ? adminItems : role === "partner" ? partnerItems : role === "tester" ? testerItems : managerItems;
   const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || profile?.email || "Utente";
 
   const handleLogout = async () => {
@@ -160,7 +167,7 @@ export const MobileSidebarTrigger = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const items = role === "admin" ? adminItems : role === "partner" ? partnerItems : managerItems;
+  const items = role === "admin" ? adminItems : role === "partner" ? partnerItems : role === "tester" ? testerItems : managerItems;
   const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || profile?.email || "Utente";
 
   // Close on navigation
