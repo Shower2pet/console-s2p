@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const validCommands = ["PULSE", "ON", "OFF", "START_TIMED_WASH", "START_TUB_CLEAN", "STOP_WASH", "STOP_TUB_CLEAN", "OPEN_GATE"];
+  const validCommands = ["PULSE", "ON", "OFF", "ON_RELAY2", "OFF_RELAY2", "START_TIMED_WASH", "START_TUB_CLEAN", "STOP_WASH", "STOP_TUB_CLEAN", "OPEN_GATE"];
   if (!command || typeof command !== "string" || !validCommands.includes(command)) {
     return new Response(JSON.stringify({ error: `Invalid command. Must be one of: ${validCommands.join(", ")}` }), {
       status: 400,
