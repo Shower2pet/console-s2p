@@ -92,7 +92,14 @@ Deno.serve(async (req) => {
     });
   }
 
-  const isTester = role === "tester";
+  // --- Fetch station phase for bypass logic ---
+  const { data: stationInfo } = await adminClient
+    .from("stations")
+    .select("last_heartbeat_at, phase")
+    .eq("id", station_id)
+    .single();
+
+  const isTestingPhase = stationInfo?.phase === "TESTING";
 
   // --- START_TIMED_WASH / START_TUB_CLEAN: heartbeat check ---
   if (command === "START_TIMED_WASH" || command === "START_TUB_CLEAN") {
@@ -102,16 +109,9 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    // Tester bypasses heartbeat check
-    if (!isTester) {
-      // Check heartbeat freshness
-      const { data: stationRow } = await adminClient
-        .from("stations")
-        .select("last_heartbeat_at")
-        .eq("id", station_id)
-        .single();
-
-      const lastHb = stationRow?.last_heartbeat_at ? new Date(stationRow.last_heartbeat_at).getTime() : 0;
+    // TESTING phase bypasses heartbeat check
+    if (!isTestingPhase) {
+      const lastHb = stationInfo?.last_heartbeat_at ? new Date(stationInfo.last_heartbeat_at).getTime() : 0;
       if (Date.now() - lastHb > 100_000) {
         return new Response(JSON.stringify({ error: "STATION_OFFLINE", message: "La stazione non risponde — nessun heartbeat negli ultimi 100 secondi." }), {
           status: 409,

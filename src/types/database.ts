@@ -18,6 +18,9 @@ export type PaymentMethodType = Enums<"payment_method_type">; // "STRIPE" | "CRE
 export type TransactionTypeEnum = Enums<"transaction_type_enum">; // "CREDIT_TOPUP" | "WASH_SERVICE" | "GUEST_WASH"
 export type UserRole = Enums<"user_role">; // "admin" | "partner" | "manager" | "user"
 
+/** Station lifecycle phase (DB enum: station_phase) */
+export type StationPhase = "PRODUCTION" | "TESTING" | "STOCK" | "DEPLOYED" | "SHOWCASE";
+
 /* ------------------------------------------------------------------ */
 /*  Status unions NOT captured by Supabase enums (stored as `text`)   */
 /* ------------------------------------------------------------------ */

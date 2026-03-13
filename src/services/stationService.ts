@@ -110,19 +110,18 @@ export const invokeStopTubClean = async (stationId: string): Promise<{ success: 
   return data;
 };
 
-/** Fetch stock stations (no owner, no structure) with product join */
+/** Fetch stock stations — phase = PRODUCTION */
 export const fetchStockStations = async () => {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase
     .from("stations")
-    .select("*, products:product_id(name, type)")
-    .is("structure_id", null)
-    .is("owner_id", null)
+    .select("*, products:product_id(name, type)") as any)
+    .eq("phase", "PRODUCTION")
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data;
 };
 
-/** Create a new station in inventory */
+/** Create a new station in inventory (phase defaults to PRODUCTION on DB) */
 export const createStation = async (station: {
   id: string;
   type: string;
@@ -172,9 +171,51 @@ export const createShowcaseStation = async (station: {
   const payload = {
     ...station,
     is_showcase: true,
+    phase: "SHOWCASE",
     status: "AVAILABLE" as const,
     visibility: "PUBLIC" as const,
   };
   const { error } = await supabase.from("stations").insert(payload as any);
+  if (error) throw error;
+};
+
+/** Tester takes a PRODUCTION station for testing */
+export const takeForTesting = async (stationId: string, testerId: string) => {
+  const { error } = await (supabase
+    .from("stations")
+    .update({
+      phase: "TESTING",
+      owner_id: testerId,
+      status: "OFFLINE",
+      visibility: "HIDDEN",
+    } as any) as any)
+    .eq("id", stationId)
+    .eq("phase", "PRODUCTION");
+  if (error) throw error;
+};
+
+/** Tester promotes a TESTING station to STOCK (tested & ready) */
+export const promoteToStock = async (stationId: string) => {
+  const { error } = await (supabase
+    .from("stations")
+    .update({
+      phase: "STOCK",
+      owner_id: null,
+      status: "OFFLINE",
+    } as any) as any)
+    .eq("id", stationId)
+    .eq("phase", "TESTING");
+  if (error) throw error;
+};
+
+/** Admin deploys a STOCK station to a partner */
+export const deployStation = async (stationId: string, partnerId: string) => {
+  const { error } = await (supabase
+    .from("stations")
+    .update({
+      phase: "DEPLOYED",
+      owner_id: partnerId,
+    } as any) as any)
+    .eq("id", stationId);
   if (error) throw error;
 };

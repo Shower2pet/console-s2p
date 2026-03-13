@@ -82,9 +82,11 @@ const Boards = () => {
           </h1>
           <p className="text-muted-foreground">Schede hardware (Ethernet / WiFi) da associare alle stazioni</p>
         </div>
-        <Button onClick={() => { resetForm(); setCreateOpen(true); }} className="gap-2">
-          <Plus className="h-4 w-4" /> Nuova Scheda
-        </Button>
+        {!isTester && (
+          <Button onClick={() => { resetForm(); setCreateOpen(true); }} className="gap-2">
+            <Plus className="h-4 w-4" /> Nuova Scheda
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -132,6 +134,7 @@ const Boards = () => {
                       {b.created_at ? format(new Date(b.created_at), "dd MMM yyyy", { locale: it }) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
+                      {!isTester && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -141,6 +144,7 @@ const Boards = () => {
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
