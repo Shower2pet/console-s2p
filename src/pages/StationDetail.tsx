@@ -141,10 +141,10 @@ const StationDetail = () => {
   });
   const ownerHasFiskaly = !!ownerProfile?.fiskaly_system_id;
 
-  // Board associated with this station (admin only)
+  // Board associated with this station
   const { data: currentBoard } = useQuery({
     queryKey: ["board-for-station", id],
-    enabled: isAdmin && !!id,
+    enabled: !!id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("boards")
