@@ -222,7 +222,15 @@ const TesterStations = () => {
                           <TableCell className="text-muted-foreground">
                             {s.created_at ? format(new Date(s.created_at), "dd MMM yyyy", { locale: it }) : "—"}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteId(s.id)}
+                              title="Elimina stazione"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                             <Button
                               variant="default"
                               size="sm"
