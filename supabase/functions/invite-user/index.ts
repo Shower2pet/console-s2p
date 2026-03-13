@@ -116,6 +116,13 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (role === "tester" && callerProfile?.role !== "admin") {
+      return new Response(JSON.stringify({ error: "Solo gli admin possono creare account tester" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Create user with temporary password
     const tempPassword = crypto.randomUUID().slice(0, 8) + "A1!";
     let userId: string;
