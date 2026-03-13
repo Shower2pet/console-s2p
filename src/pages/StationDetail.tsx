@@ -467,7 +467,7 @@ const StationDetail = () => {
               <Button
                 variant="outline"
                 onClick={handleHwOn}
-                disabled={hwBusy || updateStation.isPending || !canActivate || !heartbeatOkForHw}
+                disabled={hwBusy || updateStation.isPending || !canActivate || !hwEnabled}
                 className="gap-2 border-primary/50 text-primary hover:bg-primary/10"
               >
                 {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />} Attiva Servizio
