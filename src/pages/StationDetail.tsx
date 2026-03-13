@@ -71,7 +71,7 @@ const NumericInput = ({
 const StationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, isAdmin, isPartner, isManager } = useAuth();
+  const { user, isAdmin, isPartner, isManager, isTester } = useAuth();
   const { data: station, isLoading, error: stationError } = useStation(id);
   const updateStation = useUpdateStation();
   const openTicket = useCreateMaintenanceTicket();
