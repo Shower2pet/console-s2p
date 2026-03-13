@@ -110,11 +110,11 @@ export const invokeStopTubClean = async (stationId: string): Promise<{ success: 
   return data;
 };
 
-/** Fetch stock stations — phase = PRODUCTION */
+/** Fetch stock stations — phase = PRODUCTION or STOCK, with board info */
 export const fetchStockStations = async () => {
   const { data, error } = await (supabase
     .from("stations")
-    .select("*, products:product_id(name, type)") as any)
+    .select("*, products:product_id(name, type), boards(id, type, model)") as any)
     .in("phase", ["PRODUCTION", "STOCK"])
     .order("created_at", { ascending: false });
   if (error) throw error;
