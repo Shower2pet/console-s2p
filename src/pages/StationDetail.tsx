@@ -245,8 +245,8 @@ const StationDetail = () => {
       return;
     }
 
-    // Blocca attivazione se nessuna scheda associata
-    if (editStatus === "AVAILABLE" && !currentBoard) {
+    // Blocca attivazione se nessuna scheda associata (tester bypassa)
+    if (editStatus === "AVAILABLE" && !currentBoard && !(isTester && isTestingPhase)) {
       toast.error("Impossibile attivare la stazione: nessuna scheda hardware associata. Associare prima una scheda dalla sezione dedicata.");
       return;
     }
