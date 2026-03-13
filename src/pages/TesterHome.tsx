@@ -280,7 +280,29 @@ const TesterHome = () => {
               <CardDescription>Controlla il relè per la pulizia automatica della vasca</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
+              {/* ON / OFF diretti relay2 */}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => sendCommand("ON_RELAY2")}
+                  disabled={!!loadingCmd || !isTub}
+                  className="gap-1"
+                >
+                  {loadingCmd === "ON_RELAY2" && <Loader2 className="h-3 w-3 animate-spin" />} ON
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => sendCommand("OFF_RELAY2")}
+                  disabled={!!loadingCmd || !isTub}
+                  className="gap-1"
+                >
+                  {loadingCmd === "OFF_RELAY2" && <Loader2 className="h-3 w-3 animate-spin" />} OFF
+                </Button>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t">
+                <p className="text-sm font-medium text-foreground">Pulizia Temporizzata</p>
                 <div className="flex items-center gap-4">
                   <Slider
                     value={[tubDuration]}
