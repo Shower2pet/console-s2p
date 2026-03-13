@@ -1,93 +1,151 @@
 
-## Sezione Admin "Gestione Fiskaly" — Piano di Implementazione
 
-### Analisi del Problema Attuale
+## Piano Completo: Feature Mancanti + Testing Checklist Console
 
-Dai log della edge function emergono due problemi distinti:
+### Parte A — Feature da Implementare
 
-**Problema 1 — Entity "fantasma" bloccante (WashDog):**
-- Nei tentativi precedenti, Fiskaly ha creato parzialmente un asset con UUID `928af8e9-...` (UUID v4, non v7)
-- Questo UUID non rispetta il pattern UUID v7 richiesto da Fiskaly per le entity (`^[0-9a-f]{8}-?[0-9a-f]{4}-?7[0-9a-f]{3}-?...`)
-- La `POST /entities` restituisce 405 "cannot create new legal entity for non-unit asset" perché esiste già un asset
-- Il `PATCH /entities/{uuid-v4}` restituisce 400 perché l'ID non rispetta la regex UUID v7
-- Risultato: loop infinito di errori, impossibile configurare WashDog
+#### A1. Sistema Rating Stazioni (lato Console)
 
-**Problema 2 — Mancanza di strumenti di gestione:**
-- Non esiste nell'admin nessun modo per vedere lo stato delle entity/system Fiskaly
-- Non esiste un modo per resettare manualmente il `fiskaly_system_id` di un partner
-- Non esiste un modo per inserire manualmente un System ID già esistente su Fiskaly
+**Database (migration SQL):**
+- Tabella `station_ratings`: `id` uuid PK, `station_id` text FK, `user_id` uuid FK, `session_id` uuid FK unique, `rating` smallint CHECK 1-5, `comment` text nullable, `created_at` timestamptz
+- RLS: admin/partner/manager leggono rating delle proprie stazioni; utenti inseriscono i propri
+- Funzione SQL `get_station_avg_rating(p_station_id text)` → returns `{avg_rating numeric, count bigint}`
 
-### Soluzione: 2 interventi paralleli
+**Console App:**
+- Nuovo `src/services/ratingService.ts` — fetch media e lista rating per stazione
+- In `src/pages/StationDetail.tsx` — nuova card "Valutazioni" dopo StationWashLogs: media stelle (icone Star), conteggio, lista ultime 10 recensioni con data/utente/commento
+- In `src/components/StationWashLogs.tsx` — colonna "Rating" opzionale (stella + voto se presente)
+- Aggiornare `src/types/database.ts` con tipo `StationRating`
 
----
+#### A2. Self-Deletion Utente (Edge Function)
 
-### Intervento 1 — Fix Edge Function `fiskaly-setup`
-
-Il caso 405 "non-unit asset" non può essere risolto automaticamente (l'asset è corrotto lato Fiskaly). Invece di tentare di recuperare un UUID non valido, la funzione deve:
-
-1. **Quando riceve 405**: invece di estrarre l'UUID dal messaggio di errore e tentare operazioni che falliranno, restituire un errore chiaro con istruzioni su come sbloccare il partner manualmente (impostando il `fiskaly_system_id` a mano oppure usando il campo di reset nell'admin)
-2. **Aggiungere un parametro `entity_id` opzionale**: se passato, saltare lo Step 1 e usare direttamente quell'ID per il commissioning e la creazione del System — questo permette all'admin di fornire un entity ID valido nel caso in cui l'entity esista già su Fiskaly in stato corretto
-3. **Aggiungere un parametro `system_id` opzionale**: se passato, saltare gli Step 1-3 e salvare direttamente quel System ID nel profilo — per registrazione manuale di un sistema già esistente
+**Modifica `supabase/functions/delete-user/index.ts`:**
+- Aggiungere parametro `selfDelete: boolean` nel body
+- Se `selfDelete === true` E `userId === caller.id` E ruolo caller è `user`: permettere l'eliminazione (pulizia wallets, subscriptions, gate_commands, access_logs, notes, nullify wash_sessions/transactions user_id, delete profile, delete auth)
+- Mantenere il blocco self-deletion per admin/partner/manager (protezione)
+- Nessuna modifica console necessaria — la UI di cancellazione è nella User App
 
 ---
 
-### Intervento 2 — Sezione "Gestione Fiskaly" in `AdminSettings.tsx`
+### Parte B — Testing Checklist Console App
 
-Aggiungere una sezione dedicata nella pagina **Impostazioni Sistema** (`/admin-settings`) che permette all'admin di:
+#### 1. Autenticazione & Accesso
+- [ ] Login email/password corretto
+- [ ] Login credenziali errate → messaggio errore
+- [ ] Password dimenticata → email → reset → nuovo login
+- [ ] Redirect `/auth/update-password` da link recovery
+- [ ] Ruolo `user` → redirect `/access-denied`
+- [ ] Utente loggato → redirect home automatico
 
-**A. Pannello di diagnostica per partner**
-- Dropdown/ricerca per selezionare un partner
-- Mostra: Ragione Sociale, P.IVA, `fiskaly_system_id` attuale, stato campi obbligatori
-- Pulsante "Configura automaticamente" (chiama `fiskaly-setup` con `force: true`)
+#### 2. Onboarding Partner (Primo Accesso)
+- [ ] `must_change_password` → redirect `/onboarding`
+- [ ] Cambio password obbligatorio (validazione)
+- [ ] Step creazione strutture + assegnazione stazioni
+- [ ] Posizione struttura da mappa
+- [ ] Completamento → redirect dashboard
 
-**B. Override manuale System ID**
-- Campo input per inserire un System ID Fiskaly valido
-- Pulsante "Salva System ID" → aggiorna direttamente il profilo tramite `updatePartnerData`
-- Utile quando il System esiste già su Fiskaly ma non è salvato nel DB
+#### 3. UI/UX Generale
+- [ ] Sidebar desktop: navigazione, collapse/expand
+- [ ] Sidebar mobile: sheet, chiusura su navigazione
+- [ ] Voci sidebar per ruolo (admin/partner/manager)
+- [ ] Header: nome, avatar, dropdown
+- [ ] Ricerca globale
+- [ ] Notifiche dropdown
+- [ ] Layout responsive (375px → 1280px+)
+- [ ] Pagina 404
 
-**C. Override con Entity ID esistente**
-- Campo input per un Entity ID Fiskaly valido (UUID v7)
-- Pulsante "Configura da Entity esistente" → chiama `fiskaly-setup` con `entity_id` fornito, esegue solo Step 2 (commissioning) + Step 3 (crea System), salva il System ID
-- Risolve il caso WashDog: invece di creare una nuova entity, si usa quella già esistente fornendo il suo ID corretto
+#### 4. Dashboard
+- [ ] Admin: StatCard (ricavi, stazioni, partner), grafico, mappa
+- [ ] Partner/Manager: dati filtrati per strutture proprie
 
-**D. Reset**
-- Pulsante "Azzera System ID" → imposta `fiskaly_system_id = null` nel profilo, permettendo una riconfigurazione completa da zero
+#### 5. Gestione Partner (Admin)
+- [ ] Lista con ricerca, navigazione dettaglio
+- [ ] Creazione: validazione, assegnazione stazioni, credenziali temporanee
+- [ ] Dettaglio: modifica dati, Fiskaly, strutture, stazioni, referenti
+- [ ] Assegnazione stazioni dal magazzino
+- [ ] Eliminazione partner (conferma con nome)
+
+#### 6. Gestione Strutture
+- [ ] Lista filtrata per ruolo
+- [ ] Dettaglio: info, mappa, modifica posizione
+- [ ] Tab Stazioni e Tab Team
+- [ ] Invito manager
+- [ ] Eliminazione struttura
+
+#### 7. Gestione Stazioni
+- [ ] Tab Operative + Tab Vetrina (admin)
+- [ ] Ricerca, stato corretto, navigazione dettaglio
+- [ ] Vetrina: creazione (ID, titolo, descrizione, mappa)
+- [ ] Dettaglio: modifica stato con checklist (prezzo, scheda, struttura)
+- [ ] Opzioni lavaggio CRUD
+- [ ] Visibilità, gate code, scheda associata
+- [ ] Controlli hardware: ON/OFF/PULSE, lavaggio temporizzato, pulizia vasca
+- [ ] Ticket manutenzione da dettaglio
+- [ ] Storico lavaggi, utenti, manutenzione
+- [ ] **[NUOVO]** Card valutazioni (media stelle + recensioni)
+
+#### 8. Magazzino (Admin)
+- [ ] Lista stazioni stock
+- [ ] Creazione stazione + associazione scheda
+- [ ] Eliminazione stazione
+
+#### 9. Schede Hardware (Admin)
+- [ ] Lista, creazione, token/API key visibili una volta
+- [ ] Eliminazione (solo se non assegnata)
+
+#### 10. Catalogo Prodotti (Admin)
+- [ ] CRUD prodotti, disattivazione
+
+#### 11. Utenti End-User
+- [ ] Lista con ricerca
+- [ ] Dettaglio: profilo, wallet (modifica saldo), note
+- [ ] Eliminazione utente (admin)
+
+#### 12. Manutenzione
+- [ ] Lista ticket con filtri (stato, severità)
+- [ ] Creazione ticket, cambio stato, dettaglio
+
+#### 13. Transazioni & Report (Partner/Manager)
+- [ ] Lista transazioni, filtri, StatCard
+- [ ] Grafico ricavi, export CSV
+
+#### 14. Resoconti Incassi (Admin)
+- [ ] Ricavi globali, classifica stazioni/partner
+
+#### 15. Pacchetti Crediti (Partner)
+- [ ] CRUD, attivazione/disattivazione switch
+
+#### 16. Profilo Aziendale (Partner)
+- [ ] Modifica dati (validazione P.IVA, CF, CAP, provincia)
+- [ ] Setup Fiskaly, referenti, piani abbonamento
+
+#### 17. Impostazioni Sistema (Admin)
+- [ ] Gestione Fiskaly: lista partner, setup, override, reset, explorer
+- [ ] Log errori
+
+#### 18. Permessi & Sicurezza
+- [ ] Admin: accesso completo
+- [ ] Partner: solo proprie strutture/stazioni, no sezioni admin
+- [ ] Manager: solo struttura assegnata
+
+#### 19. Edge Cases
+- [ ] URL protetto senza login → `/login`
+- [ ] Dettaglio inesistente → "non trovato"
+- [ ] Errori rete → toast errore
+- [ ] Prevenzione doppio click su azioni
+- [ ] Session expiry
 
 ---
 
-### File da Creare/Modificare
+### Riepilogo File da Modificare/Creare
 
 | File | Azione |
 |---|---|
-| `supabase/functions/fiskaly-setup/index.ts` | Modifica: aggiungere parametri `entity_id` e `system_id` opzionali, migliorare gestione errore 405 |
-| `src/pages/AdminSettings.tsx` | Modifica: aggiungere sezione "Gestione Fiskaly" con i 4 pannelli sopra descritti |
-| `src/services/profileService.ts` | Già presente `updatePartnerData` — nessuna modifica necessaria |
+| `supabase/migrations/xxx_station_ratings.sql` | Nuova tabella + RLS + funzione media |
+| `supabase/functions/delete-user/index.ts` | Supporto self-deletion per ruolo `user` |
+| `src/services/ratingService.ts` | Nuovo — fetch rating per stazione |
+| `src/pages/StationDetail.tsx` | Card "Valutazioni" |
+| `src/components/StationWashLogs.tsx` | Colonna rating opzionale |
+| `src/types/database.ts` | Tipo `StationRating` |
+| `.lovable/plan.md` | Aggiornamento con questo piano |
 
----
-
-### Flusso Operativo per WashDog (Caso Concreto)
-
-```text
-OPZIONE A — Se l'entity WashDog è "recuperabile" su Fiskaly:
-  1. Admin cerca WashDog in AdminSettings > Gestione Fiskaly
-  2. Admin inserisce l'Entity ID corretto di WashDog (UUID v7) nel campo apposito
-  3. Clicca "Configura da Entity esistente"
-  4. La edge function esegue solo Step 2 (commissioning) + Step 3 (crea System)
-  5. System ID salvato automaticamente nel profilo
-
-OPZIONE B — Se l'entity è irrecuperabile:
-  1. Admin azzera il System ID (pulsante Reset)
-  2. Admin crea manualmente una nuova entity su Fiskaly via API o altra interfaccia
-  3. Admin inserisce il System ID ottenuto nel campo manuale
-  4. Salva → partner operativo
-
-OPZIONE C — Riconfigura da zero (se entity precedente è eliminabile):
-  1. Admin clicca "Riconfigura (force)" nella FiskalySetupCard del partner
-  2. La funzione crea una nuova entity e un nuovo System
-```
-
----
-
-### Nota Tecnica sulla FiskalySetupCard in ClientDetail
-
-Il campo "Fiskaly System ID" nella `PartnerInfoCard` è già presente e funzionante — permette già l'override manuale. Quindi la sezione in `AdminSettings` aggiunge il flusso "usa entity esistente" e la diagnostica centralizzata, che mancano completamente.
