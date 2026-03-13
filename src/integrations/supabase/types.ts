@@ -1128,6 +1128,7 @@ export type Database = {
           has_access_gate: boolean
           id: string
           image_url: string
+          is_showcase: boolean
           last_heartbeat_at: string
           status: string
           structure_address: string
