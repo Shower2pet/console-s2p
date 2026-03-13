@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
       const subjectBody = {
         content: {
           type: "API_KEY",
-          name: `s2p-${partner.legal_name.trim().toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30)}-${Date.now()}`,
+          name: `s2p-${partner.legal_name.trim().toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 20)}-${Date.now().toString(36)}`.slice(0, 30),
         },
         metadata: { partner_id, unit_id: unitId },
       };
