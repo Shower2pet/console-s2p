@@ -528,7 +528,7 @@ const StationDetail = () => {
               <h4 className="text-sm font-semibold text-foreground">Lavaggio Manuale</h4>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Durata: {manualWashMinutes} min</Label>
-                <Slider min={1} max={60} step={1} value={[manualWashMinutes]} onValueChange={([v]) => setManualWashMinutes(v)} disabled={!heartbeatOkForHw || washBusy} />
+                <Slider min={1} max={60} step={1} value={[manualWashMinutes]} onValueChange={([v]) => setManualWashMinutes(v)} disabled={!hwEnabled || washBusy} />
                 <div className="flex justify-between text-xs text-muted-foreground"><span>1 min</span><span>60 min</span></div>
               </div>
               <div className="flex gap-2">
