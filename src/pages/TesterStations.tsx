@@ -138,13 +138,6 @@ const TesterStations = () => {
     },
     onError: (err: any) => handleAppError(err, "TesterStations: eliminazione stazione"),
   });
-    mutationFn: (boardId: string) => unassignBoard(boardId),
-    onSuccess: () => {
-      toast.success("Scheda scollegata");
-      invalidateAll();
-    },
-    onError: (err: any) => handleAppError(err, "TesterStations: rimozione scheda"),
-  });
 
   const getBoardForStation = (stationId: string) =>
     (testingBoards ?? []).find(b => b.station_id === stationId);
