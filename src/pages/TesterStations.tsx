@@ -43,12 +43,12 @@ const TesterStations = () => {
   const { data: testingStations, isLoading: loadingTest } = useQuery({
     queryKey: ["tester-stations", "testing", user?.id],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await (supabase
         .from("stations")
-        .select("id, type, status, description, created_at, owner_id");
-      query = query.eq("phase" as any, "TESTING" as any) as any;
-      query = query.eq("owner_id", user!.id) as any;
-      const { data, error } = await query.order("created_at", { ascending: false });
+        .select("id, type, status, description, created_at, owner_id") as any)
+        .eq("phase", "TESTING")
+        .eq("owner_id", user!.id)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
