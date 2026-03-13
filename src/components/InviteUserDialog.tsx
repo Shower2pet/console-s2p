@@ -33,7 +33,7 @@ interface InviteUserDialogProps {
   requireName?: boolean;
 }
 
-const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, title, description }: InviteUserDialogProps) => {
+const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, title, description, requireName = true }: InviteUserDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdUser, setCreatedUser] = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
