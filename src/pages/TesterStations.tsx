@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Monitor, Loader2, Cpu, PlayCircle, CheckCircle2, Link2 } from "lucide-react";
+import { Monitor, Loader2, Cpu, PlayCircle, CheckCircle2, Link2, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { takeForTesting, promoteToStock } from "@/services/stationService";
+import { takeForTesting, promoteToStock, deleteStation } from "@/services/stationService";
 import { fetchAvailableBoards, assignBoardToStation, unassignBoard } from "@/services/boardService";
 
 const TesterStations = () => {
@@ -77,6 +77,7 @@ const TesterStations = () => {
   });
 
   const [promoteId, setPromoteId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [assignBoardStation, setAssignBoardStation] = useState<string | null>(null);
   const [selectedBoardId, setSelectedBoardId] = useState("");
 
@@ -126,6 +127,16 @@ const TesterStations = () => {
       invalidateAll();
     },
     onError: (err: any) => handleAppError(err, "TesterStations: rimozione scheda"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (stationId: string) => deleteStation(stationId),
+    onSuccess: () => {
+      toast.success("Stazione eliminata");
+      setDeleteId(null);
+      invalidateAll();
+    },
+    onError: (err: any) => handleAppError(err, "TesterStations: eliminazione stazione"),
   });
 
   const getBoardForStation = (stationId: string) =>
@@ -211,7 +222,15 @@ const TesterStations = () => {
                           <TableCell className="text-muted-foreground">
                             {s.created_at ? format(new Date(s.created_at), "dd MMM yyyy", { locale: it }) : "—"}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteId(s.id)}
+                              title="Elimina stazione"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                             <Button
                               variant="default"
                               size="sm"
@@ -335,6 +354,28 @@ const TesterStations = () => {
             >
               {assignBoardMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Associa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare la stazione {deleteId}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Questa azione è irreversibile. La stazione verrà rimossa definitivamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Elimina
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
