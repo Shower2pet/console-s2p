@@ -84,6 +84,7 @@ const StationWashLogs = ({ stationId }: Props) => {
                   <TableHead>Opzione</TableHead>
                   <TableHead>Utente</TableHead>
                   <TableHead>Durata</TableHead>
+                  <TableHead>Rating</TableHead>
                   <TableHead>Stato</TableHead>
                 </TableRow>
               </TableHeader>
