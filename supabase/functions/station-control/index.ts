@@ -92,6 +92,8 @@ Deno.serve(async (req) => {
     });
   }
 
+  const isTester = role === "tester";
+
   // --- START_TIMED_WASH / START_TUB_CLEAN: heartbeat check ---
   if (command === "START_TIMED_WASH" || command === "START_TUB_CLEAN") {
     if (!effectiveSeconds || typeof effectiveSeconds !== "number" || effectiveSeconds < 1 || effectiveSeconds > 3600) {

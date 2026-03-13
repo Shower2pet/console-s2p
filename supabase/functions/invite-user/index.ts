@@ -226,8 +226,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Send onboarding email for partners ──────────────────────────────────
-    if (role === "partner") {
+    // ── Send onboarding email for partners and testers ─────────────────────
+    if (role === "partner" || role === "tester") {
       try {
         await fetch(`${supabaseUrl}/functions/v1/send-email`, {
           method: "POST",
@@ -241,13 +241,15 @@ Deno.serve(async (req) => {
             data: {
               email,
               temp_password: tempPassword,
-              partner_name: legalName || `${firstName} ${lastName}`.trim(),
+              partner_name: role === "tester"
+                ? `${firstName || ""} ${lastName || ""}`.trim() || "Tester"
+                : legalName || `${firstName} ${lastName}`.trim(),
               console_url: "https://console-s2p.lovable.app",
             },
           }),
         });
       } catch (emailErr) {
-        console.error("Failed to send partner credentials email:", emailErr);
+        console.error("Failed to send credentials email:", emailErr);
         // Non-blocking: account is created even if email fails
       }
     }
