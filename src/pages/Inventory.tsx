@@ -120,10 +120,10 @@ const Inventory = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Seriale</TableHead>
-                  <TableHead>Prodotto</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Descrizione</TableHead>
-                  <TableHead>Data</TableHead>
+                   <TableHead>Prodotto</TableHead>
+                   <TableHead>Tipo</TableHead>
+                   <TableHead>Fase</TableHead>
+                   <TableHead>Descrizione</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
                 </TableRow>
               </TableHeader>
