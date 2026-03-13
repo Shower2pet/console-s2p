@@ -230,7 +230,6 @@ const TesterStations = () => {
                           </span>
                         )}
                       </TableCell>
-                      </TableCell>
                       <TableCell>
                         {board ? (
                           <div className="flex items-center gap-1.5">
