@@ -71,8 +71,8 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
     try {
       const result = await inviteUser({
         email: values.email,
-        firstName: values.firstName,
-        lastName: values.lastName,
+        firstName: values.firstName || "",
+        lastName: values.lastName || "",
         role,
         structureId: role === "manager" ? structureId : undefined,
         stationIds: role === "partner" && selectedStationIds.length > 0 ? selectedStationIds : undefined,
