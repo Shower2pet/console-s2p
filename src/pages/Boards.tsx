@@ -17,7 +17,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { fetchBoards, createBoard, deleteBoard, type Board } from "@/services/boardService";
+import { fetchBoards, fetchTesterBoards, createBoard, deleteBoard, type Board } from "@/services/boardService";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Boards = () => {
   const qc = useQueryClient();

@@ -18,6 +18,28 @@ export const fetchBoards = async (): Promise<Board[]> => {
   return (data ?? []) as unknown as Board[];
 };
 
+/** Fetch boards visible to tester: unassigned OR assigned to own stations */
+export const fetchTesterBoards = async (userId: string): Promise<Board[]> => {
+  // Get tester's own station IDs
+  const { data: stations, error: stErr } = await supabase
+    .from("stations")
+    .select("id")
+    .eq("owner_id", userId);
+  if (stErr) throw stErr;
+  const ownStationIds = (stations ?? []).map((s: any) => s.id);
+
+  // Fetch boards: unassigned OR assigned to tester's stations
+  const { data, error } = await supabase
+    .from("boards" as any)
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return ((data ?? []) as unknown as Board[]).filter(
+    (b) => !b.station_id || ownStationIds.includes(b.station_id)
+  );
+};
+
 /** Fetch boards not assigned to any station */
 export const fetchAvailableBoards = async (): Promise<Board[]> => {
   const { data, error } = await supabase
