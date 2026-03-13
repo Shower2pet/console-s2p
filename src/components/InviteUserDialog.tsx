@@ -15,8 +15,8 @@ import { fetchFreeStations, type FreeStation } from "@/services/stationService";
 import { inviteUser } from "@/services/userService";
 
 const inviteSchema = z.object({
-  firstName: z.string().trim().min(1, "Nome obbligatorio").max(50),
-  lastName: z.string().trim().min(1, "Cognome obbligatorio").max(50),
+  firstName: z.string().trim().max(50).optional().or(z.literal("")),
+  lastName: z.string().trim().max(50).optional().or(z.literal("")),
   email: z.string().trim().email("Email non valida").max(255),
 });
 
