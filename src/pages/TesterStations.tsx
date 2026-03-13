@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Monitor, Loader2, Cpu, Plus, CheckCircle2, Link2, Trash2 } from "lucide-react";
+import { Monitor, Loader2, Cpu, Plus, CheckCircle2, Link2, Trash2, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
