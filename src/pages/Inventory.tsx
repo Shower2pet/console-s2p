@@ -97,6 +97,7 @@ const Inventory = () => {
                   <TableHead>Prodotto</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Fase</TableHead>
+                  <TableHead>Scheda</TableHead>
                   <TableHead>Descrizione</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
