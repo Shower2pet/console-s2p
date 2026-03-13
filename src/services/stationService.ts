@@ -225,15 +225,9 @@ export const takeForTesting = async (stationId: string, testerId: string) => {
 
 /** Tester promotes a TESTING station to STOCK (tested & ready) */
 export const promoteToStock = async (stationId: string) => {
-  const { error } = await (supabase
-    .from("stations")
-    .update({
-      phase: "STOCK",
-      owner_id: null,
-      status: "OFFLINE",
-    } as any) as any)
-    .eq("id", stationId)
-    .eq("phase", "TESTING");
+  const { error } = await supabase.rpc("promote_station_to_stock" as any, {
+    p_station_id: stationId,
+  });
   if (error) throw error;
 };
 
