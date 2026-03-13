@@ -17,13 +17,15 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { fetchBoards, createBoard, deleteBoard, type Board } from "@/services/boardService";
+import { fetchBoards, fetchTesterBoards, createBoard, deleteBoard, type Board } from "@/services/boardService";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Boards = () => {
   const qc = useQueryClient();
+  const { user, isTester } = useAuth();
   const { data: boards, isLoading } = useQuery({
-    queryKey: ["boards"],
-    queryFn: fetchBoards,
+    queryKey: ["boards", isTester ? "tester" : "all"],
+    queryFn: () => isTester && user ? fetchTesterBoards(user.id) : fetchBoards(),
   });
 
   const [createOpen, setCreateOpen] = useState(false);
