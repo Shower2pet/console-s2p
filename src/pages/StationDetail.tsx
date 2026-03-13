@@ -71,7 +71,7 @@ const NumericInput = ({
 const StationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, isAdmin, isPartner, isManager } = useAuth();
+  const { user, isAdmin, isPartner, isManager, isTester } = useAuth();
   const { data: station, isLoading, error: stationError } = useStation(id);
   const updateStation = useUpdateStation();
   const openTicket = useCreateMaintenanceTicket();
@@ -232,24 +232,27 @@ const StationDetail = () => {
   };
 
   const heartbeatOkForHw = station ? isHeartbeatRecent(station.last_heartbeat_at, 100_000) : false;
+  const isTestingPhase = (station as any)?.phase === "TESTING";
+  // Testers bypass heartbeat requirement during TESTING phase
+  const hwEnabled = heartbeatOkForHw || (isTester && isTestingPhase);
 
   const handleSave = async () => {
     if (!station) return;
 
-    // Blocca attivazione se heartbeat non recente (per tutti, incluso admin)
-    if (editStatus === "AVAILABLE" && !isHeartbeatRecent(station.last_heartbeat_at)) {
+    // Blocca attivazione se heartbeat non recente (tester in TESTING bypassa)
+    if (editStatus === "AVAILABLE" && !isHeartbeatRecent(station.last_heartbeat_at) && !(isTester && isTestingPhase)) {
       toast.error("Impossibile attivare la stazione: nessun heartbeat recente. Verificare che il dispositivo sia acceso e connesso.");
       return;
     }
 
-    // Blocca attivazione se nessuna scheda associata
-    if (editStatus === "AVAILABLE" && !currentBoard) {
+    // Blocca attivazione se nessuna scheda associata (tester bypassa)
+    if (editStatus === "AVAILABLE" && !currentBoard && !(isTester && isTestingPhase)) {
       toast.error("Impossibile attivare la stazione: nessuna scheda hardware associata. Associare prima una scheda dalla sezione dedicata.");
       return;
     }
 
-    // Blocca attivazione se Fiskaly non configurato
-    if (editStatus === "AVAILABLE" && !ownerHasFiskaly) {
+    // Blocca attivazione se Fiskaly non configurato (tester bypassa)
+    if (editStatus === "AVAILABLE" && !ownerHasFiskaly && !(isTester && isTestingPhase)) {
       if (isAdmin) {
         toast.error("Impossibile attivare la stazione: configurare prima Fiskaly per il partner proprietario dalla sezione Impostazioni Sistema → Partner Fiscali.");
       } else {
@@ -284,7 +287,7 @@ const StationDetail = () => {
 
   const invokeHardware = async (command: "ON" | "OFF" | "PULSE", duration_minutes?: number) => {
     if (!station) return;
-    if ((command === "ON" || command === "OFF") && !heartbeatOkForHw) {
+    if ((command === "ON" || command === "OFF") && !hwEnabled) {
       toast.error("Stazione offline: nessun heartbeat ricevuto negli ultimi 100 secondi. Verificare che il dispositivo sia acceso e connesso.");
       return;
     }
@@ -383,7 +386,7 @@ const StationDetail = () => {
 
   const structureName = (station as any).structures?.name;
   // Permissions
-  const canCommand = isAdmin || isPartner || isManager;
+  const canCommand = isAdmin || isPartner || isManager || isTester;
   const canEditInfo = isAdmin || isPartner || isManager;
   const canMoveStructure = isAdmin || isPartner;
   const canRemoveFromClient = isAdmin;
@@ -464,7 +467,7 @@ const StationDetail = () => {
               <Button
                 variant="outline"
                 onClick={handleHwOn}
-                disabled={hwBusy || updateStation.isPending || !canActivate || !heartbeatOkForHw}
+                disabled={hwBusy || updateStation.isPending || !canActivate || !hwEnabled}
                 className="gap-2 border-primary/50 text-primary hover:bg-primary/10"
               >
                 {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />} Attiva Servizio
@@ -474,13 +477,13 @@ const StationDetail = () => {
               <Button
                 variant="destructive"
                 onClick={() => invokeHardware("OFF")}
-                disabled={hwBusy || updateStation.isPending || !heartbeatOkForHw}
+                disabled={hwBusy || updateStation.isPending || !hwEnabled}
                 className="gap-2"
               >
                 {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />} Spegni Servizio
               </Button>
             </div>
-            {!heartbeatOkForHw && (
+            {!hwEnabled && (
               <div className="text-xs text-destructive flex items-center gap-1.5 border-t pt-2">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                 <span>Stazione offline — nessun heartbeat negli ultimi 100 secondi. I comandi ON/OFF sono disabilitati.</span>
@@ -525,7 +528,7 @@ const StationDetail = () => {
               <h4 className="text-sm font-semibold text-foreground">Lavaggio Manuale</h4>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Durata: {manualWashMinutes} min</Label>
-                <Slider min={1} max={60} step={1} value={[manualWashMinutes]} onValueChange={([v]) => setManualWashMinutes(v)} disabled={!heartbeatOkForHw || washBusy} />
+                <Slider min={1} max={60} step={1} value={[manualWashMinutes]} onValueChange={([v]) => setManualWashMinutes(v)} disabled={!hwEnabled || washBusy} />
                 <div className="flex justify-between text-xs text-muted-foreground"><span>1 min</span><span>60 min</span></div>
               </div>
               <div className="flex gap-2">
@@ -547,7 +550,7 @@ const StationDetail = () => {
                       setWashBusy(false);
                     }
                   }}
-                  disabled={!heartbeatOkForHw || washBusy}
+                  disabled={!hwEnabled || washBusy}
                   className="gap-2"
                 >
                   {washBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
@@ -567,7 +570,7 @@ const StationDetail = () => {
                       setWashBusy(false);
                     }
                   }}
-                  disabled={!heartbeatOkForHw || washBusy}
+                  disabled={!hwEnabled || washBusy}
                   className="gap-2"
                 >
                   {washBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
@@ -586,7 +589,7 @@ const StationDetail = () => {
                   </h4>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Durata: {tubCleanMinutes} min</Label>
-                    <Slider min={1} max={60} step={1} value={[tubCleanMinutes]} onValueChange={([v]) => setTubCleanMinutes(v)} disabled={!heartbeatOkForHw || tubCleanBusy} />
+                    <Slider min={1} max={60} step={1} value={[tubCleanMinutes]} onValueChange={([v]) => setTubCleanMinutes(v)} disabled={!hwEnabled || tubCleanBusy} />
                     <div className="flex justify-between text-xs text-muted-foreground"><span>1 min</span><span>60 min</span></div>
                   </div>
                   <div className="flex gap-2">
@@ -608,7 +611,7 @@ const StationDetail = () => {
                           setTubCleanBusy(false);
                         }
                       }}
-                      disabled={!heartbeatOkForHw || tubCleanBusy}
+                      disabled={!hwEnabled || tubCleanBusy}
                       variant="secondary"
                       className="gap-2"
                     >
@@ -629,7 +632,7 @@ const StationDetail = () => {
                           setTubCleanBusy(false);
                         }
                       }}
-                      disabled={!heartbeatOkForHw || tubCleanBusy}
+                      disabled={!hwEnabled || tubCleanBusy}
                       className="gap-2"
                     >
                       {tubCleanBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
@@ -640,7 +643,7 @@ const StationDetail = () => {
               </>
             )}
 
-            {!heartbeatOkForHw && (
+            {!hwEnabled && (
               <div className="text-xs text-destructive flex items-center gap-1.5 border-t pt-2">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                 <span>Stazione offline — i comandi manuali sono disabilitati.</span>
