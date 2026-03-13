@@ -437,6 +437,9 @@ const StationDetail = () => {
           <p className="text-muted-foreground capitalize">
             {station.type}
           </p>
+          <p className={`text-xs flex items-center gap-1 mt-1 ${heartbeatOkForHw ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+            <Clock className="h-3 w-3" /> Ultimo heartbeat: {formatHeartbeatAgo(station.last_heartbeat_at)}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={station.status ?? "OFFLINE"} />
