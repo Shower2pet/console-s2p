@@ -166,6 +166,11 @@ const TesterStations = () => {
   const getBoardForStation = (stationId: string) =>
     (testingBoards ?? []).find((b: any) => b.station_id === stationId);
 
+  const isHeartbeatRecent = (lastHeartbeat: string | null | undefined) => {
+    if (!lastHeartbeat) return false;
+    return Date.now() - new Date(lastHeartbeat).getTime() < 100_000;
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
