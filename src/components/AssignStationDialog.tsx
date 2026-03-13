@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
-import { fetchFreeStations, assignStationToPartner } from "@/services/stationService";
+import { fetchStockStationsForDeploy, deployStation } from "@/services/stationService";
 
 interface AssignStationDialogProps {
   partnerId: string;
