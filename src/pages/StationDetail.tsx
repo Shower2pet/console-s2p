@@ -483,7 +483,7 @@ const StationDetail = () => {
                 {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />} Spegni Servizio
               </Button>
             </div>
-            {!heartbeatOkForHw && (
+            {!hwEnabled && (
               <div className="text-xs text-destructive flex items-center gap-1.5 border-t pt-2">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                 <span>Stazione offline — nessun heartbeat negli ultimi 100 secondi. I comandi ON/OFF sono disabilitati.</span>
