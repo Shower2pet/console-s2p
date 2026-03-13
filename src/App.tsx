@@ -99,6 +99,7 @@ const AppRoutes = () => {
           <Route path="/end-users" element={<EndUsersList />} />
           <Route path="/end-users/:id" element={<EndUserDetail />} />
           <Route path="/admin-settings" element={<AdminSettings />} />
+          <Route path="/tester/stations" element={<TesterStations />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />
