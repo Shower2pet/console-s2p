@@ -225,20 +225,10 @@ export const takeForTesting = async (stationId: string, testerId: string) => {
 
 /** Tester promotes a TESTING station to STOCK (tested & ready) */
 export const promoteToStock = async (stationId: string) => {
-  const { error, data } = await (supabase
-    .from("stations")
-    .update({
-      phase: "STOCK",
-      owner_id: null,
-      status: "OFFLINE",
-    } as any) as any)
-    .eq("id", stationId)
-    .eq("phase", "TESTING")
-    .select();
+  const { error } = await supabase.rpc("promote_station_to_stock" as any, {
+    p_station_id: stationId,
+  });
   if (error) throw error;
-  if (!data || data.length === 0) {
-    throw new Error("Nessuna stazione aggiornata — la stazione potrebbe non essere in fase TESTING o non hai i permessi.");
-  }
 };
 
 /** Admin deploys a STOCK station to a partner */
