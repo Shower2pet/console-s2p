@@ -103,6 +103,16 @@ const StationWashLogs = ({ stationId }: Props) => {
                       </TableCell>
                       <TableCell className="text-xs">{durationMin} min</TableCell>
                       <TableCell>
+                        {s.rating ? (
+                          <span className="inline-flex items-center gap-0.5 text-xs font-medium">
+                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            {s.rating}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <Badge variant={st.variant} className="text-[10px]">{st.label}</Badge>
                       </TableCell>
                     </TableRow>
