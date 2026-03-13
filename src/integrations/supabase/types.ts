@@ -1229,6 +1229,10 @@ export type Database = {
         Args: { p_station_id: string }
         Returns: undefined
       }
+      promote_station_to_stock: {
+        Args: { p_station_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       payment_method_type: "STRIPE" | "CREDITS" | "HYBRID"
