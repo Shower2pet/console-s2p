@@ -132,10 +132,13 @@ const Inventory = () => {
                   <TableRow key={s.id}>
                     <TableCell className="font-mono font-medium">{s.id}</TableCell>
                     <TableCell>{(s as any).products?.name ?? s.type}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="capitalize">{(s as any).products?.type ?? "—"}</Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground max-w-[200px] truncate">{(s as any).description ?? "—"}</TableCell>
+                     <TableCell>
+                       <Badge variant="secondary" className="capitalize">{(s as any).products?.type ?? "—"}</Badge>
+                     </TableCell>
+                     <TableCell>
+                       <Badge variant={(s as any).phase === "STOCK" ? "default" : "outline"}>{(s as any).phase}</Badge>
+                     </TableCell>
+                     <TableCell className="text-muted-foreground max-w-[200px] truncate">{(s as any).description ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{s.created_at ? format(new Date(s.created_at), "dd MMM yyyy", { locale: it }) : "—"}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => setDeleteId(s.id)}>
