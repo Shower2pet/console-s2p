@@ -34,11 +34,12 @@ const AssignStationDialog = ({ partnerId, partnerName, prominent = false }: Assi
   const handleAssign = async (stationId: string) => {
     setAssigning(stationId);
     try {
-      await assignStationToPartner(stationId, partnerId);
+      await deployStation(stationId, partnerId);
       toast.success(`Stazione ${stationId} assegnata a ${partnerName}`);
-      qc.invalidateQueries({ queryKey: ["free-stations-for-assign"] });
+      qc.invalidateQueries({ queryKey: ["stock-stations-for-deploy"] });
       qc.invalidateQueries({ queryKey: ["client-stations-all"] });
       qc.invalidateQueries({ queryKey: ["client-stations"] });
+      qc.invalidateQueries({ queryKey: ["stations"] });
     } catch (e: any) {
       handleAppError(e, "AssignStationDialog: assegnazione stazione");
     } finally {
