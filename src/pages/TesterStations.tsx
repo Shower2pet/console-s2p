@@ -46,7 +46,7 @@ const TesterStations = () => {
       const { data, error } = await supabase
         .from("stations")
         .select("id, type, status, description, created_at, owner_id")
-        .eq("phase" as any, "TESTING")
+        .eq("phase" as any, "TESTING" as any)
         .eq("owner_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;

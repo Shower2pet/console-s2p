@@ -115,7 +115,7 @@ export const fetchStockStations = async () => {
   const { data, error } = await supabase
     .from("stations")
     .select("*, products:product_id(name, type)")
-    .eq("phase" as any, "PRODUCTION")
+    .eq("phase" as any, "PRODUCTION" as any)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data;
