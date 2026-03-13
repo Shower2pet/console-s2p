@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FlaskConical, Monitor, Cpu, Droplets, Wind, DoorOpen, ShowerHead, Loader2, Timer } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -69,25 +69,69 @@ const useCountdown = (endsAt: string | null): number => {
   return remaining;
 };
 
+// Helper: read/write timer state from localStorage
+const TIMER_STORAGE_KEY = "s2p_tester_timers";
+
+interface PersistedTimers {
+  stationId: string;
+  washEndsAt: string | null;
+  washTotalSec: number;
+  tubEndsAt: string | null;
+  tubTotalSec: number;
+}
+
+const loadTimers = (): PersistedTimers | null => {
+  try {
+    const raw = localStorage.getItem(TIMER_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedTimers;
+    const now = Date.now();
+    const washExpired = !parsed.washEndsAt || new Date(parsed.washEndsAt).getTime() <= now;
+    const tubExpired = !parsed.tubEndsAt || new Date(parsed.tubEndsAt).getTime() <= now;
+    if (washExpired && tubExpired) { localStorage.removeItem(TIMER_STORAGE_KEY); return null; }
+    if (washExpired) parsed.washEndsAt = null;
+    if (tubExpired) parsed.tubEndsAt = null;
+    return parsed;
+  } catch { return null; }
+};
+
+const saveTimers = (t: PersistedTimers) => {
+  try { localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(t)); } catch { /* */ }
+};
+
+const clearTimersStorage = () => {
+  try { localStorage.removeItem(TIMER_STORAGE_KEY); } catch { /* */ }
+};
+
 const TesterHome = () => {
   const { user } = useAuth();
-  const [selectedStation, setSelectedStation] = useState<string>("");
+  const persisted = useMemo(() => loadTimers(), []);
+
+  const [selectedStation, setSelectedStation] = useState<string>(persisted?.stationId ?? "");
   const [washDuration, setWashDuration] = useState(5);
   const [tubDuration, setTubDuration] = useState(5);
   const [loadingCmd, setLoadingCmd] = useState<string | null>(null);
 
-  // Timer state: store ends_at + total duration for progress calc
-  const [washEndsAt, setWashEndsAt] = useState<string | null>(null);
-  const [washTotalSec, setWashTotalSec] = useState(0);
-  const [tubEndsAt, setTubEndsAt] = useState<string | null>(null);
-  const [tubTotalSec, setTubTotalSec] = useState(0);
+  const [washEndsAt, setWashEndsAt] = useState<string | null>(persisted?.washEndsAt ?? null);
+  const [washTotalSec, setWashTotalSec] = useState(persisted?.washTotalSec ?? 0);
+  const [tubEndsAt, setTubEndsAt] = useState<string | null>(persisted?.tubEndsAt ?? null);
+  const [tubTotalSec, setTubTotalSec] = useState(persisted?.tubTotalSec ?? 0);
 
   const washRemaining = useCountdown(washEndsAt);
   const tubRemaining = useCountdown(tubEndsAt);
 
-  // Auto-clear when timer reaches 0 — use refs to skip the first render where remaining is still 0
-  const washWasActive = useRef(false);
-  const tubWasActive = useRef(false);
+  // Persist timer state
+  useEffect(() => {
+    if (washEndsAt || tubEndsAt) {
+      saveTimers({ stationId: selectedStation, washEndsAt, washTotalSec, tubEndsAt, tubTotalSec });
+    } else {
+      clearTimersStorage();
+    }
+  }, [washEndsAt, washTotalSec, tubEndsAt, tubTotalSec, selectedStation]);
+
+  // Auto-clear when timer reaches 0
+  const washWasActive = useRef(!!persisted?.washEndsAt);
+  const tubWasActive = useRef(!!persisted?.tubEndsAt);
 
   useEffect(() => {
     if (washEndsAt && washRemaining > 0) washWasActive.current = true;
@@ -105,8 +149,12 @@ const TesterHome = () => {
     }
   }, [tubRemaining, tubEndsAt]);
 
-  // Clear timers when station changes
-  useEffect(() => { setWashEndsAt(null); setTubEndsAt(null); }, [selectedStation]);
+  // Clear timers when station changes (skip initial mount with persisted station)
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) { isInitialMount.current = false; return; }
+    setWashEndsAt(null); setTubEndsAt(null);
+  }, [selectedStation]);
 
   const { data: stations = [], isLoading } = useQuery({
     queryKey: ["tester-hw-stations", user?.id],
