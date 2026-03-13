@@ -40,7 +40,7 @@ const TesterHome = () => {
   const [loadingCmd, setLoadingCmd] = useState<string | null>(null);
 
   const { data: stations = [], isLoading } = useQuery({
-    queryKey: ["tester-stations", user?.id],
+    queryKey: ["tester-hw-stations", user?.id],
     queryFn: () => fetchTesterStations(user!.id),
     enabled: !!user,
   });
