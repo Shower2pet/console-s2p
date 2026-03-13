@@ -49,7 +49,7 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
   useEffect(() => {
     if (open && role === "partner") {
       setLoadingStations(true);
-      fetchFreeStations()
+      fetchStockStationsForDeploy()
         .then((data) => setFreeStations(data))
         .catch((e) => handleAppError(e, "InviteUserDialog: caricamento stazioni"))
         .finally(() => setLoadingStations(false));

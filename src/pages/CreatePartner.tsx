@@ -50,7 +50,7 @@ const CreatePartner = () => {
   });
 
   useEffect(() => {
-    fetchFreeStations()
+    fetchStockStationsForDeploy()
       .then((data) => setFreeStations(data))
       .catch((e) => handleAppError(e, "CreatePartner: caricamento stazioni"))
       .finally(() => setLoadingStations(false));
