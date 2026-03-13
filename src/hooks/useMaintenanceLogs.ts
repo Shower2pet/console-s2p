@@ -62,8 +62,9 @@ export const useCreateMaintenanceTicket = () => {
         body: { type: "opened", station_id: stationId, reason, severity },
       }).catch((e) => console.error("notify-maintenance email error:", e));
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["maintenance_logs"] });
+      qc.invalidateQueries({ queryKey: ["station-maintenance-history", variables.stationId] });
       qc.invalidateQueries({ queryKey: ["stations"] });
     },
   });
