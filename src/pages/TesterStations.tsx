@@ -77,6 +77,7 @@ const TesterStations = () => {
   });
 
   const [promoteId, setPromoteId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [assignBoardStation, setAssignBoardStation] = useState<string | null>(null);
   const [selectedBoardId, setSelectedBoardId] = useState("");
 
