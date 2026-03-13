@@ -25,11 +25,12 @@ type InviteFormValues = z.infer<typeof inviteSchema>;
 interface InviteUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  role: "partner" | "manager";
+  role: "partner" | "manager" | "tester";
   structureId?: string;
   onSuccess?: () => void;
   title: string;
   description?: string;
+  requireName?: boolean;
 }
 
 const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, title, description }: InviteUserDialogProps) => {
