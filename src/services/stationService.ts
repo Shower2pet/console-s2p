@@ -181,41 +181,41 @@ export const createShowcaseStation = async (station: {
 
 /** Tester takes a PRODUCTION station for testing */
 export const takeForTesting = async (stationId: string, testerId: string) => {
-  const { error } = await supabase
+  const { error } = await (supabase
     .from("stations")
     .update({
       phase: "TESTING",
       owner_id: testerId,
       status: "OFFLINE",
       visibility: "HIDDEN",
-    } as any)
+    } as any) as any)
     .eq("id", stationId)
-    .eq("phase" as any, "PRODUCTION");
+    .eq("phase", "PRODUCTION");
   if (error) throw error;
 };
 
 /** Tester promotes a TESTING station to STOCK (tested & ready) */
 export const promoteToStock = async (stationId: string) => {
-  const { error } = await supabase
+  const { error } = await (supabase
     .from("stations")
     .update({
       phase: "STOCK",
       owner_id: null,
       status: "OFFLINE",
-    } as any)
+    } as any) as any)
     .eq("id", stationId)
-    .eq("phase" as any, "TESTING");
+    .eq("phase", "TESTING");
   if (error) throw error;
 };
 
 /** Admin deploys a STOCK station to a partner */
 export const deployStation = async (stationId: string, partnerId: string) => {
-  const { error } = await supabase
+  const { error } = await (supabase
     .from("stations")
     .update({
       phase: "DEPLOYED",
       owner_id: partnerId,
-    } as any)
+    } as any) as any)
     .eq("id", stationId);
   if (error) throw error;
 };
