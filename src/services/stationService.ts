@@ -132,6 +132,24 @@ export const fetchStockStationsForDeploy = async (): Promise<FreeStation[]> => {
   return data as FreeStation[];
 };
 
+/** Create a station as tester (phase = TESTING, owner = tester) */
+export const createTesterStation = async (station: {
+  id: string;
+  type: string;
+  product_id: string;
+  description?: string | null;
+}, testerId: string) => {
+  const payload = {
+    ...station,
+    phase: "TESTING",
+    owner_id: testerId,
+    status: "OFFLINE",
+    visibility: "HIDDEN",
+  };
+  const { error } = await supabase.from("stations").insert(payload as any);
+  if (error) throw error;
+};
+
 /** Create a new station in inventory (phase defaults to PRODUCTION on DB) */
 export const createStation = async (station: {
   id: string;

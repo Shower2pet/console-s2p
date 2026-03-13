@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
-import { fetchFreeStations, type FreeStation } from "@/services/stationService";
+import { fetchStockStationsForDeploy, type FreeStation } from "@/services/stationService";
 import { inviteUser } from "@/services/userService";
 
 const inviteSchema = z.object({
@@ -49,7 +49,7 @@ const InviteUserDialog = ({ open, onOpenChange, role, structureId, onSuccess, ti
   useEffect(() => {
     if (open && role === "partner") {
       setLoadingStations(true);
-      fetchFreeStations()
+      fetchStockStationsForDeploy()
         .then((data) => setFreeStations(data))
         .catch((e) => handleAppError(e, "InviteUserDialog: caricamento stazioni"))
         .finally(() => setLoadingStations(false));

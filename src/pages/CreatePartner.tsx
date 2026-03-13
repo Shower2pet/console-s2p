@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
-import { fetchFreeStations, type FreeStation } from "@/services/stationService";
+import { fetchStockStationsForDeploy, type FreeStation } from "@/services/stationService";
 import { inviteUser } from "@/services/userService";
 
 const inviteSchema = z.object({
@@ -50,7 +50,7 @@ const CreatePartner = () => {
   });
 
   useEffect(() => {
-    fetchFreeStations()
+    fetchStockStationsForDeploy()
       .then((data) => setFreeStations(data))
       .catch((e) => handleAppError(e, "CreatePartner: caricamento stazioni"))
       .finally(() => setLoadingStations(false));
