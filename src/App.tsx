@@ -33,6 +33,8 @@ import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
 import UpdatePassword from "@/pages/auth/UpdatePassword";
 import AccessDenied from "@/pages/AccessDenied";
+import TesterHome from "@/pages/TesterHome";
+import TesterStations from "@/pages/TesterStations";
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
