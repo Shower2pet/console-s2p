@@ -165,6 +165,10 @@ Deno.serve(async (req) => {
   } else if (command === "STOP_TUB_CLEAN") {
     topic = `shower2pet/${mqttTargetId}/relay2/command`;
     payload = "0";
+  } else if (command === "OPEN_GATE") {
+    // Relay 3 — gate pulse (5 seconds)
+    topic = `shower2pet/${mqttTargetId}/relay3/pulse`;
+    payload = "50"; // 50 * 100ms = 5s
   } else if (command === "ON") {
     topic = `shower2pet/${mqttTargetId}/relay1/command`;
     payload = "1";
