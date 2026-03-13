@@ -611,7 +611,7 @@ const StationDetail = () => {
                           setTubCleanBusy(false);
                         }
                       }}
-                      disabled={!heartbeatOkForHw || tubCleanBusy}
+                      disabled={!hwEnabled || tubCleanBusy}
                       variant="secondary"
                       className="gap-2"
                     >
