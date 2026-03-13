@@ -34,7 +34,7 @@ const TesterStations = () => {
     queryFn: async () => {
       const { data, error } = await (supabase
         .from("stations")
-        .select("id, type, status, description, created_at, owner_id, product_id") as any)
+        .select("id, type, status, description, created_at, owner_id, product_id, last_heartbeat_at") as any)
         .eq("phase", "TESTING")
         .eq("owner_id", user!.id)
         .order("created_at", { ascending: false });
