@@ -214,15 +214,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // If partner with selected stations, assign owner_id
+    // If partner with selected stations, deploy them (STOCK → DEPLOYED)
     if (role === "partner" && Array.isArray(stationIds) && stationIds.length > 0) {
       const { error: stationError } = await adminClient
         .from("stations")
-        .update({ owner_id: userId })
+        .update({ owner_id: userId, phase: "DEPLOYED" })
         .in("id", stationIds);
 
       if (stationError) {
-        console.error("Station assignment error:", stationError);
+        console.error("Station deployment error:", stationError);
       }
     }
 
