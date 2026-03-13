@@ -48,6 +48,7 @@ const Boards = () => {
   const resetForm = () => {
     setBoardType("ethernet");
     setModel("");
+    setModelSearchQuery("");
   };
 
   const createMutation = useMutation({
