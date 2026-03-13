@@ -1,29 +1,23 @@
 
-
 ## Piano Completo: Feature Mancanti + Testing Checklist Console
 
-### Parte A — Feature da Implementare
+### Stato Implementazione
 
-#### A1. Sistema Rating Stazioni (lato Console)
+| Feature | Stato |
+|---|---|
+| Tabella `station_ratings` + RLS + funzione media | ✅ Completato |
+| Edge function `delete-user` con self-deletion | ✅ Completato |
+| `src/services/ratingService.ts` | ✅ Completato |
+| Card "Valutazioni" in `StationDetail.tsx` | ✅ Completato |
+| Colonna rating in `StationWashLogs.tsx` | ✅ Completato |
+| Tipo `StationRating` in `database.ts` | ✅ Completato |
 
-**Database (migration SQL):**
-- Tabella `station_ratings`: `id` uuid PK, `station_id` text FK, `user_id` uuid FK, `session_id` uuid FK unique, `rating` smallint CHECK 1-5, `comment` text nullable, `created_at` timestamptz
-- RLS: admin/partner/manager leggono rating delle proprie stazioni; utenti inseriscono i propri
-- Funzione SQL `get_station_avg_rating(p_station_id text)` → returns `{avg_rating numeric, count bigint}`
+### Note per App User (progetto separato)
 
-**Console App:**
-- Nuovo `src/services/ratingService.ts` — fetch media e lista rating per stazione
-- In `src/pages/StationDetail.tsx` — nuova card "Valutazioni" dopo StationWashLogs: media stelle (icone Star), conteggio, lista ultime 10 recensioni con data/utente/commento
-- In `src/components/StationWashLogs.tsx` — colonna "Rating" opzionale (stella + voto se presente)
-- Aggiornare `src/types/database.ts` con tipo `StationRating`
-
-#### A2. Self-Deletion Utente (Edge Function)
-
-**Modifica `supabase/functions/delete-user/index.ts`:**
-- Aggiungere parametro `selfDelete: boolean` nel body
-- Se `selfDelete === true` E `userId === caller.id` E ruolo caller è `user`: permettere l'eliminazione (pulizia wallets, subscriptions, gate_commands, access_logs, notes, nullify wash_sessions/transactions user_id, delete profile, delete auth)
-- Mantenere il blocco self-deletion per admin/partner/manager (protezione)
-- Nessuna modifica console necessaria — la UI di cancellazione è nella User App
+Per completare il flusso rating lato utente, nell'App User servono:
+1. Componente 5 stelle post-lavaggio (step `feedback`/`done`) che fa INSERT in `station_ratings`
+2. Visualizzazione media stelle nella pagina dettaglio stazione pubblica
+3. Dialog "Elimina account" che chiama `delete-user` con `{ userId: currentUser.id, selfDelete: true }`
 
 ---
 
@@ -82,7 +76,7 @@
 - [ ] Controlli hardware: ON/OFF/PULSE, lavaggio temporizzato, pulizia vasca
 - [ ] Ticket manutenzione da dettaglio
 - [ ] Storico lavaggi, utenti, manutenzione
-- [ ] **[NUOVO]** Card valutazioni (media stelle + recensioni)
+- [ ] Card valutazioni (media stelle + recensioni)
 
 #### 8. Magazzino (Admin)
 - [ ] Lista stazioni stock
@@ -134,18 +128,3 @@
 - [ ] Errori rete → toast errore
 - [ ] Prevenzione doppio click su azioni
 - [ ] Session expiry
-
----
-
-### Riepilogo File da Modificare/Creare
-
-| File | Azione |
-|---|---|
-| `supabase/migrations/xxx_station_ratings.sql` | Nuova tabella + RLS + funzione media |
-| `supabase/functions/delete-user/index.ts` | Supporto self-deletion per ruolo `user` |
-| `src/services/ratingService.ts` | Nuovo — fetch rating per stazione |
-| `src/pages/StationDetail.tsx` | Card "Valutazioni" |
-| `src/components/StationWashLogs.tsx` | Colonna rating opzionale |
-| `src/types/database.ts` | Tipo `StationRating` |
-| `.lovable/plan.md` | Aggiornamento con questo piano |
-

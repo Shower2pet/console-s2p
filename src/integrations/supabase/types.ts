@@ -503,6 +503,51 @@ export type Database = {
           },
         ]
       }
+      station_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          rating: number
+          session_id: string
+          station_id: string
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating: number
+          session_id: string
+          station_id: string
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          session_id?: string
+          station_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "station_ratings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "wash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "station_ratings_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stations: {
         Row: {
           access_code: string | null
@@ -1128,6 +1173,7 @@ export type Database = {
           has_access_gate: boolean
           id: string
           image_url: string
+          is_showcase: boolean
           last_heartbeat_at: string
           status: string
           structure_address: string
@@ -1140,6 +1186,13 @@ export type Database = {
           type: string
           visibility: string
           washing_options: Json
+        }[]
+      }
+      get_station_avg_rating: {
+        Args: { p_station_id: string }
+        Returns: {
+          avg_rating: number
+          total_count: number
         }[]
       }
       get_station_users: {

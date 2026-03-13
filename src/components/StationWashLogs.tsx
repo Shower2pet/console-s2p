@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Droplets } from "lucide-react";
+import { Loader2, Droplets, Star } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 
@@ -42,9 +42,21 @@ const StationWashLogs = ({ stationId }: Props) => {
         (profiles ?? []).forEach(p => profileMap.set(p.id, p.email ?? ""));
       }
 
+      // Fetch ratings for these sessions
+      const sessionIds = (data ?? []).map(d => d.id);
+      let ratingMap = new Map<string, number>();
+      if (sessionIds.length > 0) {
+        const { data: ratings } = await supabase
+          .from("station_ratings" as any)
+          .select("session_id, rating")
+          .in("session_id", sessionIds);
+        ((ratings ?? []) as any[]).forEach((r: any) => ratingMap.set(r.session_id, r.rating));
+      }
+
       return (data ?? []).map(s => ({
         ...s,
         user_email: s.user_id ? profileMap.get(s.user_id) ?? null : s.guest_email ?? null,
+        rating: ratingMap.get(s.id) ?? null,
       }));
     },
   });
@@ -72,6 +84,7 @@ const StationWashLogs = ({ stationId }: Props) => {
                   <TableHead>Opzione</TableHead>
                   <TableHead>Utente</TableHead>
                   <TableHead>Durata</TableHead>
+                  <TableHead>Rating</TableHead>
                   <TableHead>Stato</TableHead>
                 </TableRow>
               </TableHeader>
@@ -89,6 +102,16 @@ const StationWashLogs = ({ stationId }: Props) => {
                         {s.user_email || <span className="italic">—</span>}
                       </TableCell>
                       <TableCell className="text-xs">{durationMin} min</TableCell>
+                      <TableCell>
+                        {s.rating ? (
+                          <span className="inline-flex items-center gap-0.5 text-xs font-medium">
+                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            {s.rating}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={st.variant} className="text-[10px]">{st.label}</Badge>
                       </TableCell>
