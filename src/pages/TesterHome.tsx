@@ -187,8 +187,8 @@ const TesterHome = () => {
         setTubEndsAt(data.ends_at);
         setTubTotalSec(extras.duration_seconds ?? 0);
       }
-      if (command === "STOP_WASH") setWashEndsAt(null);
-      if (command === "STOP_TUB_CLEAN") setTubEndsAt(null);
+      if (command === "STOP_WASH" || command === "OFF") setWashEndsAt(null);
+      if (command === "STOP_TUB_CLEAN" || command === "OFF_RELAY2") setTubEndsAt(null);
     } catch (err: any) {
       handleAppError(err, `TesterHome: ${command}`);
     } finally {
