@@ -28,6 +28,7 @@ import MapPicker from "@/components/MapPicker";
 import StationUsersList from "@/components/StationUsersList";
 import StationWashLogs from "@/components/StationWashLogs";
 import StationMaintenanceHistory from "@/components/StationMaintenanceHistory";
+import { fetchStationAvgRating, fetchStationRatings } from "@/services/ratingService";
 
 /** Numeric input that tracks raw string while editing to avoid "sticky 0" issues */
 const NumericInput = ({
