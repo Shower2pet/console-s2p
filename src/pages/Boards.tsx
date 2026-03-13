@@ -22,9 +22,10 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const Boards = () => {
   const qc = useQueryClient();
+  const { user, isTester } = useAuth();
   const { data: boards, isLoading } = useQuery({
-    queryKey: ["boards"],
-    queryFn: fetchBoards,
+    queryKey: ["boards", isTester ? "tester" : "all"],
+    queryFn: () => isTester && user ? fetchTesterBoards(user.id) : fetchBoards(),
   });
 
   const [createOpen, setCreateOpen] = useState(false);
