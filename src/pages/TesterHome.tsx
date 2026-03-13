@@ -25,6 +25,7 @@ const fetchTesterStations = async (userId: string): Promise<TesterStation[]> => 
   const { data, error } = await supabase
     .from("stations")
     .select("id, type, status, description, owner_id, last_heartbeat_at, product_id")
+    .eq("phase" as any, "TESTING")
     .eq("owner_id", userId)
     .order("id");
   if (error) throw error;

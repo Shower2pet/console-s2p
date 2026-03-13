@@ -43,8 +43,8 @@ const managerItems = [
 
 const testerItems = [
   { title: "Test Hardware", url: "/", icon: FlaskConical },
-  { title: "Schede", url: "/boards", icon: Cpu },
   { title: "Stazioni", url: "/tester/stations", icon: Monitor },
+  { title: "Schede", url: "/boards", icon: Cpu },
 ];
 
 const roleConfig: Record<string, { label: string; icon: typeof Shield }> = {
