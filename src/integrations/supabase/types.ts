@@ -1227,7 +1227,7 @@ export type Database = {
       payment_method_type: "STRIPE" | "CREDITS" | "HYBRID"
       station_status: "AVAILABLE" | "BUSY" | "OFFLINE" | "MAINTENANCE"
       transaction_type_enum: "CREDIT_TOPUP" | "WASH_SERVICE" | "GUEST_WASH"
-      user_role: "admin" | "partner" | "manager" | "user"
+      user_role: "admin" | "partner" | "manager" | "user" | "tester"
       visibility_type: "PUBLIC" | "RESTRICTED" | "HIDDEN"
     }
     CompositeTypes: {
@@ -1359,7 +1359,7 @@ export const Constants = {
       payment_method_type: ["STRIPE", "CREDITS", "HYBRID"],
       station_status: ["AVAILABLE", "BUSY", "OFFLINE", "MAINTENANCE"],
       transaction_type_enum: ["CREDIT_TOPUP", "WASH_SERVICE", "GUEST_WASH"],
-      user_role: ["admin", "partner", "manager", "user"],
+      user_role: ["admin", "partner", "manager", "user", "tester"],
       visibility_type: ["PUBLIC", "RESTRICTED", "HIDDEN"],
     },
   },
