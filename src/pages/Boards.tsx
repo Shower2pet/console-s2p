@@ -134,6 +134,7 @@ const Boards = () => {
                       {b.created_at ? format(new Date(b.created_at), "dd MMM yyyy", { locale: it }) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
+                      {!isTester && (
                       <Button
                         variant="ghost"
                         size="icon"
