@@ -220,6 +220,18 @@ const TesterStations = () => {
                         <Badge variant={s.status === "AVAILABLE" ? "default" : "outline"}>{s.status}</Badge>
                       </TableCell>
                       <TableCell>
+                        {isHeartbeatRecent(s.last_heartbeat_at) ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                            <Wifi className="h-3.5 w-3.5" /> Online
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <WifiOff className="h-3.5 w-3.5" /> Offline
+                          </span>
+                        )}
+                      </TableCell>
+                      </TableCell>
+                      <TableCell>
                         {board ? (
                           <div className="flex items-center gap-1.5">
                             <Badge variant="outline" className="gap-1">
