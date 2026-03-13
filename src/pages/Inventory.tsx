@@ -181,18 +181,17 @@ const Inventory = () => {
               <Textarea value={stationDescription} onChange={e => setStationDescription(e.target.value)} placeholder="Note aggiuntive..." className="mt-1.5" />
             </div>
             <div>
-              <Label>Scheda Hardware (opzionale)</Label>
+              <Label>Scheda Hardware *</Label>
               <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
-                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Nessuna scheda" /></SelectTrigger>
+                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Seleziona scheda..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Nessuna</SelectItem>
                   {(availableBoards ?? []).map(b => (
                     <SelectItem key={b.id} value={b.id}>{b.id} — {b.type === "wifi" ? "WiFi" : "Ethernet"} ({b.model})</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {(availableBoards ?? []).length === 0 && (
-                <p className="text-xs text-muted-foreground mt-1">Nessuna scheda disponibile. Creane una nella sezione Schede.</p>
+                <p className="text-xs text-destructive mt-1">Nessuna scheda disponibile. Creane una nella sezione Schede prima di registrare una stazione.</p>
               )}
             </div>
           </div>
