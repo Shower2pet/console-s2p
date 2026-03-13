@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const validCommands = ["PULSE", "ON", "OFF", "START_TIMED_WASH", "START_TUB_CLEAN", "STOP_WASH", "STOP_TUB_CLEAN", "OPEN_GATE"];
+  const validCommands = ["PULSE", "ON", "OFF", "ON_RELAY2", "OFF_RELAY2", "START_TIMED_WASH", "START_TUB_CLEAN", "STOP_WASH", "STOP_TUB_CLEAN", "OPEN_GATE"];
   if (!command || typeof command !== "string" || !validCommands.includes(command)) {
     return new Response(JSON.stringify({ error: `Invalid command. Must be one of: ${validCommands.join(", ")}` }), {
       status: 400,
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
   }
 
   // --- RBAC ---
-  if (role === "user" && (command === "ON" || command === "OFF" || command === "START_TIMED_WASH" || command === "START_TUB_CLEAN" || command === "STOP_WASH" || command === "STOP_TUB_CLEAN")) {
+  if (role === "user" && (command === "ON" || command === "OFF" || command === "ON_RELAY2" || command === "OFF_RELAY2" || command === "START_TIMED_WASH" || command === "START_TUB_CLEAN" || command === "STOP_WASH" || command === "STOP_TUB_CLEAN")) {
     return new Response(JSON.stringify({ error: "Forbidden: users can only use PULSE command" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -172,9 +172,14 @@ Deno.serve(async (req) => {
   } else if (command === "ON") {
     topic = `shower2pet/${mqttTargetId}/relay1/command`;
     payload = "1";
-  } else {
-    // OFF
+  } else if (command === "OFF") {
     topic = `shower2pet/${mqttTargetId}/relay1/command`;
+    payload = "0";
+  } else if (command === "ON_RELAY2") {
+    topic = `shower2pet/${mqttTargetId}/relay2/command`;
+    payload = "1";
+  } else if (command === "OFF_RELAY2") {
+    topic = `shower2pet/${mqttTargetId}/relay2/command`;
     payload = "0";
   }
 
