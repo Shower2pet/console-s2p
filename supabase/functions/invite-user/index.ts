@@ -47,8 +47,9 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!firstName || typeof firstName !== "string" || firstName.length > 100) {
-      return new Response(JSON.stringify({ error: "Nome obbligatorio (max 100 caratteri)" }), {
+    // firstName is optional for tester role
+    if (firstName && (typeof firstName !== "string" || firstName.length > 100)) {
+      return new Response(JSON.stringify({ error: "Nome non valido (max 100 caratteri)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
