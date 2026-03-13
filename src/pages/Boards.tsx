@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Plus, Trash2, Cpu, Loader2, Wifi, Cable, Link2 } from "lucide-react";
+import { Plus, Trash2, Cpu, Loader2, Wifi, Cable, Link2, Check, ChevronsUpDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -33,10 +35,20 @@ const Boards = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [boardType, setBoardType] = useState<"ethernet" | "wifi">("ethernet");
   const [model, setModel] = useState("");
+  const [modelSearchQuery, setModelSearchQuery] = useState("");
+  const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
+
+  // Extract unique models from existing boards
+  const existingModels = useMemo(() => {
+    if (!boards) return [];
+    const models = [...new Set(boards.map((b) => b.model).filter(Boolean))];
+    return models.sort();
+  }, [boards]);
 
   const resetForm = () => {
     setBoardType("ethernet");
     setModel("");
+    setModelSearchQuery("");
   };
 
   const createMutation = useMutation({
@@ -158,7 +170,75 @@ const Boards = () => {
             </div>
             <div>
               <Label>Modello *</Label>
-              <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="Es. ESP32-S3, W5500..." className="mt-1.5" />
+              <Popover open={modelPopoverOpen} onOpenChange={setModelPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={modelPopoverOpen}
+                    className="w-full justify-between mt-1.5 font-normal"
+                  >
+                    {model || "Seleziona o scrivi un modello..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder="Cerca o aggiungi modello..."
+                      value={modelSearchQuery}
+                      onValueChange={setModelSearchQuery}
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        {modelSearchQuery.trim() ? (
+                          <button
+                            className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded cursor-pointer"
+                            onClick={() => {
+                              setModel(modelSearchQuery.trim());
+                              setModelPopoverOpen(false);
+                              setModelSearchQuery("");
+                            }}
+                          >
+                            Aggiungi "<span className="font-medium">{modelSearchQuery.trim()}</span>"
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground">Nessun modello trovato</span>
+                        )}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {existingModels.map((m) => (
+                          <CommandItem
+                            key={m}
+                            value={m}
+                            onSelect={(val) => {
+                              setModel(val);
+                              setModelPopoverOpen(false);
+                              setModelSearchQuery("");
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", model === m ? "opacity-100" : "opacity-0")} />
+                            {m}
+                          </CommandItem>
+                        ))}
+                        {modelSearchQuery.trim() && !existingModels.some((m) => m.toLowerCase() === modelSearchQuery.trim().toLowerCase()) && (
+                          <CommandItem
+                            value={modelSearchQuery.trim()}
+                            onSelect={() => {
+                              setModel(modelSearchQuery.trim());
+                              setModelPopoverOpen(false);
+                              setModelSearchQuery("");
+                            }}
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Aggiungi "{modelSearchQuery.trim()}"
+                          </CommandItem>
+                        )}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
           <DialogFooter>
