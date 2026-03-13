@@ -239,8 +239,8 @@ const StationDetail = () => {
   const handleSave = async () => {
     if (!station) return;
 
-    // Blocca attivazione se heartbeat non recente (per tutti, incluso admin)
-    if (editStatus === "AVAILABLE" && !isHeartbeatRecent(station.last_heartbeat_at)) {
+    // Blocca attivazione se heartbeat non recente (tester in TESTING bypassa)
+    if (editStatus === "AVAILABLE" && !isHeartbeatRecent(station.last_heartbeat_at) && !(isTester && isTestingPhase)) {
       toast.error("Impossibile attivare la stazione: nessun heartbeat recente. Verificare che il dispositivo sia acceso e connesso.");
       return;
     }
