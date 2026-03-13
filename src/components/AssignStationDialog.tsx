@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
-import { fetchFreeStations, assignStationToPartner } from "@/services/stationService";
+import { fetchStockStationsForDeploy, deployStation } from "@/services/stationService";
 
 interface AssignStationDialogProps {
   partnerId: string;
@@ -25,20 +25,21 @@ const AssignStationDialog = ({ partnerId, partnerName, prominent = false }: Assi
   const [assigning, setAssigning] = useState<string | null>(null);
   const qc = useQueryClient();
 
-  const { data: freeStations, isLoading } = useQuery({
-    queryKey: ["free-stations-for-assign"],
+  const { data: stockStations, isLoading } = useQuery({
+    queryKey: ["stock-stations-for-deploy"],
     enabled: open,
-    queryFn: fetchFreeStations,
+    queryFn: fetchStockStationsForDeploy,
   });
 
   const handleAssign = async (stationId: string) => {
     setAssigning(stationId);
     try {
-      await assignStationToPartner(stationId, partnerId);
+      await deployStation(stationId, partnerId);
       toast.success(`Stazione ${stationId} assegnata a ${partnerName}`);
-      qc.invalidateQueries({ queryKey: ["free-stations-for-assign"] });
+      qc.invalidateQueries({ queryKey: ["stock-stations-for-deploy"] });
       qc.invalidateQueries({ queryKey: ["client-stations-all"] });
       qc.invalidateQueries({ queryKey: ["client-stations"] });
+      qc.invalidateQueries({ queryKey: ["stations"] });
     } catch (e: any) {
       handleAppError(e, "AssignStationDialog: assegnazione stazione");
     } finally {
@@ -59,7 +60,7 @@ const AssignStationDialog = ({ partnerId, partnerName, prominent = false }: Assi
             <Monitor className="h-5 w-5 text-primary" /> Assegna Stazione
           </DialogTitle>
           <DialogDescription>
-            Seleziona una stazione libera dal magazzino da assegnare a {partnerName}.
+            Seleziona una stazione collaudata (Stock) da assegnare a {partnerName}.
             Sarà poi il partner a decidere in quale struttura posizionarla.
           </DialogDescription>
         </DialogHeader>
@@ -68,13 +69,13 @@ const AssignStationDialog = ({ partnerId, partnerName, prominent = false }: Assi
           <div className="flex justify-center py-6">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
-        ) : (freeStations ?? []).length === 0 ? (
+        ) : (stockStations ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-6">
-            Nessuna stazione libera disponibile nel magazzino.
+            Nessuna stazione collaudata disponibile per l'assegnazione.
           </p>
         ) : (
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {(freeStations ?? []).map((st) => (
+            {(stockStations ?? []).map((st) => (
               <div
                 key={st.id}
                 className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent/50 transition-colors"

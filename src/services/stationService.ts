@@ -121,6 +121,17 @@ export const fetchStockStations = async () => {
   return data;
 };
 
+/** Fetch STOCK stations ready for deployment to a partner */
+export const fetchStockStationsForDeploy = async (): Promise<FreeStation[]> => {
+  const { data, error } = await (supabase
+    .from("stations")
+    .select("id, type") as any)
+    .eq("phase", "STOCK")
+    .order("id");
+  if (error) throw error;
+  return data as FreeStation[];
+};
+
 /** Create a new station in inventory (phase defaults to PRODUCTION on DB) */
 export const createStation = async (station: {
   id: string;
