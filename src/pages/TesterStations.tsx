@@ -28,11 +28,11 @@ const TesterStations = () => {
   const { data: productionStations, isLoading: loadingProd } = useQuery({
     queryKey: ["tester-stations", "production"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("stations")
-        .select("id, type, status, description, created_at, product_id")
-        .eq("phase" as any, "PRODUCTION" as any)
-        .order("created_at", { ascending: false });
+        .select("id, type, status, description, created_at, product_id");
+      query = query.eq("phase" as any, "PRODUCTION" as any) as any;
+      const { data, error } = await query.order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
