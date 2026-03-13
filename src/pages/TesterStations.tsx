@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Monitor, Loader2, Cpu, Plus, CheckCircle2, Link2, Trash2 } from "lucide-react";
+import { Monitor, Loader2, Cpu, Plus, CheckCircle2, Link2, Trash2, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ const TesterStations = () => {
     queryFn: async () => {
       const { data, error } = await (supabase
         .from("stations")
-        .select("id, type, status, description, created_at, owner_id, product_id") as any)
+        .select("id, type, status, description, created_at, owner_id, product_id, last_heartbeat_at") as any)
         .eq("phase", "TESTING")
         .eq("owner_id", user!.id)
         .order("created_at", { ascending: false });
@@ -166,6 +166,11 @@ const TesterStations = () => {
   const getBoardForStation = (stationId: string) =>
     (testingBoards ?? []).find((b: any) => b.station_id === stationId);
 
+  const isHeartbeatRecent = (lastHeartbeat: string | null | undefined) => {
+    if (!lastHeartbeat) return false;
+    return Date.now() - new Date(lastHeartbeat).getTime() < 100_000;
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -196,6 +201,7 @@ const TesterStations = () => {
                   <TableHead>ID</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Stato</TableHead>
+                  <TableHead>Heartbeat</TableHead>
                   <TableHead>Scheda</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
@@ -212,6 +218,17 @@ const TesterStations = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant={s.status === "AVAILABLE" ? "default" : "outline"}>{s.status}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {isHeartbeatRecent(s.last_heartbeat_at) ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                            <Wifi className="h-3.5 w-3.5" /> Online
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <WifiOff className="h-3.5 w-3.5" /> Offline
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {board ? (
