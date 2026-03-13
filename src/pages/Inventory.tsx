@@ -6,11 +6,6 @@ import { Plus, Trash2, Package, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
@@ -19,8 +14,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { fetchStockStations, createStation, deleteStation } from "@/services/stationService";
-import { fetchActiveProducts } from "@/services/productService";
-import { fetchAvailableBoards, assignBoardToStation } from "@/services/boardService";
+import { assignBoardToStation } from "@/services/boardService";
+import CreateStationWizard, { type WizardData } from "@/components/CreateStationWizard";
 
 const Inventory = () => {
   const qc = useQueryClient();
@@ -28,57 +23,36 @@ const Inventory = () => {
     queryKey: ["stations", "stock"],
     queryFn: fetchStockStations,
   });
-  const { data: products } = useQuery({
-    queryKey: ["products"],
-    queryFn: fetchActiveProducts,
-  });
-  const { data: availableBoards } = useQuery({
-    queryKey: ["boards", "available"],
-    queryFn: fetchAvailableBoards,
-  });
+
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [createPending, setCreatePending] = useState(false);
 
-  const [serialNumber, setSerialNumber] = useState("");
-  const [productId, setProductId] = useState("");
-  const [stationDescription, setStationDescription] = useState("");
-  const [selectedBoardId, setSelectedBoardId] = useState("");
-
-  const resetForm = () => {
-    setSerialNumber("");
-    setProductId("");
-    setStationDescription("");
-    setSelectedBoardId("");
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["stations"] });
+    qc.invalidateQueries({ queryKey: ["boards"] });
   };
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["stations"] });
-
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      const product = (products ?? []).find(p => p.id === productId);
-      if (!product) throw new Error("Seleziona un prodotto");
-      const stationId = serialNumber.trim();
+  const handleCreate = async (data: WizardData) => {
+    setCreatePending(true);
+    try {
       await createStation({
-        id: stationId,
-        type: product.type,
-        product_id: productId,
-        description: stationDescription.trim() || null,
+        id: data.serialNumber,
+        type: data.productType,
+        product_id: data.productId,
+        description: data.description || null,
         status: "OFFLINE",
       });
-      if (!selectedBoardId) throw new Error("Seleziona una scheda hardware");
-      await assignBoardToStation(selectedBoardId, stationId);
-    },
-    onSuccess: () => {
+      await assignBoardToStation(data.boardId, data.serialNumber);
       toast.success("Stazione registrata nel magazzino");
       setCreateOpen(false);
-      resetForm();
       invalidate();
-      qc.invalidateQueries({ queryKey: ["boards"] });
-    },
-    onError: (err: any) => {
+    } catch (err: any) {
       handleAppError(err, "Inventory: creazione stazione");
-    },
-  });
+    } finally {
+      setCreatePending(false);
+    }
+  };
 
   const deleteMutation = useMutation({
     mutationFn: deleteStation,
@@ -99,7 +73,7 @@ const Inventory = () => {
           </h1>
           <p className="text-muted-foreground">Stazioni prodotte non ancora assegnate</p>
         </div>
-        <Button onClick={() => { resetForm(); setCreateOpen(true); }} className="gap-2">
+        <Button onClick={() => setCreateOpen(true)} className="gap-2">
           <Plus className="h-4 w-4" /> Nuova Produzione
         </Button>
       </div>
@@ -120,26 +94,29 @@ const Inventory = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Seriale</TableHead>
-                   <TableHead>Prodotto</TableHead>
-                   <TableHead>Tipo</TableHead>
-                   <TableHead>Fase</TableHead>
-                   <TableHead>Descrizione</TableHead>
+                  <TableHead>Prodotto</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Fase</TableHead>
+                  <TableHead>Descrizione</TableHead>
+                  <TableHead>Data</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stations.map((s) => (
+                {stations.map((s: any) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-mono font-medium">{s.id}</TableCell>
-                    <TableCell>{(s as any).products?.name ?? s.type}</TableCell>
-                     <TableCell>
-                       <Badge variant="secondary" className="capitalize">{(s as any).products?.type ?? "—"}</Badge>
-                     </TableCell>
-                     <TableCell>
-                       <Badge variant={(s as any).phase === "STOCK" ? "default" : "outline"}>{(s as any).phase}</Badge>
-                     </TableCell>
-                     <TableCell className="text-muted-foreground max-w-[200px] truncate">{(s as any).description ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{s.created_at ? format(new Date(s.created_at), "dd MMM yyyy", { locale: it }) : "—"}</TableCell>
+                    <TableCell>{s.products?.name ?? s.type}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="capitalize">{s.products?.type ?? "—"}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={s.phase === "STOCK" ? "default" : "outline"}>{s.phase}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground max-w-[200px] truncate">{s.description ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {s.created_at ? format(new Date(s.created_at), "dd MMM yyyy", { locale: it }) : "—"}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => setDeleteId(s.id)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -153,58 +130,14 @@ const Inventory = () => {
         </CardContent>
       </Card>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Registra Nuova Stazione</DialogTitle>
-            <DialogDescription>Seleziona il prodotto e inserisci il seriale.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div>
-              <Label>Prodotto *</Label>
-              <Select value={productId} onValueChange={setProductId}>
-                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Seleziona prodotto" /></SelectTrigger>
-                <SelectContent>
-                  {(products ?? []).map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name} ({p.type})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {(products ?? []).length === 0 && (
-                <p className="text-xs text-muted-foreground mt-1">Nessun prodotto nel catalogo. Creane uno prima.</p>
-              )}
-            </div>
-            <div>
-              <Label>Numero Seriale *</Label>
-              <Input value={serialNumber} onChange={e => setSerialNumber(e.target.value)} placeholder="SN-2024-001" className="mt-1.5" />
-            </div>
-            <div>
-              <Label>Descrizione (opzionale)</Label>
-              <Textarea value={stationDescription} onChange={e => setStationDescription(e.target.value)} placeholder="Note aggiuntive..." className="mt-1.5" />
-            </div>
-            <div>
-              <Label>Scheda Hardware *</Label>
-              <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
-                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Seleziona scheda..." /></SelectTrigger>
-                <SelectContent>
-                  {(availableBoards ?? []).map(b => (
-                    <SelectItem key={b.id} value={b.id}>{b.id} — {b.type === "wifi" ? "WiFi" : "Ethernet"} ({b.model})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {(availableBoards ?? []).length === 0 && (
-                <p className="text-xs text-destructive mt-1">Nessuna scheda disponibile. Creane una nella sezione Schede prima di registrare una stazione.</p>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !serialNumber.trim() || !productId || !selectedBoardId}>
-              {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Registra
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateStationWizard
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onSubmit={handleCreate}
+        isPending={createPending}
+        title="Registra Nuova Stazione"
+        description="Segui i passaggi per registrare una nuova stazione nel magazzino."
+      />
 
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
