@@ -172,9 +172,14 @@ Deno.serve(async (req) => {
   } else if (command === "ON") {
     topic = `shower2pet/${mqttTargetId}/relay1/command`;
     payload = "1";
-  } else {
-    // OFF
+  } else if (command === "OFF") {
     topic = `shower2pet/${mqttTargetId}/relay1/command`;
+    payload = "0";
+  } else if (command === "ON_RELAY2") {
+    topic = `shower2pet/${mqttTargetId}/relay2/command`;
+    payload = "1";
+  } else if (command === "OFF_RELAY2") {
+    topic = `shower2pet/${mqttTargetId}/relay2/command`;
     payload = "0";
   }
 
