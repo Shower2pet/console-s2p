@@ -59,9 +59,9 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const validRoles = ["partner", "manager"];
+    const validRoles = ["partner", "manager", "tester"];
     if (!role || !validRoles.includes(role)) {
-      return new Response(JSON.stringify({ error: "Ruolo non valido. Deve essere: partner o manager" }), {
+      return new Response(JSON.stringify({ error: "Ruolo non valido. Deve essere: partner, manager o tester" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
