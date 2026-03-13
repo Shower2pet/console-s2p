@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
   }
 
   // --- RBAC ---
-  if (role === "user" && (command === "ON" || command === "OFF" || command === "START_TIMED_WASH" || command === "START_TUB_CLEAN" || command === "STOP_WASH" || command === "STOP_TUB_CLEAN")) {
+  if (role === "user" && (command === "ON" || command === "OFF" || command === "ON_RELAY2" || command === "OFF_RELAY2" || command === "START_TIMED_WASH" || command === "START_TUB_CLEAN" || command === "STOP_WASH" || command === "STOP_TUB_CLEAN")) {
     return new Response(JSON.stringify({ error: "Forbidden: users can only use PULSE command" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
