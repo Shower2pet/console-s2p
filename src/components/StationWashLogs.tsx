@@ -42,9 +42,21 @@ const StationWashLogs = ({ stationId }: Props) => {
         (profiles ?? []).forEach(p => profileMap.set(p.id, p.email ?? ""));
       }
 
+      // Fetch ratings for these sessions
+      const sessionIds = (data ?? []).map(d => d.id);
+      let ratingMap = new Map<string, number>();
+      if (sessionIds.length > 0) {
+        const { data: ratings } = await supabase
+          .from("station_ratings" as any)
+          .select("session_id, rating")
+          .in("session_id", sessionIds);
+        ((ratings ?? []) as any[]).forEach((r: any) => ratingMap.set(r.session_id, r.rating));
+      }
+
       return (data ?? []).map(s => ({
         ...s,
         user_email: s.user_id ? profileMap.get(s.user_id) ?? null : s.guest_email ?? null,
+        rating: ratingMap.get(s.id) ?? null,
       }));
     },
   });
