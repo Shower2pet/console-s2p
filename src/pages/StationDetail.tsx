@@ -231,6 +231,20 @@ const StationDetail = () => {
     return diff < thresholdMs;
   };
 
+  const formatHeartbeatAgo = (lastHeartbeat: string | null | undefined): string => {
+    if (!lastHeartbeat) return "Mai ricevuto";
+    const diffMs = Date.now() - new Date(lastHeartbeat).getTime();
+    if (diffMs < 0) return "Adesso";
+    const seconds = Math.floor(diffMs / 1000);
+    if (seconds < 60) return `${seconds}s fa`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}min fa`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h fa`;
+    const days = Math.floor(hours / 24);
+    return `${days}g fa`;
+  };
+
   const heartbeatOkForHw = station ? isHeartbeatRecent(station.last_heartbeat_at, 100_000) : false;
   const isTestingPhase = (station as any)?.phase === "TESTING";
   // Testers bypass heartbeat requirement during TESTING phase
