@@ -201,6 +201,7 @@ const TesterStations = () => {
                   <TableHead>ID</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Stato</TableHead>
+                  <TableHead>Heartbeat</TableHead>
                   <TableHead>Scheda</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
