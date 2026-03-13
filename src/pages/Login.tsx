@@ -171,6 +171,7 @@ const Login = () => {
                     <Input
                       id="email"
                       type="email"
+                      autoComplete="username"
                       placeholder="email@esempio.com"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
