@@ -589,7 +589,7 @@ const StationDetail = () => {
                   </h4>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Durata: {tubCleanMinutes} min</Label>
-                    <Slider min={1} max={60} step={1} value={[tubCleanMinutes]} onValueChange={([v]) => setTubCleanMinutes(v)} disabled={!heartbeatOkForHw || tubCleanBusy} />
+                    <Slider min={1} max={60} step={1} value={[tubCleanMinutes]} onValueChange={([v]) => setTubCleanMinutes(v)} disabled={!hwEnabled || tubCleanBusy} />
                     <div className="flex justify-between text-xs text-muted-foreground"><span>1 min</span><span>60 min</span></div>
                   </div>
                   <div className="flex gap-2">
