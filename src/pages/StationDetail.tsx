@@ -287,7 +287,7 @@ const StationDetail = () => {
 
   const invokeHardware = async (command: "ON" | "OFF" | "PULSE", duration_minutes?: number) => {
     if (!station) return;
-    if ((command === "ON" || command === "OFF") && !heartbeatOkForHw) {
+    if ((command === "ON" || command === "OFF") && !hwEnabled) {
       toast.error("Stazione offline: nessun heartbeat ricevuto negli ultimi 100 secondi. Verificare che il dispositivo sia acceso e connesso.");
       return;
     }
