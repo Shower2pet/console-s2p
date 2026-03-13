@@ -563,6 +563,7 @@ export type Database = {
           last_heartbeat_at: string | null
           manual_offline: boolean
           owner_id: string | null
+          phase: Database["public"]["Enums"]["station_phase"]
           product_id: string | null
           showcase_title: string | null
           status: Database["public"]["Enums"]["station_status"] | null
@@ -585,6 +586,7 @@ export type Database = {
           last_heartbeat_at?: string | null
           manual_offline?: boolean
           owner_id?: string | null
+          phase?: Database["public"]["Enums"]["station_phase"]
           product_id?: string | null
           showcase_title?: string | null
           status?: Database["public"]["Enums"]["station_status"] | null
@@ -607,6 +609,7 @@ export type Database = {
           last_heartbeat_at?: string | null
           manual_offline?: boolean
           owner_id?: string | null
+          phase?: Database["public"]["Enums"]["station_phase"]
           product_id?: string | null
           showcase_title?: string | null
           status?: Database["public"]["Enums"]["station_status"] | null
@@ -1195,6 +1198,10 @@ export type Database = {
           total_count: number
         }[]
       }
+      get_station_phase: {
+        Args: { p_station_id: string }
+        Returns: Database["public"]["Enums"]["station_phase"]
+      }
       get_station_users: {
         Args: { p_search?: string; p_station_id: string }
         Returns: {
@@ -1225,6 +1232,12 @@ export type Database = {
     }
     Enums: {
       payment_method_type: "STRIPE" | "CREDITS" | "HYBRID"
+      station_phase:
+        | "PRODUCTION"
+        | "TESTING"
+        | "STOCK"
+        | "DEPLOYED"
+        | "SHOWCASE"
       station_status: "AVAILABLE" | "BUSY" | "OFFLINE" | "MAINTENANCE"
       transaction_type_enum: "CREDIT_TOPUP" | "WASH_SERVICE" | "GUEST_WASH"
       user_role: "admin" | "partner" | "manager" | "user" | "tester"
@@ -1357,6 +1370,7 @@ export const Constants = {
   public: {
     Enums: {
       payment_method_type: ["STRIPE", "CREDITS", "HYBRID"],
+      station_phase: ["PRODUCTION", "TESTING", "STOCK", "DEPLOYED", "SHOWCASE"],
       station_status: ["AVAILABLE", "BUSY", "OFFLINE", "MAINTENANCE"],
       transaction_type_enum: ["CREDIT_TOPUP", "WASH_SERVICE", "GUEST_WASH"],
       user_role: ["admin", "partner", "manager", "user", "tester"],
