@@ -195,7 +195,7 @@ const Inventory = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !serialNumber.trim() || !productId}>
+            <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !serialNumber.trim() || !productId || !selectedBoardId}>
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Registra
             </Button>
