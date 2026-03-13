@@ -60,7 +60,7 @@ const Inventory = () => {
       const stationId = serialNumber.trim();
       await createStation({
         id: stationId,
-        type: product.name,
+        type: product.type,
         product_id: productId,
         description: stationDescription.trim() || null,
         status: "OFFLINE",
