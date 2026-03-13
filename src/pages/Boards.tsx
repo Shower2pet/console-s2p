@@ -36,6 +36,15 @@ const Boards = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [boardType, setBoardType] = useState<"ethernet" | "wifi">("ethernet");
   const [model, setModel] = useState("");
+  const [modelSearchQuery, setModelSearchQuery] = useState("");
+  const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
+
+  // Extract unique models from existing boards
+  const existingModels = useMemo(() => {
+    if (!boards) return [];
+    const models = [...new Set(boards.map((b) => b.model).filter(Boolean))];
+    return models.sort();
+  }, [boards]);
 
   const resetForm = () => {
     setBoardType("ethernet");
