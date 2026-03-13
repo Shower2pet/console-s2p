@@ -4,7 +4,7 @@ export interface InviteUserPayload {
   email: string;
   firstName: string;
   lastName: string;
-  role: "partner" | "manager";
+  role: "partner" | "manager" | "tester";
   structureId?: string;
   stationIds?: string[];
   legalName?: string;

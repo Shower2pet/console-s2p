@@ -22,6 +22,7 @@ export interface AuthContextValue {
   isAdmin: boolean;
   isPartner: boolean;
   isManager: boolean;
+  isTester: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
