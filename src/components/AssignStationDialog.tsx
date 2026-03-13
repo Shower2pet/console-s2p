@@ -25,10 +25,10 @@ const AssignStationDialog = ({ partnerId, partnerName, prominent = false }: Assi
   const [assigning, setAssigning] = useState<string | null>(null);
   const qc = useQueryClient();
 
-  const { data: freeStations, isLoading } = useQuery({
-    queryKey: ["free-stations-for-assign"],
+  const { data: stockStations, isLoading } = useQuery({
+    queryKey: ["stock-stations-for-deploy"],
     enabled: open,
-    queryFn: fetchFreeStations,
+    queryFn: fetchStockStationsForDeploy,
   });
 
   const handleAssign = async (stationId: string) => {
