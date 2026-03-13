@@ -130,8 +130,8 @@ const TesterHome = () => {
   }, [washEndsAt, washTotalSec, tubEndsAt, tubTotalSec, selectedStation]);
 
   // Auto-clear when timer reaches 0
-  const washWasActive = useRef(!!persisted?.washEndsAt);
-  const tubWasActive = useRef(!!persisted?.tubEndsAt);
+  const washWasActive = useRef(false);
+  const tubWasActive = useRef(false);
 
   useEffect(() => {
     if (washEndsAt && washRemaining > 0) washWasActive.current = true;
