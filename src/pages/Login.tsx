@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { resetPasswordForEmail } from "@/services/authService";
 
-const ALLOWED_ROLES = ["admin", "partner", "manager"];
+const ALLOWED_ROLES = ["admin", "partner", "manager", "tester"];
 
 const Login = () => {
   const { user, role, profile, isPasswordRecovery } = useAuth();
