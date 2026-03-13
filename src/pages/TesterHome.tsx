@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FlaskConical, Monitor, Cpu, Droplets, Wind, DoorOpen, ShowerHead, Loader2 } from "lucide-react";
+import { FlaskConical, Monitor, Cpu, Droplets, Wind, DoorOpen, ShowerHead, Loader2, Timer } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,12 +37,60 @@ const fetchTesterStations = async (userId: string): Promise<TesterStation[]> => 
   return (data ?? []) as TesterStation[];
 };
 
+/** Format seconds as mm:ss */
+const fmtTimer = (totalSec: number): string => {
+  if (totalSec <= 0) return "00:00";
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
+
+/** Hook that counts down to an endsAt ISO timestamp, returning remaining seconds */
+const useCountdown = (endsAt: string | null): number => {
+  const [remaining, setRemaining] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (!endsAt) {
+      setRemaining(0);
+      return;
+    }
+    const calc = () => Math.max(0, Math.ceil((new Date(endsAt).getTime() - Date.now()) / 1000));
+    setRemaining(calc());
+    intervalRef.current = setInterval(() => {
+      const r = calc();
+      setRemaining(r);
+      if (r <= 0 && intervalRef.current) clearInterval(intervalRef.current);
+    }, 1000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [endsAt]);
+
+  return remaining;
+};
+
 const TesterHome = () => {
   const { user } = useAuth();
   const [selectedStation, setSelectedStation] = useState<string>("");
   const [washDuration, setWashDuration] = useState(5);
   const [tubDuration, setTubDuration] = useState(5);
   const [loadingCmd, setLoadingCmd] = useState<string | null>(null);
+
+  // Timer state: store ends_at + total duration for progress calc
+  const [washEndsAt, setWashEndsAt] = useState<string | null>(null);
+  const [washTotalSec, setWashTotalSec] = useState(0);
+  const [tubEndsAt, setTubEndsAt] = useState<string | null>(null);
+  const [tubTotalSec, setTubTotalSec] = useState(0);
+
+  const washRemaining = useCountdown(washEndsAt);
+  const tubRemaining = useCountdown(tubEndsAt);
+
+  // Auto-clear when timer reaches 0
+  useEffect(() => { if (washEndsAt && washRemaining <= 0) setWashEndsAt(null); }, [washRemaining, washEndsAt]);
+  useEffect(() => { if (tubEndsAt && tubRemaining <= 0) setTubEndsAt(null); }, [tubRemaining, tubEndsAt]);
+
+  // Clear timers when station changes
+  useEffect(() => { setWashEndsAt(null); setTubEndsAt(null); }, [selectedStation]);
 
   const { data: stations = [], isLoading } = useQuery({
     queryKey: ["tester-hw-stations", user?.id],
@@ -68,12 +117,29 @@ const TesterHome = () => {
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.message || data.error);
       toast.success(`Comando ${command} inviato con successo`);
+
+      // Start countdown timers
+      if (command === "START_TIMED_WASH" && data?.ends_at) {
+        setWashEndsAt(data.ends_at);
+        setWashTotalSec(extras.duration_seconds ?? 0);
+      }
+      if (command === "START_TUB_CLEAN" && data?.ends_at) {
+        setTubEndsAt(data.ends_at);
+        setTubTotalSec(extras.duration_seconds ?? 0);
+      }
+      if (command === "STOP_WASH") setWashEndsAt(null);
+      if (command === "STOP_TUB_CLEAN") setTubEndsAt(null);
     } catch (err: any) {
       handleAppError(err, `TesterHome: ${command}`);
     } finally {
       setLoadingCmd(null);
     }
   };
+
+  const washIsActive = !!washEndsAt && washRemaining > 0;
+  const tubIsActive = !!tubEndsAt && tubRemaining > 0;
+  const washProgress = washTotalSec > 0 ? ((washTotalSec - washRemaining) / washTotalSec) * 100 : 0;
+  const tubProgress = tubTotalSec > 0 ? ((tubTotalSec - tubRemaining) / tubTotalSec) * 100 : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -127,7 +193,7 @@ const TesterHome = () => {
       {selectedStation && (
         <div className="grid gap-6 md:grid-cols-2">
           {/* Relay 1 — Acqua/Phon (Lavaggio) */}
-          <Card>
+          <Card className={washIsActive ? "ring-2 ring-primary/50" : ""}>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Droplets className="h-5 w-5 text-blue-500" /> Relè 1 — Acqua / Phon
@@ -165,15 +231,30 @@ const TesterHome = () => {
                     max={60}
                     step={1}
                     className="flex-1"
+                    disabled={washIsActive}
                   />
                   <span className="text-sm font-mono w-16 text-right">{washDuration} min</span>
                 </div>
+
+                {/* Countdown timer */}
+                {washIsActive && (
+                  <div className="space-y-1.5 py-2 px-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-primary flex items-center gap-1.5">
+                        <Timer className="h-3.5 w-3.5 animate-pulse" /> Lavaggio in corso
+                      </span>
+                      <span className="text-lg font-mono font-bold text-primary">{fmtTimer(washRemaining)}</span>
+                    </div>
+                    <Progress value={washProgress} className="h-2" />
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <Button
                     size="sm"
                     variant="default"
                     onClick={() => sendCommand("START_TIMED_WASH", { duration_seconds: washDuration * 60 })}
-                    disabled={!!loadingCmd}
+                    disabled={!!loadingCmd || washIsActive}
                     className="gap-1"
                   >
                     {loadingCmd === "START_TIMED_WASH" && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -194,7 +275,7 @@ const TesterHome = () => {
           </Card>
 
           {/* Relay 2 — Pulizia Vasca (only for tub stations) */}
-          <Card className={!isTub ? "opacity-50" : ""}>
+          <Card className={!isTub ? "opacity-50" : tubIsActive ? "ring-2 ring-primary/50" : ""}>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Wind className="h-5 w-5 text-emerald-500" /> Relè 2 — Pulizia Vasca
@@ -212,16 +293,30 @@ const TesterHome = () => {
                     max={60}
                     step={1}
                     className="flex-1"
-                    disabled={!isTub}
+                    disabled={!isTub || tubIsActive}
                   />
                   <span className="text-sm font-mono w-16 text-right">{tubDuration} min</span>
                 </div>
+
+                {/* Countdown timer */}
+                {tubIsActive && (
+                  <div className="space-y-1.5 py-2 px-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-primary flex items-center gap-1.5">
+                        <Timer className="h-3.5 w-3.5 animate-pulse" /> Pulizia in corso
+                      </span>
+                      <span className="text-lg font-mono font-bold text-primary">{fmtTimer(tubRemaining)}</span>
+                    </div>
+                    <Progress value={tubProgress} className="h-2" />
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <Button
                     size="sm"
                     variant="default"
                     onClick={() => sendCommand("START_TUB_CLEAN", { duration_seconds: tubDuration * 60 })}
-                    disabled={!!loadingCmd || !isTub}
+                    disabled={!!loadingCmd || !isTub || tubIsActive}
                     className="gap-1"
                   >
                     {loadingCmd === "START_TUB_CLEAN" && <Loader2 className="h-3 w-3 animate-spin" />}
