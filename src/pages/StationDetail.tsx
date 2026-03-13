@@ -386,7 +386,7 @@ const StationDetail = () => {
 
   const structureName = (station as any).structures?.name;
   // Permissions
-  const canCommand = isAdmin || isPartner || isManager;
+  const canCommand = isAdmin || isPartner || isManager || isTester;
   const canEditInfo = isAdmin || isPartner || isManager;
   const canMoveStructure = isAdmin || isPartner;
   const canRemoveFromClient = isAdmin;
