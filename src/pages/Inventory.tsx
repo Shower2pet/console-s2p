@@ -114,6 +114,19 @@ const Inventory = () => {
                     <TableCell>
                       <Badge variant={s.phase === "STOCK" ? "default" : "outline"}>{s.phase}</Badge>
                     </TableCell>
+                    <TableCell>
+                      {s.boards ? (
+                        <div className="flex items-center gap-2">
+                          {s.boards.type === "wifi" ? <Wifi className="h-3.5 w-3.5 text-primary" /> : <Cpu className="h-3.5 w-3.5 text-primary" />}
+                          <span className="font-mono text-xs">{s.boards.id}</span>
+                          <Badge variant="outline" className="text-[10px] capitalize">
+                            {s.boards.type === "wifi" ? "WiFi" : "ETH"}
+                          </Badge>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground max-w-[200px] truncate">{s.description ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {s.created_at ? format(new Date(s.created_at), "dd MMM yyyy", { locale: it }) : "—"}
