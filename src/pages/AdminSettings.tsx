@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Settings, Search, CheckCircle, XCircle, AlertTriangle, RefreshCw, Save,
   Zap, Trash2, Building2, Globe, ChevronDown, ChevronRight, PenLine, Ban,
-  ShieldCheck, ShieldAlert, Link2, RotateCcw, Bug,
+  ShieldCheck, ShieldAlert, Link2, RotateCcw, Bug, FlaskConical, Plus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Profile } from "@/types/database";
 import { AdminErrorLogs } from "@/components/AdminErrorLogs";
+import InviteUserDialog from "@/components/InviteUserDialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const FISKALY_REQUIRED_FIELDS = [
