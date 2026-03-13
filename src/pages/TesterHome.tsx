@@ -99,11 +99,7 @@ const TesterHome = () => {
   });
 
   const currentStation = stations.find((s) => s.id === selectedStation);
-  const tubSignature = [currentStation?.type, currentStation?.products?.type, currentStation?.products?.name]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  const isTub = /vasca|tub/.test(tubSignature);
+  const isTub = currentStation?.products?.type === "vasca" || currentStation?.type === "vasca";
 
   const sendCommand = async (command: string, extras: Record<string, any> = {}) => {
     if (!selectedStation) {

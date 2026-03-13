@@ -392,15 +392,7 @@ const StationDetail = () => {
   const canRemoveFromClient = isAdmin;
   const canChangeOwner = isAdmin;
 
-  const tubSignature = [
-    (station as any).products?.type,
-    (station as any).products?.name,
-    station.type,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  const isTubStation = /vasca|tub/.test(tubSignature);
+  const isTubStation = (station as any).products?.type === "vasca" || station.type === "vasca";
 
   return (
     <div className="space-y-6 animate-fade-in">
