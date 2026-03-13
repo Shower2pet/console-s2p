@@ -106,7 +106,7 @@ const TesterStations = () => {
       const stationId = serialNumber.trim();
       await createTesterStation({
         id: stationId,
-        type: product.name,
+        type: product.type,
         product_id: productId,
         description: stationDescription.trim() || null,
       }, user!.id);
