@@ -1,51 +1,25 @@
+## Piano di Testing Completo — Console Shower2Pet
 
+### Fase 0 — Pulizia Database ✅ COMPLETATA
 
-# Piano di Testing Completo — Console Shower2Pet
+Database pulito. Stato attuale:
+- 1 profilo: admin@shower2pet.com (id: 2f5bb35f-2c57-4796-a0cd-52c50a1ece6d)
+- 1 auth.user (admin)
+- 2 prodotti (Akita, Bracco)
+- 0 stazioni, 0 boards, 0 strutture, 0 transazioni
 
-## Fase 0 — Pulizia Database
+### Fase 1 — Autenticazione & Accesso (6 test) ⏳ PROSSIMA
 
-Il database contiene dati residui da sessioni precedenti. Prima di testare, puliamo tutto tranne l'account admin.
+| # | Test | Stato |
+|---|------|-------|
+| 1.1 | Login corretto admin | ⏳ |
+| 1.2 | Credenziali errate | ⏳ |
+| 1.3 | Email inesistente | ⏳ |
+| 1.4 | Utente già loggato → redirect | ⏳ |
+| 1.5 | URL protetto senza login | ⏳ |
+| 1.6 | Pagina 404 | ⏳ |
 
-**Dati attuali da rimuovere:**
-- 3 stazioni (S2PA-1, S2PBR-1, Prova Showcase) + 2 boards (ETH_1, ETH_2)
-- 1 struttura (Bologna, owner: partner)
-- 3 profili non-admin + relativi auth users (albertocorvaglia8, albertocorvaglia06, christiancorvaglia)
-- 1 partners_fiscal_data
-- 7 transactions, 8 wash_sessions, 6 transaction_receipts, 27 gate_commands, 8 notifications
-- 12 app_error_logs
-- 2 prodotti (Akita, Bracco) — questi li manteniamo perche servono per i test
-
-**Operazioni SQL (via insert tool):**
-1. DELETE da tabelle dipendenti: station_ratings, wash_sessions, transactions, transaction_receipts, gate_commands, station_access_logs, user_notes, structure_wallets, maintenance_logs, notifications, partner_referents, structure_managers, credit_packages, user_subscriptions, subscription_plans, daily_corrispettivi_logs, partners_fiscal_data, app_error_logs
-2. DELETE boards
-3. DELETE stations
-4. DELETE structures
-5. DELETE da auth.users i 3 utenti non-admin (via edge function delete-user o SQL diretto)
-6. DELETE profiles WHERE role != 'admin'
-7. Mantenere products (Akita, Bracco) — servono per il catalogo
-
-**Risultato atteso:** Database pulito con solo admin@shower2pet.com e 2 prodotti.
-
----
-
-## Fase 1 — Autenticazione & Accesso (6 test)
-
-**Prerequisiti:** Database pulito, solo admin presente.
-
-| # | Test | Azione | Risultato atteso |
-|---|------|--------|-----------------|
-| 1.1 | Login corretto | Login admin@shower2pet.com / admin@shower2pet.com | Redirect a `/`, Dashboard Admin |
-| 1.2 | Credenziali errate | Email corretta, password sbagliata | Messaggio errore visibile |
-| 1.3 | Email inesistente | email@fake.com | Messaggio errore |
-| 1.4 | Utente gia loggato | Visitare `/login` da loggati | Redirect a `/` |
-| 1.5 | URL protetto senza login | Logout, visitare `/stations` | Redirect a `/login` |
-| 1.6 | Pagina 404 | Visitare `/xyz-nonexistent` | Pagina NotFound |
-
-**Password dimenticata e ruolo `user`:** testati dopo aver creato utenti in fasi successive.
-
----
-
-## Fase 2 — UI/UX Generale (7 test)
+### Fase 2 — UI/UX Generale (7 test)
 
 **Con admin loggato:**
 
@@ -59,9 +33,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 2.6 | Responsive | Layout corretto a 375px, 768px, 1280px |
 | 2.7 | Badge ruolo | "Admin" visibile in sidebar |
 
----
-
-## Fase 3 — Dashboard Admin (4 test)
+### Fase 3 — Dashboard Admin (4 test)
 
 | # | Test | Verifica |
 |---|------|---------|
@@ -70,9 +42,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 3.3 | Mappa | Visibile, nessun marker (no stazioni) |
 | 3.4 | Link rapidi | Click navigano correttamente |
 
----
-
-## Fase 4 — Catalogo Prodotti (3 test)
+### Fase 4 — Catalogo Prodotti (3 test)
 
 **Verifica che i 2 prodotti esistenti (Akita, Bracco) siano visibili, poi testa CRUD.**
 
@@ -82,9 +52,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 4.2 | Creazione | Creare "Setter" tipo vasca |
 | 4.3 | Disattivazione | Disattivare "Setter" → non visibile pubblicamente |
 
----
-
-## Fase 5 — Schede Hardware (3 test)
+### Fase 5 — Schede Hardware (3 test)
 
 | # | Test | Azione |
 |---|------|--------|
@@ -92,9 +60,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 5.2 | Creazione | Creare 3 schede (2 ethernet, 1 wifi). Verificare Token + API key visibili UNA SOLA VOLTA |
 | 5.3 | Eliminazione | Eliminare 1 scheda non assegnata → successo |
 
----
-
-## Fase 6 — Magazzino (3 test)
+### Fase 6 — Magazzino (3 test)
 
 | # | Test | Azione |
 |---|------|--------|
@@ -102,9 +68,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 6.2 | Creazione | Creare 3 stazioni: "S2P-TEST1" (Bracco), "S2P-TEST2" (Akita), "S2P-TEST3" (Bracco). Associare schede |
 | 6.3 | Verifica | Stazioni visibili in magazzino, status OFFLINE, no owner |
 
----
-
-## Fase 7 — Creazione Partner (5 test)
+### Fase 7 — Creazione Partner (5 test)
 
 | # | Test | Azione |
 |---|------|--------|
@@ -114,9 +78,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 7.4 | Credenziali | Password temporanea visibile e copiabile |
 | 7.5 | Verifica | Partner appare nella lista, stazioni assegnate |
 
----
-
-## Fase 8 — Onboarding Partner (5 test)
+### Fase 8 — Onboarding Partner (5 test)
 
 **Login come partner con must_change_password = true**
 
@@ -128,9 +90,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 8.4 | Cambio password | Password valida → step strutture |
 | 8.5 | Creazione struttura | Nome, mappa, assegnazione stazioni → redirect dashboard |
 
----
-
-## Fase 9 — Dettaglio Partner (6 test)
+### Fase 9 — Dettaglio Partner (6 test)
 
 **Come admin, dal dettaglio del partner creato:**
 
@@ -143,9 +103,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 9.5 | Assegnazione nuova | Assegnare stazione rimanente dal magazzino |
 | 9.6 | Referenti | Aggiungere un referente → visibile nella lista |
 
----
-
-## Fase 10 — Gestione Strutture (5 test)
+### Fase 10 — Gestione Strutture (5 test)
 
 | # | Test | Azione |
 |---|------|--------|
@@ -155,9 +113,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 10.4 | Tab Stazioni | Lista stazioni della struttura con stato |
 | 10.5 | Tab Team | Invito manager (InviteUserDialog) |
 
----
-
-## Fase 11 — Gestione Stazioni (12 test)
+### Fase 11 — Gestione Stazioni (12 test)
 
 | # | Test | Azione |
 |---|------|--------|
@@ -166,7 +122,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 11.3 | Creazione Vetrina | Dialog: ID, titolo, descrizione, mappa → successo |
 | 11.4 | Dettaglio | Info complete, checklist requisiti |
 | 11.5 | Opzioni lavaggio | CRUD: aggiungi, modifica, elimina opzione |
-| 11.6 | Visibilita | Toggle PUBLIC/RESTRICTED |
+| 11.6 | Visibilità | Toggle PUBLIC/RESTRICTED |
 | 11.7 | Gate code | Modifica codice accesso |
 | 11.8 | Scheda | Visualizza scheda associata |
 | 11.9 | Controlli HW | ON/OFF/PULSE (invocazione edge function) |
@@ -174,20 +130,16 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 11.11 | Storico | Tab lavaggi, utenti, manutenzione |
 | 11.12 | Valutazioni | Card rating (vuota, 0 stelle, 0 recensioni) |
 
----
-
-## Fase 12 — Manutenzione (4 test)
+### Fase 12 — Manutenzione (4 test)
 
 | # | Test | Azione |
 |---|------|--------|
 | 12.1 | Lista | Ticket visibili (dal test 11.10) |
-| 12.2 | Filtri | Filtro per stato/severita |
+| 12.2 | Filtri | Filtro per stato/severità |
 | 12.3 | Cambio stato | Open → in_progress → risolto |
 | 12.4 | Dettaglio | Info complete, link stazione |
 
----
-
-## Fase 13 — Utenti End-User (4 test)
+### Fase 13 — Utenti End-User (4 test)
 
 | # | Test | Azione |
 |---|------|--------|
@@ -196,9 +148,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 13.3 | Dettaglio | Se possibile con dati futuri |
 | 13.4 | Eliminazione | Test con utente di test |
 
----
-
-## Fase 14 — Ruolo `user` & Access Denied (2 test)
+### Fase 14 — Ruolo `user` & Access Denied (2 test)
 
 **Creare un utente con ruolo `user` per testare il blocco.**
 
@@ -207,9 +157,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 14.1 | Login user | Login con ruolo user → signOut + "non autorizzato" |
 | 14.2 | Access denied | Pagina `/access-denied` visibile |
 
----
-
-## Fase 15 — Password Dimenticata (3 test)
+### Fase 15 — Password Dimenticata (3 test)
 
 | # | Test | Azione |
 |---|------|--------|
@@ -217,9 +165,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 15.2 | Invio | Inserire email → messaggio successo |
 | 15.3 | Recovery | Click link email → `/auth/update-password` → nuova password → login |
 
----
-
-## Fase 16 — Transazioni & Report (3 test)
+### Fase 16 — Transazioni & Report (3 test)
 
 **Come partner (se ci sono transazioni) o verifica pagina vuota:**
 
@@ -229,18 +175,14 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 16.2 | StatCard | Tutti a 0 (db pulito) |
 | 16.3 | Export CSV | Pulsante funzionante (file vuoto o con header) |
 
----
-
-## Fase 17 — Resoconti Incassi Admin (2 test)
+### Fase 17 — Resoconti Incassi Admin (2 test)
 
 | # | Test | Azione |
 |---|------|--------|
 | 17.1 | Ricavi globali | Pagina carica, dati a 0 |
 | 17.2 | Classifiche | Stazioni/partner vuote |
 
----
-
-## Fase 18 — Pacchetti Crediti Partner (3 test)
+### Fase 18 — Pacchetti Crediti Partner (3 test)
 
 **Come partner:**
 
@@ -250,9 +192,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 18.2 | Creazione | Creare pacchetto "10 Crediti" €9.99 → visibile |
 | 18.3 | Switch | Disattivare/riattivare pacchetto |
 
----
-
-## Fase 19 — Profilo Aziendale Partner (4 test)
+### Fase 19 — Profilo Aziendale Partner (4 test)
 
 | # | Test | Azione |
 |---|------|--------|
@@ -261,9 +201,7 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 19.3 | Salvataggio | Modifica dati → successo |
 | 19.4 | Fiskaly | Card setup Fiskaly visibile |
 
----
-
-## Fase 20 — Impostazioni Sistema Admin (3 test)
+### Fase 20 — Impostazioni Sistema Admin (3 test)
 
 | # | Test | Azione |
 |---|------|--------|
@@ -271,20 +209,16 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 | 20.2 | Explorer | Invocazione edge function Fiskaly |
 | 20.3 | Log errori | Visualizzazione, risoluzione |
 
----
-
-## Fase 21 — Permessi & Sicurezza (4 test)
+### Fase 21 — Permessi & Sicurezza (4 test)
 
 | # | Test | Azione |
 |---|------|--------|
 | 21.1 | Partner blocco | Navigare a `/inventory`, `/boards`, `/admin-settings` → redirect o accesso negato |
 | 21.2 | Partner isolamento | Non vede dati di altri partner |
 | 21.3 | Manager limitazione | Solo struttura assegnata |
-| 21.4 | Manager blocco | Non puo creare strutture/pacchetti |
+| 21.4 | Manager blocco | Non può creare strutture/pacchetti |
 
----
-
-## Fase 22 — Edge Cases (4 test)
+### Fase 22 — Edge Cases (4 test)
 
 | # | Test | Azione |
 |---|------|--------|
@@ -302,4 +236,3 @@ Il database contiene dati residui da sessioni precedenti. Prima di testare, puli
 3. **Monitoraggio continuo**: `app_error_logs` + console browser dopo ogni fase
 4. **Regressione**: dopo ogni fix, ri-verifica rapida delle fasi precedenti
 5. **Credenziali**: admin@shower2pet.com / admin@shower2pet.com per accesso admin; creeremo partner e manager durante i test
-
