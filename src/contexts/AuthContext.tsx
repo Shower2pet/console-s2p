@@ -144,6 +144,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAdmin: role === "admin",
         isPartner: role === "partner",
         isManager: role === "manager",
+        isTester: role === "tester",
       }}
     >
       {children}
