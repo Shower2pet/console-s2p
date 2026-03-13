@@ -69,13 +69,13 @@ const AssignStationDialog = ({ partnerId, partnerName, prominent = false }: Assi
           <div className="flex justify-center py-6">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
-        ) : (freeStations ?? []).length === 0 ? (
+        ) : (stockStations ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-6">
-            Nessuna stazione libera disponibile nel magazzino.
+            Nessuna stazione collaudata disponibile per l'assegnazione.
           </p>
         ) : (
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {(freeStations ?? []).map((st) => (
+            {(stockStations ?? []).map((st) => (
               <div
                 key={st.id}
                 className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent/50 transition-colors"
