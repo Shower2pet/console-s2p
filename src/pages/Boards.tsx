@@ -82,9 +82,11 @@ const Boards = () => {
           </h1>
           <p className="text-muted-foreground">Schede hardware (Ethernet / WiFi) da associare alle stazioni</p>
         </div>
-        <Button onClick={() => { resetForm(); setCreateOpen(true); }} className="gap-2">
-          <Plus className="h-4 w-4" /> Nuova Scheda
-        </Button>
+        {!isTester && (
+          <Button onClick={() => { resetForm(); setCreateOpen(true); }} className="gap-2">
+            <Plus className="h-4 w-4" /> Nuova Scheda
+          </Button>
+        )}
       </div>
 
       <Card>
