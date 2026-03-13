@@ -94,9 +94,20 @@ const StationDetail = () => {
   const [tubCleanBusy, setTubCleanBusy] = useState(false);
   const [editBoardId, setEditBoardId] = useState<string>("__none__");
   const qc = useQueryClient();
-  
 
-  // Fetch structures for reassignment – filtered by station owner
+  // Ratings
+  const { data: avgRating } = useQuery({
+    queryKey: ["station-avg-rating", id],
+    enabled: !!id,
+    queryFn: () => fetchStationAvgRating(id!),
+  });
+  const { data: latestRatings } = useQuery({
+    queryKey: ["station-ratings", id],
+    enabled: !!id,
+    queryFn: () => fetchStationRatings(id!, 10),
+  });
+
+
   const stationOwnerId = station?.owner_id ?? editOwnerId;
   const effectiveOwnerId = stationOwnerId && stationOwnerId !== "__none__" ? stationOwnerId : null;
   const { data: structures } = useQuery({
