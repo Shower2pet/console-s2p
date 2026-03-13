@@ -85,9 +85,25 @@ const TesterHome = () => {
   const washRemaining = useCountdown(washEndsAt);
   const tubRemaining = useCountdown(tubEndsAt);
 
-  // Auto-clear when timer reaches 0
-  useEffect(() => { if (washEndsAt && washRemaining <= 0) setWashEndsAt(null); }, [washRemaining, washEndsAt]);
-  useEffect(() => { if (tubEndsAt && tubRemaining <= 0) setTubEndsAt(null); }, [tubRemaining, tubEndsAt]);
+  // Auto-clear when timer reaches 0 — use refs to skip the first render where remaining is still 0
+  const washWasActive = useRef(false);
+  const tubWasActive = useRef(false);
+
+  useEffect(() => {
+    if (washEndsAt && washRemaining > 0) washWasActive.current = true;
+    if (washEndsAt && washRemaining <= 0 && washWasActive.current) {
+      setWashEndsAt(null);
+      washWasActive.current = false;
+    }
+  }, [washRemaining, washEndsAt]);
+
+  useEffect(() => {
+    if (tubEndsAt && tubRemaining > 0) tubWasActive.current = true;
+    if (tubEndsAt && tubRemaining <= 0 && tubWasActive.current) {
+      setTubEndsAt(null);
+      tubWasActive.current = false;
+    }
+  }, [tubRemaining, tubEndsAt]);
 
   // Clear timers when station changes
   useEffect(() => { setWashEndsAt(null); setTubEndsAt(null); }, [selectedStation]);
