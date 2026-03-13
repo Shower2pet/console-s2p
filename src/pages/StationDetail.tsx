@@ -477,7 +477,7 @@ const StationDetail = () => {
               <Button
                 variant="destructive"
                 onClick={() => invokeHardware("OFF")}
-                disabled={hwBusy || updateStation.isPending || !heartbeatOkForHw}
+                disabled={hwBusy || updateStation.isPending || !hwEnabled}
                 className="gap-2"
               >
                 {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />} Spegni Servizio
