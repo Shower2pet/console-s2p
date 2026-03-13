@@ -65,9 +65,8 @@ const Inventory = () => {
         description: stationDescription.trim() || null,
         status: "OFFLINE",
       });
-      if (selectedBoardId && selectedBoardId !== "__none__") {
-        await assignBoardToStation(selectedBoardId, stationId);
-      }
+      if (!selectedBoardId) throw new Error("Seleziona una scheda hardware");
+      await assignBoardToStation(selectedBoardId, stationId);
     },
     onSuccess: () => {
       toast.success("Stazione registrata nel magazzino");
