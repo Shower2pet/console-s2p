@@ -550,7 +550,7 @@ const StationDetail = () => {
                       setWashBusy(false);
                     }
                   }}
-                  disabled={!heartbeatOkForHw || washBusy}
+                  disabled={!hwEnabled || washBusy}
                   className="gap-2"
                 >
                   {washBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
