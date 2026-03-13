@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
 
   const isTestingPhase = stationInfo?.phase === "TESTING";
 
-  // --- START_TIMED_WASH / START_TUB_CLEAN: heartbeat check ---
+  // --- START_TIMED_WASH / START_TUB_CLEAN: validation ---
   if (command === "START_TIMED_WASH" || command === "START_TUB_CLEAN") {
     if (!effectiveSeconds || typeof effectiveSeconds !== "number" || effectiveSeconds < 1 || effectiveSeconds > 3600) {
       return new Response(JSON.stringify({ error: "duration_seconds is required for START_TIMED_WASH (1-3600)" }), {
@@ -109,6 +109,27 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Check for duplicate active session on the same station+relay
+    const optionName = command === "START_TUB_CLEAN" ? "Manual Tub Clean" : "Manual Console Wash";
+    const { count: activeCount, error: activeErr } = await adminClient
+      .from("wash_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("station_id", station_id)
+      .eq("status", "ACTIVE")
+      .eq("option_name", optionName)
+      .gt("ends_at", new Date().toISOString());
+
+    if (!activeErr && (activeCount ?? 0) > 0) {
+      return new Response(JSON.stringify({
+        error: "SESSION_ALREADY_ACTIVE",
+        message: `C'è già una sessione attiva su questa stazione per ${command === "START_TUB_CLEAN" ? "la pulizia vasca" : "il lavaggio"}.`,
+      }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // TESTING phase bypasses heartbeat check
     if (!isTestingPhase) {
       const lastHb = stationInfo?.last_heartbeat_at ? new Date(stationInfo.last_heartbeat_at).getTime() : 0;
