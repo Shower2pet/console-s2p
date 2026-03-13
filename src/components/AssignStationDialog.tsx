@@ -60,7 +60,7 @@ const AssignStationDialog = ({ partnerId, partnerName, prominent = false }: Assi
             <Monitor className="h-5 w-5 text-primary" /> Assegna Stazione
           </DialogTitle>
           <DialogDescription>
-            Seleziona una stazione libera dal magazzino da assegnare a {partnerName}.
+            Seleziona una stazione collaudata (Stock) da assegnare a {partnerName}.
             Sarà poi il partner a decidere in quale struttura posizionarla.
           </DialogDescription>
         </DialogHeader>
