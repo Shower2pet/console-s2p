@@ -107,7 +107,7 @@ const Inventory = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            Stazioni in Stock ({stations?.length ?? 0})
+            Magazzino ({stations?.length ?? 0})
           </CardTitle>
         </CardHeader>
         <CardContent>
