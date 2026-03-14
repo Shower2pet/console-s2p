@@ -100,8 +100,10 @@ const AppRoutes = () => {
           <Route path="/end-users" element={<EndUsersList />} />
           <Route path="/end-users/:id" element={<EndUserDetail />} />
           <Route path="/admin-settings" element={<AdminSettings />} />
-          <Route path="/tester/stations" element={<TesterStations />} />
-          <Route path="/tester/stations/:stationId/test" element={<TesterStationTest />} />
+          <Route element={<TesterRoute />}>
+            <Route path="/tester/stations" element={<TesterStations />} />
+            <Route path="/tester/stations/:stationId/test" element={<TesterStationTest />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />
