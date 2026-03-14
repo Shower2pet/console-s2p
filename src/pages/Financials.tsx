@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Download, Euro, TrendingUp, FileSpreadsheet, Loader2, Filter } from "lucide-react";
+import { Euro, TrendingUp, Loader2, Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
