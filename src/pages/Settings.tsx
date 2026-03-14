@@ -231,6 +231,80 @@ const Settings = () => {
 
       {/* Abbonamenti nascosti per ora */}
       {/* {role === "partner" && <SubscriptionPlansSection userId={user!.id} />} */}
+
+      {/* Fisconline credentials dialog for partner auto-setup */}
+      <Dialog open={showFisconlineDialog} onOpenChange={setShowFisconlineDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configurazione Fiscale</DialogTitle>
+            <DialogDescription>
+              Per completare la configurazione fiscale, inserisci le credenziali Fisconline dell'Agenzia delle Entrate. Queste credenziali non verranno salvate.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="fc-password" className="text-sm">Password Fisconline</Label>
+              <div className="relative">
+                <Input
+                  id="fc-password"
+                  type={showPassword ? "text" : "password"}
+                  value={fisconlinePassword}
+                  onChange={(e) => setFisconlinePassword(e.target.value)}
+                  placeholder="Password"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="fc-pin" className="text-sm">PIN Fisconline</Label>
+              <div className="relative">
+                <Input
+                  id="fc-pin"
+                  type={showPin ? "text" : "password"}
+                  value={fisconlinePin}
+                  onChange={(e) => setFisconlinePin(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  placeholder="PIN (5-10 cifre)"
+                  className="pr-10"
+                  maxLength={10}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Le credenziali Fisconline scadono ogni 60 giorni e servono per l'invio telematico dei corrispettivi. Non vengono salvate nel sistema.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFisconlineDialog(false)} disabled={fiskalyLoading}>
+              Annulla
+            </Button>
+            <Button
+              onClick={handleFiskalySetup}
+              disabled={fiskalyLoading || !fisconlinePassword.trim() || !/^[0-9]{5,10}$/.test(fisconlinePin.trim())}
+              className="gap-2"
+            >
+              {fiskalyLoading ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Configurazione in corso...</>
+              ) : (
+                "Configura"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
