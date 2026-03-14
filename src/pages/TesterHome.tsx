@@ -374,7 +374,7 @@ const TesterHome = () => {
                     max={60}
                     step={1}
                     className="flex-1"
-                    disabled={!isTub || tubIsActive}
+                    disabled={tubIsActive}
                   />
                   <span className="text-sm font-mono w-16 text-right">{tubDuration} min</span>
                 </div>
