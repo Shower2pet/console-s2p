@@ -58,11 +58,10 @@ const queryClient = new QueryClient({
 
 const HomePage = () => {
   const { isAdmin, isTester, profile } = useAuth();
-  // Redirect to onboarding if must_change_password
   if ((profile as any)?.must_change_password) {
     return <Navigate to="/onboarding" replace />;
   }
-  if (isTester) return <TesterHome />;
+  if (isTester) return <Navigate to="/tester/stations" replace />;
   return isAdmin ? <AdminHome /> : <ClientHome />;
 };
 
