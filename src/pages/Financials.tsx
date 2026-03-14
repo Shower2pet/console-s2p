@@ -98,9 +98,6 @@ const Financials = () => {
                   <SelectItem value="CREDIT_TOPUP">Ricarica Crediti</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1">
-                <Download className="h-3.5 w-3.5" /> CSV
-              </Button>
             </div>
           </div>
         </CardHeader>
