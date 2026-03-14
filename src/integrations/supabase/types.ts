@@ -1173,6 +1173,7 @@ export type Database = {
           first_name: string
           id: string
           last_name: string
+          role: string
         }[]
       }
       get_public_stations: {
@@ -1224,6 +1225,7 @@ export type Database = {
           user_first_name: string
           user_id: string
           user_last_name: string
+          user_role: string
         }[]
       }
       get_station_users: {
