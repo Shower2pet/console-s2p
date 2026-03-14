@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets, Square, Cpu, Star, Clock, Timer
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets, Square, Cpu, Star, Clock, Timer, DoorOpen
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
