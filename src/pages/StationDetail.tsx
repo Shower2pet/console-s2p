@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets, Square, Cpu, Star, Clock
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets, Square, Cpu, Star, Clock, Timer
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
@@ -23,12 +23,69 @@ import { fetchPartnersList } from "@/services/profileService";
 import { invokeStationControl, invokeStartTimedWash, invokeStartTubClean, invokeStopWash, invokeStopTubClean } from "@/services/stationService";
 import { toast } from "sonner";
 import { Slider } from "@/components/ui/slider";
+import { Progress } from "@/components/ui/progress";
 import { handleAppError } from "@/lib/globalErrorHandler";
 import MapPicker from "@/components/MapPicker";
 import StationUsersList from "@/components/StationUsersList";
 import StationWashLogs from "@/components/StationWashLogs";
 import StationMaintenanceHistory from "@/components/StationMaintenanceHistory";
 import { fetchStationAvgRating, fetchStationRatings } from "@/services/ratingService";
+
+/** Format seconds as mm:ss */
+const fmtTimer = (totalSec: number): string => {
+  if (totalSec <= 0) return "00:00";
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
+
+/** Hook that counts down to an endsAt ISO timestamp */
+const useCountdown = (endsAt: string | null): number => {
+  const [remaining, setRemaining] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (!endsAt) { setRemaining(0); return; }
+    const calc = () => Math.max(0, Math.ceil((new Date(endsAt).getTime() - Date.now()) / 1000));
+    setRemaining(calc());
+    intervalRef.current = setInterval(() => {
+      const r = calc();
+      setRemaining(r);
+      if (r <= 0 && intervalRef.current) clearInterval(intervalRef.current);
+    }, 1000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [endsAt]);
+  return remaining;
+};
+
+// localStorage helpers for admin station timers
+const ADMIN_TIMER_KEY = "s2p_admin_station_timers";
+interface AdminPersistedTimers {
+  stationId: string;
+  washEndsAt: string | null;
+  washTotalSec: number;
+  tubEndsAt: string | null;
+  tubTotalSec: number;
+}
+const loadAdminTimers = (stationId: string): AdminPersistedTimers | null => {
+  try {
+    const raw = localStorage.getItem(ADMIN_TIMER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AdminPersistedTimers;
+    if (parsed.stationId !== stationId) return null;
+    const now = Date.now();
+    if (parsed.washEndsAt && new Date(parsed.washEndsAt).getTime() <= now) parsed.washEndsAt = null;
+    if (parsed.tubEndsAt && new Date(parsed.tubEndsAt).getTime() <= now) parsed.tubEndsAt = null;
+    if (!parsed.washEndsAt && !parsed.tubEndsAt) { localStorage.removeItem(ADMIN_TIMER_KEY); return null; }
+    return parsed;
+  } catch { return null; }
+};
+const saveAdminTimers = (t: AdminPersistedTimers) => {
+  try { localStorage.setItem(ADMIN_TIMER_KEY, JSON.stringify(t)); } catch {}
+};
+const clearAdminTimers = () => {
+  try { localStorage.removeItem(ADMIN_TIMER_KEY); } catch {}
+};
 
 /** Numeric input that tracks raw string while editing to avoid "sticky 0" issues */
 const NumericInput = ({
@@ -94,6 +151,37 @@ const StationDetail = () => {
   const [tubCleanBusy, setTubCleanBusy] = useState(false);
   const [editBoardId, setEditBoardId] = useState<string>("__none__");
   const qc = useQueryClient();
+
+  // Timer state for countdown (persisted in localStorage)
+  const persistedTimers = useMemo(() => id ? loadAdminTimers(id) : null, [id]);
+  const [washEndsAt, setWashEndsAt] = useState<string | null>(persistedTimers?.washEndsAt ?? null);
+  const [washTotalSec, setWashTotalSec] = useState(persistedTimers?.washTotalSec ?? 0);
+  const [tubEndsAt, setTubEndsAt] = useState<string | null>(persistedTimers?.tubEndsAt ?? null);
+  const [tubTotalSec, setTubTotalSec] = useState(persistedTimers?.tubTotalSec ?? 0);
+
+  const washRemaining = useCountdown(washEndsAt);
+  const tubRemaining = useCountdown(tubEndsAt);
+
+  // Persist timers
+  useEffect(() => {
+    if (id && (washEndsAt || tubEndsAt)) {
+      saveAdminTimers({ stationId: id, washEndsAt, washTotalSec, tubEndsAt, tubTotalSec });
+    } else {
+      clearAdminTimers();
+    }
+  }, [id, washEndsAt, washTotalSec, tubEndsAt, tubTotalSec]);
+
+  // Auto-clear expired timers
+  const washWasActive = useRef(false);
+  const tubWasActive = useRef(false);
+  useEffect(() => {
+    if (washEndsAt && washRemaining > 0) washWasActive.current = true;
+    if (washEndsAt && washRemaining <= 0 && washWasActive.current) { setWashEndsAt(null); washWasActive.current = false; }
+  }, [washRemaining, washEndsAt]);
+  useEffect(() => {
+    if (tubEndsAt && tubRemaining > 0) tubWasActive.current = true;
+    if (tubEndsAt && tubRemaining <= 0 && tubWasActive.current) { setTubEndsAt(null); tubWasActive.current = false; }
+  }, [tubRemaining, tubEndsAt]);
 
   // Ratings
   const { data: avgRating } = useQuery({
@@ -408,6 +496,11 @@ const StationDetail = () => {
 
   const isTubStation = (station as any).products?.type === "vasca" || station.type === "vasca";
 
+  const washIsActive = !!washEndsAt && washRemaining > 0;
+  const tubIsActive = !!tubEndsAt && tubRemaining > 0;
+  const washProgress = washTotalSec > 0 ? ((washTotalSec - washRemaining) / washTotalSec) * 100 : 0;
+  const tubProgress = tubTotalSec > 0 ? ((tubTotalSec - tubRemaining) / tubTotalSec) * 100 : 0;
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Fiskaly not configured warning */}
@@ -545,9 +638,23 @@ const StationDetail = () => {
               <h4 className="text-sm font-semibold text-foreground">Lavaggio Manuale</h4>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Durata: {manualWashMinutes} min</Label>
-                <Slider min={1} max={60} step={1} value={[manualWashMinutes]} onValueChange={([v]) => setManualWashMinutes(v)} disabled={!hwEnabled || washBusy} />
+                <Slider min={1} max={60} step={1} value={[manualWashMinutes]} onValueChange={([v]) => setManualWashMinutes(v)} disabled={!hwEnabled || washBusy || washIsActive} />
                 <div className="flex justify-between text-xs text-muted-foreground"><span>1 min</span><span>60 min</span></div>
               </div>
+
+              {/* Countdown timer */}
+              {washIsActive && (
+                <div className="space-y-1.5 py-2 px-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-primary flex items-center gap-1.5">
+                      <Timer className="h-3.5 w-3.5 animate-pulse" /> Lavaggio in corso
+                    </span>
+                    <span className="text-lg font-mono font-bold text-primary">{fmtTimer(washRemaining)}</span>
+                  </div>
+                  <Progress value={washProgress} className="h-2" />
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <Button
                   onClick={async () => {
@@ -555,6 +662,8 @@ const StationDetail = () => {
                     setWashBusy(true);
                     try {
                       const res = await invokeStartTimedWash(station.id, manualWashMinutes * 60);
+                      setWashEndsAt(res.ends_at);
+                      setWashTotalSec(manualWashMinutes * 60);
                       const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
                       toast.success(`Lavaggio avviato (${manualWashMinutes} min) — termine previsto: ${endsAtFormatted}`);
                     } catch (e: any) {
@@ -567,7 +676,7 @@ const StationDetail = () => {
                       setWashBusy(false);
                     }
                   }}
-                  disabled={!hwEnabled || washBusy}
+                  disabled={!hwEnabled || washBusy || washIsActive}
                   className="gap-2"
                 >
                   {washBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
@@ -580,6 +689,7 @@ const StationDetail = () => {
                     setWashBusy(true);
                     try {
                       await invokeStopWash(station.id);
+                      setWashEndsAt(null);
                       toast.success("Lavaggio interrotto.");
                     } catch (e: any) {
                       handleAppError(e, "StationDetail: stop lavaggio");
@@ -606,9 +716,23 @@ const StationDetail = () => {
                   </h4>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Durata: {tubCleanMinutes} min</Label>
-                    <Slider min={1} max={60} step={1} value={[tubCleanMinutes]} onValueChange={([v]) => setTubCleanMinutes(v)} disabled={!hwEnabled || tubCleanBusy} />
+                    <Slider min={1} max={60} step={1} value={[tubCleanMinutes]} onValueChange={([v]) => setTubCleanMinutes(v)} disabled={!hwEnabled || tubCleanBusy || tubIsActive} />
                     <div className="flex justify-between text-xs text-muted-foreground"><span>1 min</span><span>60 min</span></div>
                   </div>
+
+                  {/* Countdown timer */}
+                  {tubIsActive && (
+                    <div className="space-y-1.5 py-2 px-3 rounded-lg bg-primary/5 border border-primary/20">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-primary flex items-center gap-1.5">
+                          <Timer className="h-3.5 w-3.5 animate-pulse" /> Pulizia in corso
+                        </span>
+                        <span className="text-lg font-mono font-bold text-primary">{fmtTimer(tubRemaining)}</span>
+                      </div>
+                      <Progress value={tubProgress} className="h-2" />
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
                     <Button
                       onClick={async () => {
@@ -616,6 +740,8 @@ const StationDetail = () => {
                         setTubCleanBusy(true);
                         try {
                           const res = await invokeStartTubClean(station.id, tubCleanMinutes * 60);
+                          setTubEndsAt(res.ends_at);
+                          setTubTotalSec(tubCleanMinutes * 60);
                           const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
                           toast.success(`Pulizia vasca avviata (${tubCleanMinutes} min) — termine previsto: ${endsAtFormatted}`);
                         } catch (e: any) {
@@ -628,7 +754,7 @@ const StationDetail = () => {
                           setTubCleanBusy(false);
                         }
                       }}
-                      disabled={!hwEnabled || tubCleanBusy}
+                      disabled={!hwEnabled || tubCleanBusy || tubIsActive}
                       variant="secondary"
                       className="gap-2"
                     >
@@ -642,6 +768,7 @@ const StationDetail = () => {
                         setTubCleanBusy(true);
                         try {
                           await invokeStopTubClean(station.id);
+                          setTubEndsAt(null);
                           toast.success("Pulizia vasca interrotta.");
                         } catch (e: any) {
                           handleAppError(e, "StationDetail: stop pulizia vasca");
