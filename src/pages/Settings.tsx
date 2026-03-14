@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FileText, Save, Loader2, Plus, Trash2, CreditCard } from "lucide-react";
+import { FileText, Save, Loader2, Plus, Trash2, CreditCard, Eye, EyeOff } from "lucide-react";
 import { FiskalySetupCard } from "@/components/FiskalySetupCard";
 import PartnerReferents from "@/components/PartnerReferents";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -33,6 +34,14 @@ const Settings = () => {
   const [zipCode, setZipCode] = useState("");
   const [city, setCity] = useState("");
   const [province, setProvince] = useState("");
+
+  // Fisconline dialog state
+  const [showFisconlineDialog, setShowFisconlineDialog] = useState(false);
+  const [fisconlinePassword, setFisconlinePassword] = useState("");
+  const [fisconlinePin, setFisconlinePin] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPin, setShowPin] = useState(false);
+  const [fiskalyLoading, setFiskalyLoading] = useState(false);
 
   // Validation helpers
   const vatValid = !vatNumber.trim() || /^\d{11}$/.test(vatNumber.trim());
@@ -74,32 +83,46 @@ const Settings = () => {
         city: city.trim() || null,
         province: province.trim().toUpperCase() || null,
       }),
-    onSuccess: async () => {
+    onSuccess: () => {
       toast.success("Dati aziendali salvati");
       qc.invalidateQueries({ queryKey: ["profile"] });
 
-      // Auto-trigger Fiskaly setup if all required fields are filled and not yet configured
+      // Show Fisconline dialog if all fields are filled and Fiskaly not yet configured
       if (role === "partner" && allFiskalyFieldsFilled && !profile?.fiskaly_system_id) {
-        toast.info("Configurazione fiscale in corso...");
-        try {
-          const { data, error } = await supabase.functions.invoke("fiskaly-setup", {
-            body: { partner_id: user!.id },
-          });
-          if (error || data?.error) {
-            const msg = data?.error || error?.message || "Errore imprevisto";
-            toast.error(`Errore configurazione fiscale: ${msg}`);
-            handleAppError(new Error(msg), "Settings: auto fiskaly-setup", { silent: true });
-          } else if (data?.success) {
-            toast.success("Configurazione fiscale completata automaticamente!");
-            qc.invalidateQueries({ queryKey: ["profile"] });
-          }
-        } catch (err: any) {
-          handleAppError(err, "Settings: auto fiskaly-setup");
-        }
+        setShowFisconlineDialog(true);
       }
     },
     onError: (e: any) => handleAppError(e, "Settings: salvataggio dati aziendali"),
   });
+
+  const handleFiskalySetup = async () => {
+    if (!fisconlinePassword.trim() || !fisconlinePin.trim()) return;
+    setFiskalyLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fiskaly-setup", {
+        body: {
+          partner_id: user!.id,
+          fisconline_password: fisconlinePassword,
+          fisconline_pin: fisconlinePin,
+        },
+      });
+      if (error || data?.error) {
+        const msg = data?.error || error?.message || "Errore imprevisto";
+        toast.error(`Errore configurazione fiscale: ${msg}`);
+        handleAppError(new Error(msg), "Settings: auto fiskaly-setup", { silent: true });
+      } else if (data?.success) {
+        toast.success(data.already_configured ? "Configurazione fiscale già presente" : "Configurazione fiscale completata!");
+        setShowFisconlineDialog(false);
+        setFisconlinePassword("");
+        setFisconlinePin("");
+        qc.invalidateQueries({ queryKey: ["profile"] });
+      }
+    } catch (err: any) {
+      handleAppError(err, "Settings: auto fiskaly-setup");
+    } finally {
+      setFiskalyLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
