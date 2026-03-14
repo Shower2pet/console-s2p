@@ -31,15 +31,14 @@ const StationWashLogs = ({ stationId }: Props) => {
         .limit(50);
       if (error) throw error;
 
-      // Fetch user profiles for registered users
+      // Fetch user profiles via security definer function
       const userIds = [...new Set((data ?? []).map(d => d.user_id).filter(Boolean))] as string[];
       let profileMap = new Map<string, { email: string; name: string }>();
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, email, first_name, last_name")
-          .in("id", userIds);
-        (profiles ?? []).forEach(p => {
+        const { data: profiles } = await supabase.rpc("get_profiles_by_ids", {
+          p_ids: userIds,
+        });
+        ((profiles ?? []) as any[]).forEach((p: any) => {
           const name = [p.first_name, p.last_name].filter(Boolean).join(" ");
           profileMap.set(p.id, { email: p.email ?? "", name });
         });

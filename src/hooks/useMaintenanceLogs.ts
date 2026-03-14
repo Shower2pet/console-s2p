@@ -15,15 +15,14 @@ export const useMaintenanceLogs = () => {
         .limit(500);
       if (error) throw error;
 
-      // Fetch author profiles for performed_by
+      // Fetch author profiles via security definer function
       const authorIds = [...new Set((data ?? []).map(d => d.performed_by).filter(Boolean))] as string[];
       let profileMap = new Map<string, { first_name: string | null; last_name: string | null; email: string | null }>();
       if (authorIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, first_name, last_name, email")
-          .in("id", authorIds);
-        (profiles ?? []).forEach(p => profileMap.set(p.id, p));
+        const { data: profiles } = await supabase.rpc("get_profiles_by_ids", {
+          p_ids: authorIds,
+        });
+        ((profiles ?? []) as any[]).forEach((p: any) => profileMap.set(p.id, p));
       }
 
       return (data ?? []).map(d => ({
