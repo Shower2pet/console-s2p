@@ -33,14 +33,16 @@ const StationWashLogs = ({ stationId }: Props) => {
 
       // Fetch user profiles via security definer function
       const userIds = [...new Set((data ?? []).map(d => d.user_id).filter(Boolean))] as string[];
-      let profileMap = new Map<string, { email: string; name: string }>();
+      let profileMap = new Map<string, { email: string; name: string; role: string }>();
       if (userIds.length > 0) {
         const { data: profiles } = await supabase.rpc("get_profiles_by_ids", {
           p_ids: userIds,
         });
+        const roleLabels: Record<string, string> = { admin: "Admin", partner: "Partner", manager: "Manager", user: "Utente", tester: "Tester" };
         ((profiles ?? []) as any[]).forEach((p: any) => {
           const name = [p.first_name, p.last_name].filter(Boolean).join(" ");
-          profileMap.set(p.id, { email: p.email ?? "", name });
+          const roleLabel = roleLabels[p.role] ?? p.role ?? "";
+          profileMap.set(p.id, { email: p.email ?? "", name, role: roleLabel });
         });
       }
 
