@@ -41,6 +41,7 @@ const isHeartbeatRecent = (lastHeartbeat: string | null | undefined) => {
 
 const TesterStationCard = ({ station, board, availableBoards, onInvalidate }: TesterStationCardProps) => {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
