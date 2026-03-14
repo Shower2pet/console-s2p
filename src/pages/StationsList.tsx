@@ -188,7 +188,7 @@ const StationsList = () => {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : (
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
                 {(showcaseStations ?? []).map(s => (
                   <Card key={s.id} className="h-full">
                     <CardHeader className="pb-2">

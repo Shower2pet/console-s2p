@@ -119,10 +119,20 @@ const SidebarNav = ({ items, collapsed, role, displayName, email, onLogout, onNa
 );
 
 export const AppSidebar = () => {
-  const [collapsed, setCollapsed] = useState(false);
+  // Auto-collapse on tablet (md-lg), expanded on desktop (lg+)
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1024);
   const { profile, role, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Listen for resize to auto-collapse/expand
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) setCollapsed(true);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const items = role === "admin" ? adminItems : role === "partner" ? partnerItems : role === "tester" ? testerItems : managerItems;
   const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || profile?.email || "Utente";
@@ -134,7 +144,7 @@ export const AppSidebar = () => {
 
   return (
     <>
-      {/* Desktop sidebar */}
+      {/* Desktop/Tablet sidebar */}
       <aside className={cn(
         "hidden md:flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 sticky top-0 h-screen overflow-y-auto overflow-x-hidden scrollbar-none",
         collapsed ? "w-16" : "w-64"

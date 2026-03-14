@@ -64,7 +64,7 @@ const ClientHome = () => {
         <StatCard title="Lavaggi Totali" value={totalWashes} icon={Droplets} variant="default" href="/stations" />
       </div>
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
         <RevenueChart transactions={transactions ?? []} height={240} className="lg:col-span-2 animate-fade-in" />
 
         {role === "partner" && (

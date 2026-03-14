@@ -57,7 +57,7 @@ const AdminHome = () => {
         <StatCard title="Lavaggi Oggi" value={todayWashes} icon={Droplets} variant="primary" href="/revenue" />
       </div>
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
         <RevenueChart transactions={transactions ?? []} height={240} className="lg:col-span-2 animate-fade-in" />
 
         <Card className="animate-fade-in">
