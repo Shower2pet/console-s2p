@@ -334,12 +334,11 @@ const TesterHome = () => {
             </CardContent>
           </Card>
 
-          {/* Relay 2 — Pulizia Vasca (only for tub stations) */}
-          <Card className={!isTub ? "opacity-50" : tubIsActive ? "ring-2 ring-primary/50" : ""}>
+          {/* Relay 2 — Pulizia Vasca */}
+          <Card className={tubIsActive ? "ring-2 ring-primary/50" : ""}>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Wind className="h-5 w-5 text-emerald-500" /> Relè 2 — Pulizia Vasca
-                {!isTub && <Badge variant="secondary" className="text-xs">Solo Vasca</Badge>}
               </CardTitle>
               <CardDescription>Controlla il relè per la pulizia automatica della vasca</CardDescription>
             </CardHeader>
@@ -349,7 +348,7 @@ const TesterHome = () => {
                 <Button
                   size="sm"
                   onClick={() => sendCommand("ON_RELAY2")}
-                  disabled={!!loadingCmd || !isTub}
+                  disabled={!!loadingCmd}
                   className="gap-1"
                 >
                   {loadingCmd === "ON_RELAY2" && <Loader2 className="h-3 w-3 animate-spin" />} ON
@@ -358,7 +357,7 @@ const TesterHome = () => {
                   size="sm"
                   variant="outline"
                   onClick={() => sendCommand("OFF_RELAY2")}
-                  disabled={!!loadingCmd || !isTub}
+                  disabled={!!loadingCmd}
                   className="gap-1"
                 >
                   {loadingCmd === "OFF_RELAY2" && <Loader2 className="h-3 w-3 animate-spin" />} OFF
@@ -375,7 +374,7 @@ const TesterHome = () => {
                     max={60}
                     step={1}
                     className="flex-1"
-                    disabled={!isTub || tubIsActive}
+                    disabled={tubIsActive}
                   />
                   <span className="text-sm font-mono w-16 text-right">{tubDuration} min</span>
                 </div>
@@ -398,7 +397,7 @@ const TesterHome = () => {
                     size="sm"
                     variant="default"
                     onClick={() => sendCommand("START_TUB_CLEAN", { duration_seconds: tubDuration * 60 })}
-                    disabled={!!loadingCmd || !isTub || tubIsActive}
+                    disabled={!!loadingCmd || tubIsActive}
                     className="gap-1"
                   >
                     {loadingCmd === "START_TUB_CLEAN" && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -408,7 +407,7 @@ const TesterHome = () => {
                     size="sm"
                     variant="destructive"
                     onClick={() => sendCommand("STOP_TUB_CLEAN")}
-                    disabled={!!loadingCmd || !isTub}
+                    disabled={!!loadingCmd}
                     className="gap-1"
                   >
                     {loadingCmd === "STOP_TUB_CLEAN" && <Loader2 className="h-3 w-3 animate-spin" />} Ferma
