@@ -59,7 +59,8 @@ const StationWashLogs = ({ stationId }: Props) => {
 
       return (data ?? []).map(s => {
         const prof = s.user_id ? profileMap.get(s.user_id) : null;
-        const displayName = prof?.name || prof?.email || s.guest_email || null;
+        const nameStr = prof?.name || prof?.email || s.guest_email || null;
+        const displayName = nameStr && prof?.role ? `${nameStr} (${prof.role})` : nameStr;
         return {
           ...s,
           user_email: displayName,
