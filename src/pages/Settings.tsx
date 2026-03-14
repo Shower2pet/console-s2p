@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
 import { updatePartnerData } from "@/services/profileService";
+import { supabase } from "@/integrations/supabase/client";
 import {
   fetchSubscriptionPlans,
   createSubscriptionPlan,
@@ -54,6 +55,12 @@ const Settings = () => {
     }
   }, [profile]);
 
+  // Check if all fiskaly-required fields are filled
+  const allFiskalyFieldsFilled = !!(
+    legalName.trim() && vatNumber.trim() && legalRepFiscalCode.trim() &&
+    addressStreet.trim() && zipCode.trim() && city.trim() && province.trim()
+  );
+
   const updateMutation = useMutation({
     mutationFn: () =>
       updatePartnerData(user!.id, {
@@ -67,9 +74,29 @@ const Settings = () => {
         city: city.trim() || null,
         province: province.trim().toUpperCase() || null,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Dati aziendali salvati");
       qc.invalidateQueries({ queryKey: ["profile"] });
+
+      // Auto-trigger Fiskaly setup if all required fields are filled and not yet configured
+      if (role === "partner" && allFiskalyFieldsFilled && !profile?.fiskaly_system_id) {
+        toast.info("Configurazione fiscale in corso...");
+        try {
+          const { data, error } = await supabase.functions.invoke("fiskaly-setup", {
+            body: { partner_id: user!.id },
+          });
+          if (error || data?.error) {
+            const msg = data?.error || error?.message || "Errore imprevisto";
+            toast.error(`Errore configurazione fiscale: ${msg}`);
+            handleAppError(new Error(msg), "Settings: auto fiskaly-setup", { silent: true });
+          } else if (data?.success) {
+            toast.success("Configurazione fiscale completata automaticamente!");
+            qc.invalidateQueries({ queryKey: ["profile"] });
+          }
+        } catch (err: any) {
+          handleAppError(err, "Settings: auto fiskaly-setup");
+        }
+      }
     },
     onError: (e: any) => handleAppError(e, "Settings: salvataggio dati aziendali"),
   });
@@ -113,7 +140,7 @@ const Settings = () => {
               <Label>CF Rappresentante Legale</Label>
               <Input value={legalRepFiscalCode} onChange={(e) => setLegalRepFiscalCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16))} className="mt-1.5" placeholder="Es. RSSMRA85M01H501Z" maxLength={16} />
               {legalRepFiscalCode.trim() && !legalRepFcValid && <p className="text-xs text-destructive mt-1">Deve essere 16 caratteri alfanumerici</p>}
-              <p className="text-xs text-muted-foreground mt-1">CF personale di chi detiene le credenziali Fisconline (obbligatorio per Fiskaly)</p>
+              <p className="text-xs text-muted-foreground mt-1">CF personale del rappresentante legale (obbligatorio per la configurazione fiscale)</p>
             </div>
 
             <div className="border-t border-border pt-4">
@@ -159,7 +186,7 @@ const Settings = () => {
         </Card>
       )}
 
-      {(role === "partner" || role === "admin") && user && (
+      {role === "admin" && user && (
         <FiskalySetupCard
           partnerId={user.id}
           fiskalySystemId={profile?.fiskaly_system_id}
@@ -171,6 +198,7 @@ const Settings = () => {
           city={city}
           province={province}
           invalidateKeys={[["profile"]]}
+          isAdmin
         />
       )}
 
