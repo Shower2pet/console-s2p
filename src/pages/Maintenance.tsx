@@ -272,7 +272,7 @@ const Maintenance = () => {
                       <TableCell className="font-medium text-foreground max-w-[200px] truncate">
                         {title}
                       </TableCell>
-                      <TableCell className="max-w-[250px] truncate text-muted-foreground">
+                      <TableCell className="hidden md:table-cell max-w-[250px] truncate text-muted-foreground">
                         {log.reason ?? "—"}
                       </TableCell>
                       <TableCell>
