@@ -1012,10 +1012,9 @@ const StationDetail = () => {
                 </div>
               )}
             </>
-          )
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       <StationMaintenanceHistory stationId={station.id} />
 
