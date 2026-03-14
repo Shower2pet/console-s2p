@@ -56,9 +56,6 @@ const Financials = () => {
           </h1>
           <p className="text-muted-foreground">{filtered.length} transazioni</p>
         </div>
-        <Button onClick={exportCSV} className="gap-2">
-          <FileSpreadsheet className="h-4 w-4" /> Export CSV
-        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
