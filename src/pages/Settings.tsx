@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { handleAppError } from "@/lib/globalErrorHandler";
 import { updatePartnerData } from "@/services/profileService";
+import { supabase } from "@/integrations/supabase/client";
 import {
   fetchSubscriptionPlans,
   createSubscriptionPlan,
