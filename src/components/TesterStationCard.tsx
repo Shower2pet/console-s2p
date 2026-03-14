@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import {
-  Cpu, Wifi, WifiOff, CheckCircle2, Circle, Trash2, Link2, Loader2, ArrowRight, XCircle,
+  Cpu, Wifi, WifiOff, CheckCircle2, Circle, Trash2, Link2, Loader2, ArrowRight, XCircle, FlaskConical,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
