@@ -690,14 +690,6 @@ const AdminSettings = () => {
 
       <AdminErrorLogs />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-heading">Configurazione Generale</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">Le impostazioni di sistema saranno disponibili in una versione futura.</p>
-        </CardContent>
-      </Card>
     </div>
   );
 };

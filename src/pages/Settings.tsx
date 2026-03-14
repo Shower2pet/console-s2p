@@ -79,7 +79,7 @@ const Settings = () => {
       <div>
         <h1 className="text-2xl font-heading font-bold text-foreground">
           <FileText className="inline mr-2 h-6 w-6 text-primary" />
-          {role === "partner" ? "Profilo Aziendale" : "Impostazioni Admin"}
+          {role === "partner" ? "Profilo Aziendale" : "Impostazioni"}
         </h1>
         <p className="text-muted-foreground">Gestisci i dati aziendali e fiscali</p>
       </div>
