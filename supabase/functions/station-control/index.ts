@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const validCommands = ["PULSE", "ON", "OFF", "ON_RELAY2", "OFF_RELAY2", "START_TIMED_WASH", "START_TUB_CLEAN", "STOP_WASH", "STOP_TUB_CLEAN", "OPEN_GATE"];
+  const validCommands = ["PULSE", "ON", "OFF", "ON_RELAY2", "OFF_RELAY2", "ON_RELAY4", "OFF_RELAY4", "START_TIMED_WASH", "START_TUB_CLEAN", "STOP_WASH", "STOP_TUB_CLEAN", "OPEN_GATE"];
   if (!command || typeof command !== "string" || !validCommands.includes(command)) {
     return new Response(JSON.stringify({ error: `Invalid command. Must be one of: ${validCommands.join(", ")}` }), {
       status: 400,
@@ -201,6 +201,12 @@ Deno.serve(async (req) => {
     payload = "1";
   } else if (command === "OFF_RELAY2") {
     topic = `shower2pet/${mqttTargetId}/relay2/command`;
+    payload = "0";
+  } else if (command === "ON_RELAY4") {
+    topic = `shower2pet/${mqttTargetId}/relay4/command`;
+    payload = "1";
+  } else if (command === "OFF_RELAY4") {
+    topic = `shower2pet/${mqttTargetId}/relay4/command`;
     payload = "0";
   }
 
