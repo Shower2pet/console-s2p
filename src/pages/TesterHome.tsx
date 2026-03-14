@@ -348,7 +348,7 @@ const TesterHome = () => {
                 <Button
                   size="sm"
                   onClick={() => sendCommand("ON_RELAY2")}
-                  disabled={!!loadingCmd || !isTub}
+                  disabled={!!loadingCmd}
                   className="gap-1"
                 >
                   {loadingCmd === "ON_RELAY2" && <Loader2 className="h-3 w-3 animate-spin" />} ON
@@ -357,7 +357,7 @@ const TesterHome = () => {
                   size="sm"
                   variant="outline"
                   onClick={() => sendCommand("OFF_RELAY2")}
-                  disabled={!!loadingCmd || !isTub}
+                  disabled={!!loadingCmd}
                   className="gap-1"
                 >
                   {loadingCmd === "OFF_RELAY2" && <Loader2 className="h-3 w-3 animate-spin" />} OFF
