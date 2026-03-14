@@ -496,6 +496,11 @@ const StationDetail = () => {
 
   const isTubStation = (station as any).products?.type === "vasca" || station.type === "vasca";
 
+  const washIsActive = !!washEndsAt && washRemaining > 0;
+  const tubIsActive = !!tubEndsAt && tubRemaining > 0;
+  const washProgress = washTotalSec > 0 ? ((washTotalSec - washRemaining) / washTotalSec) * 100 : 0;
+  const tubProgress = tubTotalSec > 0 ? ((tubTotalSec - tubRemaining) / tubTotalSec) * 100 : 0;
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Fiskaly not configured warning */}
