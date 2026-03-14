@@ -535,6 +535,8 @@ const StationDetail = () => {
             <p className="text-amber-700 dark:text-amber-400 mt-0.5">
               {isAdmin
                 ? "Il partner proprietario non ha la configurazione fiscale completata. La stazione non può essere attivata. Vai in Impostazioni Sistema → Partner Fiscali per completare il setup."
+                : isManager
+                ? "I dati fiscali del partner proprietario non sono ancora stati configurati. La stazione non può essere attivata. Contatta il partner per completare la configurazione in Impostazioni → Profilo Aziendale."
                 : "I dati fiscali non sono ancora stati configurati. La stazione non può essere attivata. Vai in Impostazioni → Profilo Aziendale per compilare tutti i campi obbligatori."}
             </p>
           </div>
