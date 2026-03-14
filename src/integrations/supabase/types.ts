@@ -1129,6 +1129,10 @@ export type Database = {
       }
     }
     Functions: {
+      check_owner_has_fiskaly: {
+        Args: { p_owner_id: string }
+        Returns: boolean
+      }
       generate_board_id: { Args: { board_type: string }; Returns: string }
       get_console_user_detail: {
         Args: { target_id: string }
