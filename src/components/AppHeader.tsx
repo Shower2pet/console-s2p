@@ -52,7 +52,7 @@ export const AppHeader = () => {
               <div className="h-8 w-8 md:h-9 md:w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-heading text-sm font-bold">
                 {initials}
               </div>
-              <div className="hidden md:block text-left">
+              <div className="hidden lg:block text-left">
                 <p className="text-sm font-medium text-foreground">{displayName}</p>
                 <p className="text-xs text-muted-foreground">{roleLabels[role ?? "user"]}</p>
               </div>

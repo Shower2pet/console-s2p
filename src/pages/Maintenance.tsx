@@ -226,11 +226,12 @@ const Maintenance = () => {
       {/* Data Table */}
       <Card>
         <CardContent className="p-0">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Titolo</TableHead>
-                <TableHead>Descrizione</TableHead>
+                <TableHead className="hidden md:table-cell">Descrizione</TableHead>
                 <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("severity")}>
                   <span className="flex items-center gap-1">
                     Gravità <ArrowUpDown className="h-3 w-3" />
@@ -241,8 +242,8 @@ const Maintenance = () => {
                     Stato <ArrowUpDown className="h-3 w-3" />
                   </span>
                 </TableHead>
-                <TableHead>Autore</TableHead>
-                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("created_at")}>
+                <TableHead className="hidden lg:table-cell">Autore</TableHead>
+                <TableHead className="cursor-pointer select-none hidden md:table-cell" onClick={() => toggleSort("created_at")}>
                   <span className="flex items-center gap-1">
                     Data <ArrowUpDown className="h-3 w-3" />
                   </span>
@@ -271,7 +272,7 @@ const Maintenance = () => {
                       <TableCell className="font-medium text-foreground max-w-[200px] truncate">
                         {title}
                       </TableCell>
-                      <TableCell className="max-w-[250px] truncate text-muted-foreground">
+                      <TableCell className="hidden md:table-cell max-w-[250px] truncate text-muted-foreground">
                         {log.reason ?? "—"}
                       </TableCell>
                       <TableCell>
@@ -285,8 +286,8 @@ const Maintenance = () => {
                           {statusLabels[log.status ?? "open"]}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{authorName}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{authorName}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground whitespace-nowrap">
                         {log.created_at ? format(new Date(log.created_at), "dd/MM/yy HH:mm") : "—"}
                       </TableCell>
                       <TableCell className="text-right">
@@ -315,6 +316,7 @@ const Maintenance = () => {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

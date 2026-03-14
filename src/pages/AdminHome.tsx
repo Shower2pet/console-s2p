@@ -49,7 +49,7 @@ const AdminHome = () => {
         <p className="text-sm text-muted-foreground">Panoramica globale Shower2Pet</p>
       </div>
 
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <StatCard title="Incasso Totale" value={`€${totalRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={Euro} variant="primary" href="/revenue" />
         <StatCard title="Stazioni Attive" value={activeStations} icon={Monitor} variant="success" href="/stations" />
         <StatCard title="Partner Totali" value={totalPartners} icon={Users} variant="default" href="/clients" />
@@ -57,7 +57,7 @@ const AdminHome = () => {
         <StatCard title="Lavaggi Oggi" value={todayWashes} icon={Droplets} variant="primary" href="/revenue" />
       </div>
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
         <RevenueChart transactions={transactions ?? []} height={240} className="lg:col-span-2 animate-fade-in" />
 
         <Card className="animate-fade-in">

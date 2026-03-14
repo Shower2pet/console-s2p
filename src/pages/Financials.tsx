@@ -120,7 +120,7 @@ const Financials = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -133,8 +133,8 @@ const Financials = () => {
             <TableBody>
               {filtered.slice(0, 100).map(t => (
                 <TableRow key={t.id}>
-                  <TableCell className="text-foreground">{t.created_at ? format(new Date(t.created_at), "dd/MM/yy HH:mm") : "—"}</TableCell>
-                   <TableCell className="text-foreground">{t.transaction_type.replace(/_/g, " ")}</TableCell>
+                  <TableCell className="text-foreground whitespace-nowrap">{t.created_at ? format(new Date(t.created_at), "dd/MM/yy HH:mm") : "—"}</TableCell>
+                   <TableCell className="text-foreground whitespace-nowrap">{t.transaction_type.replace(/_/g, " ")}</TableCell>
                    <TableCell className="text-right font-semibold text-foreground">€{Number(t.total_value).toFixed(2)}</TableCell>
                    <TableCell><span className="capitalize text-xs">{t.status ?? "—"}</span></TableCell>
                 </TableRow>

@@ -56,7 +56,7 @@ const ClientHome = () => {
         <p className="text-sm text-muted-foreground">{role === "manager" ? "La tua struttura" : "La tua panoramica personale"}</p>
       </div>
 
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <StatCard title="Ricavo Totale" value={`€${totalRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={Euro} variant="primary" href="/financials" />
         <StatCard title="Stazioni Attive" value={`${activeStations}/${totalStations}`} icon={Monitor} variant="success" href="/stations" />
         <StatCard title="Incasso Oggi" value={`€${todayRevenue.toLocaleString("it-IT", { minimumFractionDigits: 2 })}`} icon={TrendingUp} variant="warning" href="/financials" />
@@ -64,7 +64,7 @@ const ClientHome = () => {
         <StatCard title="Lavaggi Totali" value={totalWashes} icon={Droplets} variant="default" href="/stations" />
       </div>
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
         <RevenueChart transactions={transactions ?? []} height={240} className="lg:col-span-2 animate-fade-in" />
 
         {role === "partner" && (
