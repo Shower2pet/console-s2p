@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Monitor, Loader2, Save, Plus, Trash2, Wrench, Building2,
-  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets, Square, Cpu, Star, Clock, Timer
+  Power, PowerOff, RotateCcw, Warehouse, AlertTriangle, MapPin, ShieldAlert, Droplets, Square, Cpu, Star, Clock, Timer, DoorOpen
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
@@ -583,6 +583,28 @@ const StationDetail = () => {
                 className="gap-2"
               >
                 {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />} Spegni Servizio
+              </Button>
+
+              {/* Apri Porta (relay3) */}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!station) return;
+                  setHwBusy(true);
+                  supabase.functions.invoke("station-control", {
+                    body: { station_id: station.id, command: "OPEN_GATE" },
+                  }).then(({ data, error }) => {
+                    if (error || data?.error) {
+                      handleAppError(new Error(error?.message || data?.message || data?.error), "StationDetail: apri porta");
+                    } else {
+                      toast.success("Comando apertura porta inviato");
+                    }
+                  }).finally(() => setHwBusy(false));
+                }}
+                disabled={hwBusy || !hwEnabled}
+                className="gap-2"
+              >
+                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorOpen className="h-4 w-4" />} Apri Porta
               </Button>
             </div>
             {!hwEnabled && (
