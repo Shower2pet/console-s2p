@@ -564,14 +564,6 @@ const StationDetail = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              {/* Reset — placeholder, da implementare */}
-              <Button
-                variant="outline"
-                disabled
-                className="gap-2"
-              >
-                <RotateCcw className="h-4 w-4" /> Reset
-              </Button>
 
               {/* Attiva Servizio (ON) */}
               <Button
