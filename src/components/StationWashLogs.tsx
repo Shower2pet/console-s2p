@@ -63,7 +63,8 @@ const StationWashLogs = ({ stationId }: Props) => {
           ...s,
           user_email: displayName,
           rating: ratingMap.get(s.id) ?? null,
-      }));
+        };
+      });
     },
   });
 
