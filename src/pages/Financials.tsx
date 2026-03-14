@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Download, Euro, TrendingUp, FileSpreadsheet, Loader2, Filter } from "lucide-react";
+import { Euro, TrendingUp, Loader2, Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,19 +37,6 @@ const Financials = () => {
     return Object.entries(map).sort().map(([date, revenue]) => ({ date, revenue }));
   }, [filtered]);
 
-  const exportCSV = () => {
-    const header = "Data,Tipo,Valore,Carta,Crediti,Stato\n";
-    const rows = filtered.map(t =>
-      `${t.created_at?.slice(0, 10)},${t.transaction_type},${t.total_value},${t.amount_paid_stripe ?? 0},${t.amount_paid_wallet ?? 0},${t.status}`
-    ).join("\n");
-    const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `report_finanziario_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   if (isLoading) {
     return (
@@ -69,9 +56,6 @@ const Financials = () => {
           </h1>
           <p className="text-muted-foreground">{filtered.length} transazioni</p>
         </div>
-        <Button onClick={exportCSV} className="gap-2">
-          <FileSpreadsheet className="h-4 w-4" /> Export CSV
-        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -114,9 +98,6 @@ const Financials = () => {
                   <SelectItem value="CREDIT_TOPUP">Ricarica Crediti</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1">
-                <Download className="h-3.5 w-3.5" /> CSV
-              </Button>
             </div>
           </div>
         </CardHeader>
