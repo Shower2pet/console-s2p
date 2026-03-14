@@ -79,12 +79,12 @@ const Settings = () => {
       <div>
         <h1 className="text-2xl font-heading font-bold text-foreground">
           <FileText className="inline mr-2 h-6 w-6 text-primary" />
-          {role === "partner" ? "Profilo Aziendale" : "Impostazioni"}
+          {role === "partner" ? "Profilo Aziendale" : "Impostazioni Admin"}
         </h1>
         <p className="text-muted-foreground">Gestisci i dati aziendali e fiscali</p>
       </div>
 
-      {(role === "partner" || role === "admin") && (
+{role === "partner" && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg font-heading">Dati Aziendali</CardTitle>
