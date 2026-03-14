@@ -31,6 +31,7 @@ export interface StationRatingWithUser extends StationRatingRow {
   user_first_name?: string;
   user_last_name?: string;
   user_email?: string;
+  user_role?: string;
 }
 
 export const fetchStationRatings = async (
