@@ -534,8 +534,8 @@ const StationDetail = () => {
             <p className="font-semibold text-amber-800 dark:text-amber-300">Configurazione fiscale mancante</p>
             <p className="text-amber-700 dark:text-amber-400 mt-0.5">
               {isAdmin
-                ? "Il partner proprietario non ha Fiskaly configurato. La stazione non può essere attivata. Vai in Impostazioni Sistema → Partner Fiscali per completare il setup."
-                : "I dati fiscali non sono ancora stati configurati per il tuo account. La stazione non può essere attivata finché l'amministratore non completa la configurazione."}
+                ? "Il partner proprietario non ha la configurazione fiscale completata. La stazione non può essere attivata. Vai in Impostazioni Sistema → Partner Fiscali per completare il setup."
+                : "I dati fiscali non sono ancora stati configurati. La stazione non può essere attivata. Vai in Impostazioni → Profilo Aziendale per compilare tutti i campi obbligatori."}
             </p>
           </div>
         </div>
