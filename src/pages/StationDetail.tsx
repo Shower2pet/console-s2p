@@ -653,7 +653,7 @@ const StationDetail = () => {
                 <p className={hasPricing ? "text-success-foreground" : "text-destructive"}>
                   {hasPricing ? "✓" : "✗"} Almeno un'opzione di lavaggio configurata
                 </p>
-                {(isAdmin || role === 'partner') && (
+                {(isAdmin || isPartner) && (
                   <p className={ownerHasFiskaly ? "text-success-foreground" : "text-destructive"}>
                     {ownerHasFiskaly ? "✓" : "✗"} Configurazione fiscale (Fiskaly)
                   </p>
