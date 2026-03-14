@@ -653,12 +653,12 @@ const StationDetail = () => {
                 <p className={hasPricing ? "text-success-foreground" : "text-destructive"}>
                   {hasPricing ? "✓" : "✗"} Almeno un'opzione di lavaggio configurata
                 </p>
-                {isAdmin && (
+                {(isAdmin || role === 'partner') && (
                   <p className={ownerHasFiskaly ? "text-success-foreground" : "text-destructive"}>
                     {ownerHasFiskaly ? "✓" : "✗"} Configurazione fiscale (Fiskaly)
                   </p>
                 )}
-                {!isAdmin && (!ownerHasFiskaly || !currentBoard) && (
+                {!isAdmin && !currentBoard && (
                   <p className="text-muted-foreground italic mt-1">
                     Alcuni requisiti tecnici sono gestiti dall'amministratore.
                   </p>
