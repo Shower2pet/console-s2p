@@ -407,7 +407,7 @@ const TesterHome = () => {
                     size="sm"
                     variant="destructive"
                     onClick={() => sendCommand("STOP_TUB_CLEAN")}
-                    disabled={!!loadingCmd || !isTub}
+                    disabled={!!loadingCmd}
                     className="gap-1"
                   >
                     {loadingCmd === "STOP_TUB_CLEAN" && <Loader2 className="h-3 w-3 animate-spin" />} Ferma
