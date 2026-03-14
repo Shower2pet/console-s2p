@@ -47,7 +47,9 @@ Deno.serve(async (req) => {
   }
 
   const sessions = (expiredSessions ?? []) as ExpiredSession[];
+  console.log(`[CHECK-EXPIRED] Found ${sessions.length} expired sessions`);
   if (sessions.length === 0) {
+    console.log("[CHECK-EXPIRED] No expired sessions");
     return new Response(JSON.stringify({ success: true, processed: 0, turned_off: 0 }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -89,19 +91,23 @@ Deno.serve(async (req) => {
   const mqttHost = `wss://${cleanHost}:8084/mqtt`;
 
   for (const [_key, { stationId, relay, sessionIds: stationSessionIds }] of sessionsByStationRelay.entries()) {
+    // Check if there are still active sessions for the SAME station AND relay
+    const relayOptionName = relay === "relay2" ? "Manual Tub Clean" : "Manual Console Wash";
     const { count: stillActiveCount, error: activeErr } = await adminClient
       .from("wash_sessions")
       .select("id", { count: "exact", head: true })
       .eq("station_id", stationId)
       .eq("status", "ACTIVE")
+      .eq("option_name", relayOptionName)
       .gt("ends_at", nowIso);
 
     if (activeErr) {
-      console.error(`[check-expired-sessions] Failed active-check for ${stationId}:`, activeErr);
+      console.error(`[CHECK-EXPIRED] Failed active-check for ${stationId} ${relay}:`, activeErr);
       continue;
     }
 
     if ((stillActiveCount ?? 0) > 0) {
+      console.log(`[CHECK-EXPIRED] Station ${stationId} ${relay} still has ${stillActiveCount} active sessions, skipping OFF`);
       completedSessionIds.push(...stationSessionIds);
       continue;
     }
@@ -119,9 +125,10 @@ Deno.serve(async (req) => {
 
     const published = await mqttPublishNative(mqttHost, mqttUser, mqttPass, topic, payload);
     if (!published) {
-      console.error(`[check-expired-sessions] MQTT OFF timed out for station ${stationId} ${relay}`);
+      console.error(`[CHECK-EXPIRED] MQTT OFF timed out for station ${stationId} ${relay}`);
       continue;
     }
+    console.log(`[CHECK-EXPIRED] Sent OFF to ${topic} for station ${stationId}`);
 
     turnedOffCount += 1;
     completedSessionIds.push(...stationSessionIds);
