@@ -655,7 +655,7 @@ const StationDetail = () => {
                 </p>
                 {(isAdmin || isPartner) && (
                   <p className={ownerHasFiskaly ? "text-success-foreground" : "text-destructive"}>
-                    {ownerHasFiskaly ? "✓" : "✗"} Configurazione fiscale (Fiskaly)
+                    {ownerHasFiskaly ? "✓" : "✗"} Configurazione fiscale
                   </p>
                 )}
                 {!isAdmin && !currentBoard && (
