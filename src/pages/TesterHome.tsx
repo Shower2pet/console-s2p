@@ -397,7 +397,7 @@ const TesterHome = () => {
                     size="sm"
                     variant="default"
                     onClick={() => sendCommand("START_TUB_CLEAN", { duration_seconds: tubDuration * 60 })}
-                    disabled={!!loadingCmd || !isTub || tubIsActive}
+                    disabled={!!loadingCmd || tubIsActive}
                     className="gap-1"
                   >
                     {loadingCmd === "START_TUB_CLEAN" && <Loader2 className="h-3 w-3 animate-spin" />}
