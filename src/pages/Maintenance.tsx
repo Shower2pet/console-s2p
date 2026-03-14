@@ -231,7 +231,7 @@ const Maintenance = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Titolo</TableHead>
-                <TableHead>Descrizione</TableHead>
+                <TableHead className="hidden md:table-cell">Descrizione</TableHead>
                 <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("severity")}>
                   <span className="flex items-center gap-1">
                     Gravità <ArrowUpDown className="h-3 w-3" />
@@ -242,8 +242,8 @@ const Maintenance = () => {
                     Stato <ArrowUpDown className="h-3 w-3" />
                   </span>
                 </TableHead>
-                <TableHead>Autore</TableHead>
-                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("created_at")}>
+                <TableHead className="hidden lg:table-cell">Autore</TableHead>
+                <TableHead className="cursor-pointer select-none hidden md:table-cell" onClick={() => toggleSort("created_at")}>
                   <span className="flex items-center gap-1">
                     Data <ArrowUpDown className="h-3 w-3" />
                   </span>
