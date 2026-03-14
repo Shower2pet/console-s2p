@@ -31,6 +31,62 @@ import StationWashLogs from "@/components/StationWashLogs";
 import StationMaintenanceHistory from "@/components/StationMaintenanceHistory";
 import { fetchStationAvgRating, fetchStationRatings } from "@/services/ratingService";
 
+/** Format seconds as mm:ss */
+const fmtTimer = (totalSec: number): string => {
+  if (totalSec <= 0) return "00:00";
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
+
+/** Hook that counts down to an endsAt ISO timestamp */
+const useCountdown = (endsAt: string | null): number => {
+  const [remaining, setRemaining] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (!endsAt) { setRemaining(0); return; }
+    const calc = () => Math.max(0, Math.ceil((new Date(endsAt).getTime() - Date.now()) / 1000));
+    setRemaining(calc());
+    intervalRef.current = setInterval(() => {
+      const r = calc();
+      setRemaining(r);
+      if (r <= 0 && intervalRef.current) clearInterval(intervalRef.current);
+    }, 1000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [endsAt]);
+  return remaining;
+};
+
+// localStorage helpers for admin station timers
+const ADMIN_TIMER_KEY = "s2p_admin_station_timers";
+interface AdminPersistedTimers {
+  stationId: string;
+  washEndsAt: string | null;
+  washTotalSec: number;
+  tubEndsAt: string | null;
+  tubTotalSec: number;
+}
+const loadAdminTimers = (stationId: string): AdminPersistedTimers | null => {
+  try {
+    const raw = localStorage.getItem(ADMIN_TIMER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AdminPersistedTimers;
+    if (parsed.stationId !== stationId) return null;
+    const now = Date.now();
+    if (parsed.washEndsAt && new Date(parsed.washEndsAt).getTime() <= now) parsed.washEndsAt = null;
+    if (parsed.tubEndsAt && new Date(parsed.tubEndsAt).getTime() <= now) parsed.tubEndsAt = null;
+    if (!parsed.washEndsAt && !parsed.tubEndsAt) { localStorage.removeItem(ADMIN_TIMER_KEY); return null; }
+    return parsed;
+  } catch { return null; }
+};
+const saveAdminTimers = (t: AdminPersistedTimers) => {
+  try { localStorage.setItem(ADMIN_TIMER_KEY, JSON.stringify(t)); } catch {}
+};
+const clearAdminTimers = () => {
+  try { localStorage.removeItem(ADMIN_TIMER_KEY); } catch {}
+};
+
 /** Numeric input that tracks raw string while editing to avoid "sticky 0" issues */
 const NumericInput = ({
   numericValue,
