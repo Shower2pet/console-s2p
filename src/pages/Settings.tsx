@@ -140,7 +140,7 @@ const Settings = () => {
               <Label>CF Rappresentante Legale</Label>
               <Input value={legalRepFiscalCode} onChange={(e) => setLegalRepFiscalCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16))} className="mt-1.5" placeholder="Es. RSSMRA85M01H501Z" maxLength={16} />
               {legalRepFiscalCode.trim() && !legalRepFcValid && <p className="text-xs text-destructive mt-1">Deve essere 16 caratteri alfanumerici</p>}
-              <p className="text-xs text-muted-foreground mt-1">CF personale di chi detiene le credenziali Fisconline (obbligatorio per Fiskaly)</p>
+              <p className="text-xs text-muted-foreground mt-1">CF personale del rappresentante legale (obbligatorio per la configurazione fiscale)</p>
             </div>
 
             <div className="border-t border-border pt-4">
