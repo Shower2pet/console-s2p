@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { PrivateRoute } from "@/components/PrivateRoute";
+import { TesterRoute } from "@/components/TesterRoute";
 import AdminHome from "@/pages/AdminHome";
 import ClientHome from "@/pages/ClientHome";
 import Onboarding from "@/pages/Onboarding";
