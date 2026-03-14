@@ -48,8 +48,8 @@ export const installGlobalErrorHandlers = () => {
     const errMsg = error instanceof Error ? error.message : typeof error === "object" && error !== null && "message" in error ? String((error as any).message) : String(error);
     const errStack = error instanceof Error ? error.stack : typeof error === "object" && error !== null ? JSON.stringify(error) : undefined;
     logErrorToDb({
-      error_message: error instanceof Error ? error.message : String(error),
-      error_stack: error instanceof Error ? error.stack : undefined,
+      error_message: errMsg,
+      error_stack: errStack,
       error_context: "unhandledrejection",
       severity: "critical",
     });
