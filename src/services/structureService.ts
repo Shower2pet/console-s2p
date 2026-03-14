@@ -63,15 +63,14 @@ export const fetchStructureManagers = async (structureId: string) => {
   const userIds = data.map((m) => m.user_id).filter(Boolean) as string[];
   if (userIds.length === 0) return [];
 
+  // Use RPC to bypass RLS restrictions on profiles table
   const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, first_name, last_name, email")
-    .in("id", userIds);
+    .rpc("get_profiles_by_ids", { p_ids: userIds });
 
-  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+  const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
 
   return data.map((m) => ({
     ...m,
-    profile: m.user_id ? profileMap.get(m.user_id) : null,
+    profile: m.user_id ? profileMap.get(m.user_id) ?? null : null,
   }));
 };
