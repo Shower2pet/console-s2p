@@ -197,6 +197,15 @@ const TesterStationCard = ({ station, board, availableBoards, onInvalidate }: Te
             </Button>
             <div className="flex-1" />
             <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() => navigate(`/tester/stations/${station.id}/test`)}
+              disabled={!hasBoard}
+            >
+              <FlaskConical className="h-3.5 w-3.5" /> Testa
+            </Button>
+            <Button
               size="sm"
               className="gap-1.5"
               onClick={() => setPromoteOpen(true)}
