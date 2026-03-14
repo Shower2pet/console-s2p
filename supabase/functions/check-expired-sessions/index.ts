@@ -125,9 +125,10 @@ Deno.serve(async (req) => {
 
     const published = await mqttPublishNative(mqttHost, mqttUser, mqttPass, topic, payload);
     if (!published) {
-      console.error(`[check-expired-sessions] MQTT OFF timed out for station ${stationId} ${relay}`);
+      console.error(`[CHECK-EXPIRED] MQTT OFF timed out for station ${stationId} ${relay}`);
       continue;
     }
+    console.log(`[CHECK-EXPIRED] Sent OFF to ${topic} for station ${stationId}`);
 
     turnedOffCount += 1;
     completedSessionIds.push(...stationSessionIds);
