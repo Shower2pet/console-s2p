@@ -1202,6 +1202,21 @@ export type Database = {
         Args: { p_station_id: string }
         Returns: Database["public"]["Enums"]["station_phase"]
       }
+      get_station_ratings_with_user: {
+        Args: { p_limit?: number; p_station_id: string }
+        Returns: {
+          comment: string
+          created_at: string
+          id: string
+          rating: number
+          session_id: string
+          station_id: string
+          user_email: string
+          user_first_name: string
+          user_id: string
+          user_last_name: string
+        }[]
+      }
       get_station_users: {
         Args: { p_search?: string; p_station_id: string }
         Returns: {

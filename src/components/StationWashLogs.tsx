@@ -31,15 +31,18 @@ const StationWashLogs = ({ stationId }: Props) => {
         .limit(50);
       if (error) throw error;
 
-      // Fetch user emails for registered users
+      // Fetch user profiles for registered users
       const userIds = [...new Set((data ?? []).map(d => d.user_id).filter(Boolean))] as string[];
-      let profileMap = new Map<string, string>();
+      let profileMap = new Map<string, { email: string; name: string }>();
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, email")
+          .select("id, email, first_name, last_name")
           .in("id", userIds);
-        (profiles ?? []).forEach(p => profileMap.set(p.id, p.email ?? ""));
+        (profiles ?? []).forEach(p => {
+          const name = [p.first_name, p.last_name].filter(Boolean).join(" ");
+          profileMap.set(p.id, { email: p.email ?? "", name });
+        });
       }
 
       // Fetch ratings for these sessions
@@ -53,11 +56,15 @@ const StationWashLogs = ({ stationId }: Props) => {
         ((ratings ?? []) as any[]).forEach((r: any) => ratingMap.set(r.session_id, r.rating));
       }
 
-      return (data ?? []).map(s => ({
-        ...s,
-        user_email: s.user_id ? profileMap.get(s.user_id) ?? null : s.guest_email ?? null,
-        rating: ratingMap.get(s.id) ?? null,
-      }));
+      return (data ?? []).map(s => {
+        const prof = s.user_id ? profileMap.get(s.user_id) : null;
+        const displayName = prof?.name || prof?.email || s.guest_email || null;
+        return {
+          ...s,
+          user_email: displayName,
+          rating: ratingMap.get(s.id) ?? null,
+        };
+      });
     },
   });
 
