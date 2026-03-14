@@ -955,62 +955,66 @@ const StationDetail = () => {
       <StationWashLogs stationId={station.id} />
 
       {/* Station Ratings */}
-      {avgRating && avgRating.total_count > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-heading flex items-center gap-2">
-              <Star className="h-5 w-5 text-primary" /> Valutazioni
-              <span className="ml-auto text-sm font-normal text-muted-foreground">
-                {avgRating.total_count} {avgRating.total_count === 1 ? "recensione" : "recensioni"}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Average */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <Star
-                    key={s}
-                    className={`h-5 w-5 ${s <= Math.round(avgRating.avg_rating) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
-                  />
-                ))}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-heading flex items-center gap-2">
+            <Star className="h-5 w-5 text-primary" /> Valutazioni
+            <span className="ml-auto text-sm font-normal text-muted-foreground">
+              {avgRating?.total_count ?? 0} {(avgRating?.total_count ?? 0) === 1 ? "recensione" : "recensioni"}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(!avgRating || avgRating.total_count === 0) ? (
+            <p className="text-sm text-muted-foreground italic text-center py-4">Nessuna valutazione ricevuta.</p>
+          ) : (
+            <>
+              {/* Average */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      className={`h-5 w-5 ${s <= Math.round(avgRating.avg_rating) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
+                    />
+                  ))}
+                </div>
+                <span className="text-xl font-bold">{avgRating.avg_rating}</span>
+                <span className="text-sm text-muted-foreground">/ 5</span>
               </div>
-              <span className="text-xl font-bold">{avgRating.avg_rating}</span>
-              <span className="text-sm text-muted-foreground">/ 5</span>
-            </div>
 
-            {/* Latest reviews */}
-            {latestRatings && latestRatings.length > 0 && (
-              <div className="space-y-3">
-                {latestRatings.map((r) => (
-                  <div key={r.id} className="flex flex-col gap-1 border-t pt-3 first:border-0 first:pt-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <Star
-                            key={s}
-                            className={`h-3.5 w-3.5 ${s <= r.rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
-                          />
-                        ))}
+              {/* Latest reviews */}
+              {latestRatings && latestRatings.length > 0 && (
+                <div className="space-y-3">
+                  {latestRatings.map((r) => (
+                    <div key={r.id} className="flex flex-col gap-1 border-t pt-3 first:border-0 first:pt-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                              key={s}
+                              className={`h-3.5 w-3.5 ${s <= r.rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(r.created_at).toLocaleDateString("it-IT")}
+                        </span>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(r.created_at).toLocaleDateString("it-IT")}
-                      </span>
+                      {r.user_email && (
+                        <span className="text-xs text-muted-foreground truncate">{r.user_email}</span>
+                      )}
+                      {r.comment && (
+                        <p className="text-sm text-foreground">{r.comment}</p>
+                      )}
                     </div>
-                    {r.user_email && (
-                      <span className="text-xs text-muted-foreground truncate">{r.user_email}</span>
-                    )}
-                    {r.comment && (
-                      <p className="text-sm text-foreground">{r.comment}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <StationMaintenanceHistory stationId={station.id} />
 
