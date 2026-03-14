@@ -12,8 +12,13 @@ export const handleAppError = (
   context?: string,
   options?: { silent?: boolean }
 ) => {
-  const message = error instanceof Error ? error.message : String(error);
-  const stack = error instanceof Error ? error.stack : undefined;
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String((error as any).message)
+        : String(error);
+  const stack = error instanceof Error ? error.stack : typeof error === "object" && error !== null ? JSON.stringify(error) : undefined;
 
   // Log to DB
   logErrorToDb({
