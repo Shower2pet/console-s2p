@@ -1160,6 +1160,11 @@ const StationDetail = () => {
                           {r.user_first_name || r.user_last_name
                             ? `${r.user_first_name ?? ""} ${r.user_last_name ?? ""}`.trim()
                             : r.user_email}
+                          {r.user_role && (
+                            <span className="ml-1 text-xs opacity-70">
+                              ({({ admin: "Admin", partner: "Partner", manager: "Manager", user: "Utente", tester: "Tester" } as Record<string, string>)[r.user_role] ?? r.user_role})
+                            </span>
+                          )}
                         </span>
                       )}
                       {r.comment && (

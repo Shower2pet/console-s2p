@@ -17,7 +17,7 @@ export const useMaintenanceLogs = () => {
 
       // Fetch author profiles via security definer function
       const authorIds = [...new Set((data ?? []).map(d => d.performed_by).filter(Boolean))] as string[];
-      let profileMap = new Map<string, { first_name: string | null; last_name: string | null; email: string | null }>();
+      let profileMap = new Map<string, { first_name: string | null; last_name: string | null; email: string | null; role: string | null }>();
       if (authorIds.length > 0) {
         const { data: profiles } = await supabase.rpc("get_profiles_by_ids", {
           p_ids: authorIds,

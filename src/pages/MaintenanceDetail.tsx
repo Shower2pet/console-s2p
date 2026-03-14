@@ -69,8 +69,10 @@ const MaintenanceDetail = () => {
   const stationId = log.station_id ?? "—";
   const structureId = (log as any).stations?.structure_id;
   const authorProfile = (log as any).author_profile;
+  const roleLabels: Record<string, string> = { admin: "Admin", partner: "Partner", manager: "Manager", user: "Utente", tester: "Tester" };
   const authorName = authorProfile
-    ? [authorProfile.first_name, authorProfile.last_name].filter(Boolean).join(" ") || authorProfile.email || "—"
+    ? ([authorProfile.first_name, authorProfile.last_name].filter(Boolean).join(" ") || authorProfile.email || "—")
+      + (authorProfile.role ? ` (${roleLabels[authorProfile.role] ?? authorProfile.role})` : "")
     : "Sistema";
 
   const handleUpdateStatus = async () => {
