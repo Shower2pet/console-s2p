@@ -56,10 +56,13 @@ const StationWashLogs = ({ stationId }: Props) => {
         ((ratings ?? []) as any[]).forEach((r: any) => ratingMap.set(r.session_id, r.rating));
       }
 
-      return (data ?? []).map(s => ({
-        ...s,
-        user_email: s.user_id ? profileMap.get(s.user_id) ?? null : s.guest_email ?? null,
-        rating: ratingMap.get(s.id) ?? null,
+      return (data ?? []).map(s => {
+        const prof = s.user_id ? profileMap.get(s.user_id) : null;
+        const displayName = prof?.name || prof?.email || s.guest_email || null;
+        return {
+          ...s,
+          user_email: displayName,
+          rating: ratingMap.get(s.id) ?? null,
       }));
     },
   });
