@@ -12,8 +12,13 @@ export const handleAppError = (
   context?: string,
   options?: { silent?: boolean }
 ) => {
-  const message = error instanceof Error ? error.message : String(error);
-  const stack = error instanceof Error ? error.stack : undefined;
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String((error as any).message)
+        : String(error);
+  const stack = error instanceof Error ? error.stack : typeof error === "object" && error !== null ? JSON.stringify(error) : undefined;
 
   // Log to DB
   logErrorToDb({
@@ -39,11 +44,12 @@ export const handleAppError = (
  */
 export const installGlobalErrorHandlers = () => {
   window.addEventListener("unhandledrejection", (event) => {
-    event.preventDefault();
-    const error = event.reason;
+    const reason = event.reason;
+    const errMsg = reason instanceof Error ? reason.message : typeof reason === "object" && reason !== null && "message" in reason ? String((reason as any).message) : String(reason);
+    const errStack = reason instanceof Error ? reason.stack : typeof reason === "object" && reason !== null ? JSON.stringify(reason) : undefined;
     logErrorToDb({
-      error_message: error instanceof Error ? error.message : String(error),
-      error_stack: error instanceof Error ? error.stack : undefined,
+      error_message: errMsg,
+      error_stack: errStack,
       error_context: "unhandledrejection",
       severity: "critical",
     });
