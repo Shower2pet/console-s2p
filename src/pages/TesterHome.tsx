@@ -334,12 +334,11 @@ const TesterHome = () => {
             </CardContent>
           </Card>
 
-          {/* Relay 2 — Pulizia Vasca (only for tub stations) */}
-          <Card className={!isTub ? "opacity-50" : tubIsActive ? "ring-2 ring-primary/50" : ""}>
+          {/* Relay 2 — Pulizia Vasca */}
+          <Card className={tubIsActive ? "ring-2 ring-primary/50" : ""}>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Wind className="h-5 w-5 text-emerald-500" /> Relè 2 — Pulizia Vasca
-                {!isTub && <Badge variant="secondary" className="text-xs">Solo Vasca</Badge>}
               </CardTitle>
               <CardDescription>Controlla il relè per la pulizia automatica della vasca</CardDescription>
             </CardHeader>
