@@ -584,6 +584,28 @@ const StationDetail = () => {
               >
                 {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PowerOff className="h-4 w-4" />} Spegni Servizio
               </Button>
+
+              {/* Apri Porta (relay3) */}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!station) return;
+                  setHwBusy(true);
+                  supabase.functions.invoke("station-control", {
+                    body: { station_id: station.id, command: "OPEN_GATE" },
+                  }).then(({ data, error }) => {
+                    if (error || data?.error) {
+                      handleAppError(new Error(error?.message || data?.message || data?.error), "StationDetail: apri porta");
+                    } else {
+                      toast.success("Comando apertura porta inviato");
+                    }
+                  }).finally(() => setHwBusy(false));
+                }}
+                disabled={hwBusy || !hwEnabled}
+                className="gap-2"
+              >
+                {hwBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorOpen className="h-4 w-4" />} Apri Porta
+              </Button>
             </div>
             {!hwEnabled && (
               <div className="text-xs text-destructive flex items-center gap-1.5 border-t pt-2">
