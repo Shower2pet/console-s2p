@@ -27,33 +27,20 @@ export const fetchStationAvgRating = async (stationId: string): Promise<StationA
   };
 };
 
+export interface StationRatingWithUser extends StationRatingRow {
+  user_first_name?: string;
+  user_last_name?: string;
+  user_email?: string;
+}
+
 export const fetchStationRatings = async (
   stationId: string,
   limit = 10
-): Promise<(StationRatingRow & { user_email?: string })[]> => {
-  const { data, error } = await supabase
-    .from("station_ratings")
-    .select("id, station_id, user_id, session_id, rating, comment, created_at")
-    .eq("station_id", stationId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+): Promise<StationRatingWithUser[]> => {
+  const { data, error } = await supabase.rpc("get_station_ratings_with_user", {
+    p_station_id: stationId,
+    p_limit: limit,
+  });
   if (error) throw error;
-
-  const rows = (data ?? []) as unknown as StationRatingRow[];
-
-  // Fetch user emails
-  const userIds = [...new Set(rows.map((r) => r.user_id))];
-  let emailMap = new Map<string, string>();
-  if (userIds.length > 0) {
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, email")
-      .in("id", userIds);
-    (profiles ?? []).forEach((p) => emailMap.set(p.id, p.email ?? ""));
-  }
-
-  return rows.map((r) => ({
-    ...r,
-    user_email: emailMap.get(r.user_id) ?? undefined,
-  }));
+  return (data ?? []) as unknown as StationRatingWithUser[];
 };

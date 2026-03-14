@@ -1155,8 +1155,12 @@ const StationDetail = () => {
                           {new Date(r.created_at).toLocaleDateString("it-IT")}
                         </span>
                       </div>
-                      {r.user_email && (
-                        <span className="text-xs text-muted-foreground truncate">{r.user_email}</span>
+                      {(r.user_first_name || r.user_last_name || r.user_email) && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          {r.user_first_name || r.user_last_name
+                            ? `${r.user_first_name ?? ""} ${r.user_last_name ?? ""}`.trim()
+                            : r.user_email}
+                        </span>
                       )}
                       {r.comment && (
                         <p className="text-sm text-foreground">{r.comment}</p>
