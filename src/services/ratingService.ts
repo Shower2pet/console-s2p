@@ -32,7 +32,7 @@ export const fetchStationRatings = async (
   limit = 10
 ): Promise<(StationRatingRow & { user_email?: string })[]> => {
   const { data, error } = await supabase
-    .from("station_ratings" as any)
+    .from("station_ratings")
     .select("id, station_id, user_id, session_id, rating, comment, created_at")
     .eq("station_id", stationId)
     .order("created_at", { ascending: false })
