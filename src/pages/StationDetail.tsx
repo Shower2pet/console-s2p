@@ -23,6 +23,7 @@ import { fetchPartnersList } from "@/services/profileService";
 import { invokeStationControl, invokeStartTimedWash, invokeStartTubClean, invokeStopWash, invokeStopTubClean } from "@/services/stationService";
 import { toast } from "sonner";
 import { Slider } from "@/components/ui/slider";
+import { Progress } from "@/components/ui/progress";
 import { handleAppError } from "@/lib/globalErrorHandler";
 import MapPicker from "@/components/MapPicker";
 import StationUsersList from "@/components/StationUsersList";
