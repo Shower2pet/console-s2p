@@ -316,6 +316,7 @@ const Maintenance = () => {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
