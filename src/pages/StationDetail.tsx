@@ -716,9 +716,23 @@ const StationDetail = () => {
                   </h4>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Durata: {tubCleanMinutes} min</Label>
-                    <Slider min={1} max={60} step={1} value={[tubCleanMinutes]} onValueChange={([v]) => setTubCleanMinutes(v)} disabled={!hwEnabled || tubCleanBusy} />
+                    <Slider min={1} max={60} step={1} value={[tubCleanMinutes]} onValueChange={([v]) => setTubCleanMinutes(v)} disabled={!hwEnabled || tubCleanBusy || tubIsActive} />
                     <div className="flex justify-between text-xs text-muted-foreground"><span>1 min</span><span>60 min</span></div>
                   </div>
+
+                  {/* Countdown timer */}
+                  {tubIsActive && (
+                    <div className="space-y-1.5 py-2 px-3 rounded-lg bg-primary/5 border border-primary/20">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-primary flex items-center gap-1.5">
+                          <Timer className="h-3.5 w-3.5 animate-pulse" /> Pulizia in corso
+                        </span>
+                        <span className="text-lg font-mono font-bold text-primary">{fmtTimer(tubRemaining)}</span>
+                      </div>
+                      <Progress value={tubProgress} className="h-2" />
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
                     <Button
                       onClick={async () => {
@@ -726,6 +740,8 @@ const StationDetail = () => {
                         setTubCleanBusy(true);
                         try {
                           const res = await invokeStartTubClean(station.id, tubCleanMinutes * 60);
+                          setTubEndsAt(res.ends_at);
+                          setTubTotalSec(tubCleanMinutes * 60);
                           const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
                           toast.success(`Pulizia vasca avviata (${tubCleanMinutes} min) — termine previsto: ${endsAtFormatted}`);
                         } catch (e: any) {
@@ -738,7 +754,7 @@ const StationDetail = () => {
                           setTubCleanBusy(false);
                         }
                       }}
-                      disabled={!hwEnabled || tubCleanBusy}
+                      disabled={!hwEnabled || tubCleanBusy || tubIsActive}
                       variant="secondary"
                       className="gap-2"
                     >
@@ -752,6 +768,7 @@ const StationDetail = () => {
                         setTubCleanBusy(true);
                         try {
                           await invokeStopTubClean(station.id);
+                          setTubEndsAt(null);
                           toast.success("Pulizia vasca interrotta.");
                         } catch (e: any) {
                           handleAppError(e, "StationDetail: stop pulizia vasca");
