@@ -639,9 +639,11 @@ const StationDetail = () => {
             {(missingReqs || !ownerHasFiskaly || !currentBoard) && (
               <div className="text-xs text-muted-foreground space-y-0.5 border-t pt-2">
                 <p className="font-medium text-foreground text-sm">Per attivare la stazione servono:</p>
-                <p className={!!currentBoard ? "text-success-foreground" : "text-destructive"}>
-                  {!!currentBoard ? "✓" : "✗"} Scheda hardware associata
-                </p>
+                {isAdmin && (
+                  <p className={!!currentBoard ? "text-success-foreground" : "text-destructive"}>
+                    {!!currentBoard ? "✓" : "✗"} Scheda hardware associata
+                  </p>
+                )}
                 <p className={hasStructure ? "text-success-foreground" : "text-destructive"}>
                   {hasStructure ? "✓" : "✗"} Assegnata a una struttura
                 </p>
@@ -651,9 +653,16 @@ const StationDetail = () => {
                 <p className={hasPricing ? "text-success-foreground" : "text-destructive"}>
                   {hasPricing ? "✓" : "✗"} Almeno un'opzione di lavaggio configurata
                 </p>
-                <p className={ownerHasFiskaly ? "text-success-foreground" : "text-destructive"}>
-                  {ownerHasFiskaly ? "✓" : "✗"} Configurazione fiscale (Fiskaly)
-                </p>
+                {isAdmin && (
+                  <p className={ownerHasFiskaly ? "text-success-foreground" : "text-destructive"}>
+                    {ownerHasFiskaly ? "✓" : "✗"} Configurazione fiscale (Fiskaly)
+                  </p>
+                )}
+                {!isAdmin && (!ownerHasFiskaly || !currentBoard) && (
+                  <p className="text-muted-foreground italic mt-1">
+                    Alcuni requisiti tecnici sono gestiti dall'amministratore.
+                  </p>
+                )}
               </div>
             )}
           </CardContent>
