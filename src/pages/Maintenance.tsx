@@ -287,7 +287,7 @@ const Maintenance = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{authorName}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground whitespace-nowrap">
                         {log.created_at ? format(new Date(log.created_at), "dd/MM/yy HH:mm") : "—"}
                       </TableCell>
                       <TableCell className="text-right">
