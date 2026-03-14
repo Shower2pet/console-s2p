@@ -152,6 +152,37 @@ const StationDetail = () => {
   const [editBoardId, setEditBoardId] = useState<string>("__none__");
   const qc = useQueryClient();
 
+  // Timer state for countdown (persisted in localStorage)
+  const persistedTimers = useMemo(() => id ? loadAdminTimers(id) : null, [id]);
+  const [washEndsAt, setWashEndsAt] = useState<string | null>(persistedTimers?.washEndsAt ?? null);
+  const [washTotalSec, setWashTotalSec] = useState(persistedTimers?.washTotalSec ?? 0);
+  const [tubEndsAt, setTubEndsAt] = useState<string | null>(persistedTimers?.tubEndsAt ?? null);
+  const [tubTotalSec, setTubTotalSec] = useState(persistedTimers?.tubTotalSec ?? 0);
+
+  const washRemaining = useCountdown(washEndsAt);
+  const tubRemaining = useCountdown(tubEndsAt);
+
+  // Persist timers
+  useEffect(() => {
+    if (id && (washEndsAt || tubEndsAt)) {
+      saveAdminTimers({ stationId: id, washEndsAt, washTotalSec, tubEndsAt, tubTotalSec });
+    } else {
+      clearAdminTimers();
+    }
+  }, [id, washEndsAt, washTotalSec, tubEndsAt, tubTotalSec]);
+
+  // Auto-clear expired timers
+  const washWasActive = useRef(false);
+  const tubWasActive = useRef(false);
+  useEffect(() => {
+    if (washEndsAt && washRemaining > 0) washWasActive.current = true;
+    if (washEndsAt && washRemaining <= 0 && washWasActive.current) { setWashEndsAt(null); washWasActive.current = false; }
+  }, [washRemaining, washEndsAt]);
+  useEffect(() => {
+    if (tubEndsAt && tubRemaining > 0) tubWasActive.current = true;
+    if (tubEndsAt && tubRemaining <= 0 && tubWasActive.current) { setTubEndsAt(null); tubWasActive.current = false; }
+  }, [tubRemaining, tubEndsAt]);
+
   // Ratings
   const { data: avgRating } = useQuery({
     queryKey: ["station-avg-rating", id],
