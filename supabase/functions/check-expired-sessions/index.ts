@@ -91,19 +91,23 @@ Deno.serve(async (req) => {
   const mqttHost = `wss://${cleanHost}:8084/mqtt`;
 
   for (const [_key, { stationId, relay, sessionIds: stationSessionIds }] of sessionsByStationRelay.entries()) {
+    // Check if there are still active sessions for the SAME station AND relay
+    const relayOptionName = relay === "relay2" ? "Manual Tub Clean" : "Manual Console Wash";
     const { count: stillActiveCount, error: activeErr } = await adminClient
       .from("wash_sessions")
       .select("id", { count: "exact", head: true })
       .eq("station_id", stationId)
       .eq("status", "ACTIVE")
+      .eq("option_name", relayOptionName)
       .gt("ends_at", nowIso);
 
     if (activeErr) {
-      console.error(`[check-expired-sessions] Failed active-check for ${stationId}:`, activeErr);
+      console.error(`[CHECK-EXPIRED] Failed active-check for ${stationId} ${relay}:`, activeErr);
       continue;
     }
 
     if ((stillActiveCount ?? 0) > 0) {
+      console.log(`[CHECK-EXPIRED] Station ${stationId} ${relay} still has ${stillActiveCount} active sessions, skipping OFF`);
       completedSessionIds.push(...stationSessionIds);
       continue;
     }
