@@ -439,6 +439,37 @@ const TesterHome = () => {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Relay 4 — Generic */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Cpu className="h-5 w-5 text-violet-500" /> Relè 4 — Generico
+              </CardTitle>
+              <CardDescription>Testa il quarto relè con comandi ON/OFF diretti</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => sendCommand("ON_RELAY4")}
+                  disabled={!!loadingCmd}
+                  className="gap-1"
+                >
+                  {loadingCmd === "ON_RELAY4" && <Loader2 className="h-3 w-3 animate-spin" />} ON
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => sendCommand("OFF_RELAY4")}
+                  disabled={!!loadingCmd}
+                  className="gap-1"
+                >
+                  {loadingCmd === "OFF_RELAY4" && <Loader2 className="h-3 w-3 animate-spin" />} OFF
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
