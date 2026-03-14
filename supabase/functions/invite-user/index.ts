@@ -226,9 +226,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Send onboarding email for partners and testers ─────────────────────
-    if (role === "partner" || role === "tester") {
+    // ── Send onboarding email for partners, managers and testers ──────────
+    if (role === "partner" || role === "manager" || role === "tester") {
       try {
+        const displayName = role === "tester"
+          ? `${firstName || ""} ${lastName || ""}`.trim() || "Tester"
+          : role === "manager"
+          ? `${firstName || ""} ${lastName || ""}`.trim() || "Manager"
+          : legalName || `${firstName} ${lastName}`.trim();
+
         await fetch(`${supabaseUrl}/functions/v1/send-email`, {
           method: "POST",
           headers: {
@@ -241,9 +247,7 @@ Deno.serve(async (req) => {
             data: {
               email,
               temp_password: tempPassword,
-              partner_name: role === "tester"
-                ? `${firstName || ""} ${lastName || ""}`.trim() || "Tester"
-                : legalName || `${firstName} ${lastName}`.trim(),
+              partner_name: displayName,
               console_url: "https://console-s2p.lovable.app",
             },
           }),
