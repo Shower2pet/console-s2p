@@ -224,13 +224,24 @@ const StationDetail = () => {
     queryFn: fetchPartnersList,
   });
 
-  // Check if station owner has Fiskaly configured
-  const ownerIdForFiskaly = station?.owner_id ?? (station?.structure_id ? undefined : undefined);
-  const { data: ownerProfile } = useQuery({
+  // Check if station owner has Fiskaly configured (via security definer to bypass RLS)
+  const { data: ownerHasFiskalyResult } = useQuery({
     queryKey: ["owner-fiskaly-check", station?.owner_id],
     enabled: !!station?.owner_id,
     queryFn: async () => {
-      // Admin can read any profile; partner can read own
+      const { data, error } = await supabase.rpc("check_owner_has_fiskaly", {
+        p_owner_id: station!.owner_id!,
+      });
+      if (error) return false;
+      return data as boolean;
+    },
+  });
+  const ownerHasFiskaly = ownerHasFiskalyResult ?? false;
+  // Keep ownerProfile for Fiskaly setup card (admin only)
+  const { data: ownerProfile } = useQuery({
+    queryKey: ["owner-profile-fiskaly", station?.owner_id],
+    enabled: !!station?.owner_id && isAdmin,
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, fiskaly_system_id")
@@ -240,7 +251,6 @@ const StationDetail = () => {
       return data;
     },
   });
-  const ownerHasFiskaly = !!ownerProfile?.fiskaly_system_id;
 
   // Board associated with this station
   const { data: currentBoard } = useQuery({
