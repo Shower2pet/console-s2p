@@ -98,7 +98,7 @@ const TesterStationCard = ({ station, board, availableBoards, onInvalidate }: Te
     <>
       <Card className="relative overflow-hidden">
         {/* Top colored strip */}
-        <div className={cn("h-1.5 w-full", readyToPromote ? "bg-emerald-500" : "bg-amber-400")} />
+        <div className={cn("h-1.5 w-full", online ? "bg-emerald-500" : "bg-destructive")} />
 
         <CardContent className="p-5 space-y-4">
           {/* Header */}
