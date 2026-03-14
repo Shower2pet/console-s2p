@@ -379,9 +379,9 @@ const StationDetail = () => {
     // Blocca attivazione se Fiskaly non configurato (tester bypassa)
     if (editStatus === "AVAILABLE" && !ownerHasFiskaly && !(isTester && isTestingPhase)) {
       if (isAdmin) {
-        toast.error("Impossibile attivare la stazione: configurare prima Fiskaly per il partner proprietario dalla sezione Impostazioni Sistema → Partner Fiscali.");
+        toast.error("Impossibile attivare la stazione: configurazione fiscale mancante per il partner proprietario. Vai in Impostazioni Sistema → Partner Fiscali.");
       } else {
-        toast.error("Impossibile attivare la stazione: i dati fiscali non sono ancora configurati. Contattare l'amministratore per completare la configurazione.");
+        toast.error("Impossibile attivare la stazione: completa i dati fiscali in Impostazioni → Profilo Aziendale per abilitare l'attivazione.");
       }
       return;
     }

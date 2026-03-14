@@ -186,7 +186,7 @@ const Settings = () => {
         </Card>
       )}
 
-      {(role === "partner" || role === "admin") && user && (
+      {role === "admin" && user && (
         <FiskalySetupCard
           partnerId={user.id}
           fiskalySystemId={profile?.fiskaly_system_id}
@@ -198,6 +198,7 @@ const Settings = () => {
           city={city}
           province={province}
           invalidateKeys={[["profile"]]}
+          isAdmin
         />
       )}
 
