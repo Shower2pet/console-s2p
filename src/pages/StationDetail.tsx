@@ -171,17 +171,30 @@ const StationDetail = () => {
     }
   }, [id, washEndsAt, washTotalSec, tubEndsAt, tubTotalSec]);
 
-  // Auto-clear expired timers
+  // Auto-clear expired timers & send STOP command immediately
   const washWasActive = useRef(false);
   const tubWasActive = useRef(false);
   useEffect(() => {
     if (washEndsAt && washRemaining > 0) washWasActive.current = true;
-    if (washEndsAt && washRemaining <= 0 && washWasActive.current) { setWashEndsAt(null); washWasActive.current = false; }
-  }, [washRemaining, washEndsAt]);
+    if (washEndsAt && washRemaining <= 0 && washWasActive.current) {
+      // Send STOP to turn off relay immediately instead of waiting for cron
+      if (id) {
+        invokeStopWash(id).catch((e) => console.error("Auto-stop wash failed:", e));
+      }
+      setWashEndsAt(null);
+      washWasActive.current = false;
+    }
+  }, [washRemaining, washEndsAt, id]);
   useEffect(() => {
     if (tubEndsAt && tubRemaining > 0) tubWasActive.current = true;
-    if (tubEndsAt && tubRemaining <= 0 && tubWasActive.current) { setTubEndsAt(null); tubWasActive.current = false; }
-  }, [tubRemaining, tubEndsAt]);
+    if (tubEndsAt && tubRemaining <= 0 && tubWasActive.current) {
+      if (id) {
+        invokeStopTubClean(id).catch((e) => console.error("Auto-stop tub clean failed:", e));
+      }
+      setTubEndsAt(null);
+      tubWasActive.current = false;
+    }
+  }, [tubRemaining, tubEndsAt, id]);
 
   // Ratings
   const { data: avgRating } = useQuery({

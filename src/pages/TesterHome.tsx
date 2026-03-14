@@ -136,6 +136,8 @@ const TesterHome = () => {
   useEffect(() => {
     if (washEndsAt && washRemaining > 0) washWasActive.current = true;
     if (washEndsAt && washRemaining <= 0 && washWasActive.current) {
+      // Auto-send STOP to turn off relay immediately
+      sendCommand("STOP_WASH");
       setWashEndsAt(null);
       washWasActive.current = false;
     }
@@ -144,6 +146,7 @@ const TesterHome = () => {
   useEffect(() => {
     if (tubEndsAt && tubRemaining > 0) tubWasActive.current = true;
     if (tubEndsAt && tubRemaining <= 0 && tubWasActive.current) {
+      sendCommand("STOP_TUB_CLEAN");
       setTubEndsAt(null);
       tubWasActive.current = false;
     }
