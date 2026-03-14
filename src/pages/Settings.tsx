@@ -84,7 +84,7 @@ const Settings = () => {
         <p className="text-muted-foreground">Gestisci i dati aziendali e fiscali</p>
       </div>
 
-{role === "partner" && (
+{(role === "partner" || role === "admin") && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg font-heading">Dati Aziendali</CardTitle>
