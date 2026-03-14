@@ -47,7 +47,7 @@ const StationWashLogs = ({ stationId }: Props) => {
       let ratingMap = new Map<string, number>();
       if (sessionIds.length > 0) {
         const { data: ratings } = await supabase
-          .from("station_ratings" as any)
+          .from("station_ratings")
           .select("session_id, rating")
           .in("session_id", sessionIds);
         ((ratings ?? []) as any[]).forEach((r: any) => ratingMap.set(r.session_id, r.rating));
