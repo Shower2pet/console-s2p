@@ -35,6 +35,7 @@ import UpdatePassword from "@/pages/auth/UpdatePassword";
 import AccessDenied from "@/pages/AccessDenied";
 import TesterHome from "@/pages/TesterHome";
 import TesterStations from "@/pages/TesterStations";
+import TesterStationTest from "@/pages/TesterStationTest";
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -57,11 +58,10 @@ const queryClient = new QueryClient({
 
 const HomePage = () => {
   const { isAdmin, isTester, profile } = useAuth();
-  // Redirect to onboarding if must_change_password
   if ((profile as any)?.must_change_password) {
     return <Navigate to="/onboarding" replace />;
   }
-  if (isTester) return <TesterHome />;
+  if (isTester) return <Navigate to="/tester/stations" replace />;
   return isAdmin ? <AdminHome /> : <ClientHome />;
 };
 
@@ -100,6 +100,7 @@ const AppRoutes = () => {
           <Route path="/end-users/:id" element={<EndUserDetail />} />
           <Route path="/admin-settings" element={<AdminSettings />} />
           <Route path="/tester/stations" element={<TesterStations />} />
+          <Route path="/tester/stations/:stationId/test" element={<TesterStationTest />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />

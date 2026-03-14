@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import {
-  Cpu, Wifi, WifiOff, CheckCircle2, Circle, Trash2, Link2, Loader2, ArrowRight, XCircle,
+  Cpu, Wifi, WifiOff, CheckCircle2, Circle, Trash2, Link2, Loader2, ArrowRight, XCircle, FlaskConical,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const isHeartbeatRecent = (lastHeartbeat: string | null | undefined) => {
 
 const TesterStationCard = ({ station, board, availableBoards, onInvalidate }: TesterStationCardProps) => {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -194,6 +196,15 @@ const TesterStationCard = ({ station, board, availableBoards, onInvalidate }: Te
               <Trash2 className="h-3.5 w-3.5" /> Elimina
             </Button>
             <div className="flex-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() => navigate(`/tester/stations/${station.id}/test`)}
+              disabled={!hasBoard}
+            >
+              <FlaskConical className="h-3.5 w-3.5" /> Testa
+            </Button>
             <Button
               size="sm"
               className="gap-1.5"
