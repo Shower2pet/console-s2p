@@ -633,9 +633,23 @@ const StationDetail = () => {
               <h4 className="text-sm font-semibold text-foreground">Lavaggio Manuale</h4>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Durata: {manualWashMinutes} min</Label>
-                <Slider min={1} max={60} step={1} value={[manualWashMinutes]} onValueChange={([v]) => setManualWashMinutes(v)} disabled={!hwEnabled || washBusy} />
+                <Slider min={1} max={60} step={1} value={[manualWashMinutes]} onValueChange={([v]) => setManualWashMinutes(v)} disabled={!hwEnabled || washBusy || washIsActive} />
                 <div className="flex justify-between text-xs text-muted-foreground"><span>1 min</span><span>60 min</span></div>
               </div>
+
+              {/* Countdown timer */}
+              {washIsActive && (
+                <div className="space-y-1.5 py-2 px-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-primary flex items-center gap-1.5">
+                      <Timer className="h-3.5 w-3.5 animate-pulse" /> Lavaggio in corso
+                    </span>
+                    <span className="text-lg font-mono font-bold text-primary">{fmtTimer(washRemaining)}</span>
+                  </div>
+                  <Progress value={washProgress} className="h-2" />
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <Button
                   onClick={async () => {
@@ -643,6 +657,8 @@ const StationDetail = () => {
                     setWashBusy(true);
                     try {
                       const res = await invokeStartTimedWash(station.id, manualWashMinutes * 60);
+                      setWashEndsAt(res.ends_at);
+                      setWashTotalSec(manualWashMinutes * 60);
                       const endsAtFormatted = new Date(res.ends_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
                       toast.success(`Lavaggio avviato (${manualWashMinutes} min) — termine previsto: ${endsAtFormatted}`);
                     } catch (e: any) {
@@ -655,7 +671,7 @@ const StationDetail = () => {
                       setWashBusy(false);
                     }
                   }}
-                  disabled={!hwEnabled || washBusy}
+                  disabled={!hwEnabled || washBusy || washIsActive}
                   className="gap-2"
                 >
                   {washBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
@@ -668,6 +684,7 @@ const StationDetail = () => {
                     setWashBusy(true);
                     try {
                       await invokeStopWash(station.id);
+                      setWashEndsAt(null);
                       toast.success("Lavaggio interrotto.");
                     } catch (e: any) {
                       handleAppError(e, "StationDetail: stop lavaggio");
