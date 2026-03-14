@@ -1166,6 +1166,15 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }[]
       }
+      get_profiles_by_ids: {
+        Args: { p_ids: string[] }
+        Returns: {
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+        }[]
+      }
       get_public_stations: {
         Args: never
         Returns: {
