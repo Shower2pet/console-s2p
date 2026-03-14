@@ -45,7 +45,8 @@ export const handleAppError = (
 export const installGlobalErrorHandlers = () => {
   window.addEventListener("unhandledrejection", (event) => {
     event.preventDefault();
-    const error = event.reason;
+    const errMsg = error instanceof Error ? error.message : typeof error === "object" && error !== null && "message" in error ? String((error as any).message) : String(error);
+    const errStack = error instanceof Error ? error.stack : typeof error === "object" && error !== null ? JSON.stringify(error) : undefined;
     logErrorToDb({
       error_message: error instanceof Error ? error.message : String(error),
       error_stack: error instanceof Error ? error.stack : undefined,
