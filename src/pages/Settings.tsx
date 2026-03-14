@@ -54,6 +54,12 @@ const Settings = () => {
     }
   }, [profile]);
 
+  // Check if all fiskaly-required fields are filled
+  const allFiskalyFieldsFilled = !!(
+    legalName.trim() && vatNumber.trim() && legalRepFiscalCode.trim() &&
+    addressStreet.trim() && zipCode.trim() && city.trim() && province.trim()
+  );
+
   const updateMutation = useMutation({
     mutationFn: () =>
       updatePartnerData(user!.id, {
@@ -67,9 +73,29 @@ const Settings = () => {
         city: city.trim() || null,
         province: province.trim().toUpperCase() || null,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Dati aziendali salvati");
       qc.invalidateQueries({ queryKey: ["profile"] });
+
+      // Auto-trigger Fiskaly setup if all required fields are filled and not yet configured
+      if (role === "partner" && allFiskalyFieldsFilled && !profile?.fiskaly_system_id) {
+        toast.info("Configurazione fiscale in corso...");
+        try {
+          const { data, error } = await supabase.functions.invoke("fiskaly-setup", {
+            body: { partner_id: user!.id },
+          });
+          if (error || data?.error) {
+            const msg = data?.error || error?.message || "Errore imprevisto";
+            toast.error(`Errore configurazione fiscale: ${msg}`);
+            handleAppError(new Error(msg), "Settings: auto fiskaly-setup", { silent: true });
+          } else if (data?.success) {
+            toast.success("Configurazione fiscale completata automaticamente!");
+            qc.invalidateQueries({ queryKey: ["profile"] });
+          }
+        } catch (err: any) {
+          handleAppError(err, "Settings: auto fiskaly-setup");
+        }
+      }
     },
     onError: (e: any) => handleAppError(e, "Settings: salvataggio dati aziendali"),
   });
