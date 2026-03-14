@@ -47,7 +47,9 @@ Deno.serve(async (req) => {
   }
 
   const sessions = (expiredSessions ?? []) as ExpiredSession[];
+  console.log(`[CHECK-EXPIRED] Found ${sessions.length} expired sessions`);
   if (sessions.length === 0) {
+    console.log("[CHECK-EXPIRED] No expired sessions");
     return new Response(JSON.stringify({ success: true, processed: 0, turned_off: 0 }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
