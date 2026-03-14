@@ -247,8 +247,8 @@ const StationDetail = () => {
 
   const heartbeatOkForHw = station ? isHeartbeatRecent(station.last_heartbeat_at, 100_000) : false;
   const isTestingPhase = (station as any)?.phase === "TESTING";
-  // Testers bypass heartbeat requirement during TESTING phase
-  const hwEnabled = heartbeatOkForHw || (isTester && isTestingPhase);
+  // Admin and testers in TESTING bypass heartbeat requirement
+  const hwEnabled = heartbeatOkForHw || isAdmin || (isTester && isTestingPhase);
 
   const handleSave = async () => {
     if (!station) return;
