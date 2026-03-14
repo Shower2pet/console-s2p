@@ -37,19 +37,6 @@ const Financials = () => {
     return Object.entries(map).sort().map(([date, revenue]) => ({ date, revenue }));
   }, [filtered]);
 
-  const exportCSV = () => {
-    const header = "Data,Tipo,Valore,Carta,Crediti,Stato\n";
-    const rows = filtered.map(t =>
-      `${t.created_at?.slice(0, 10)},${t.transaction_type},${t.total_value},${t.amount_paid_stripe ?? 0},${t.amount_paid_wallet ?? 0},${t.status}`
-    ).join("\n");
-    const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `report_finanziario_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   if (isLoading) {
     return (
