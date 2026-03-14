@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { PrivateRoute } from "@/components/PrivateRoute";
+import { TesterRoute } from "@/components/TesterRoute";
 import AdminHome from "@/pages/AdminHome";
 import ClientHome from "@/pages/ClientHome";
 import Onboarding from "@/pages/Onboarding";
@@ -99,8 +100,10 @@ const AppRoutes = () => {
           <Route path="/end-users" element={<EndUsersList />} />
           <Route path="/end-users/:id" element={<EndUserDetail />} />
           <Route path="/admin-settings" element={<AdminSettings />} />
-          <Route path="/tester/stations" element={<TesterStations />} />
-          <Route path="/tester/stations/:stationId/test" element={<TesterStationTest />} />
+          <Route element={<TesterRoute />}>
+            <Route path="/tester/stations" element={<TesterStations />} />
+            <Route path="/tester/stations/:stationId/test" element={<TesterStationTest />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />
